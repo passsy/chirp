@@ -1,0 +1,14 @@
+name: chirp
+description: A logging package for dart
+version: 1.0.0
+repository: https://github.com/passsy/chirp
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  ansicolor: ^2.0.3
+
+dev_dependencies:
+  lint: ^2.8.0
+  test: ^1.25.6

@@ -1,0 +1,54 @@
+import 'package:chirp/src/log_entry.dart';
+import 'package:chirp/src/message_formatter.dart';
+
+/// Writes log entries to output
+abstract class ChirpMessageWriter {
+  void write(LogEntry entry);
+}
+
+/// Writes to console using print()
+class ConsoleChirpMessageWriter implements ChirpMessageWriter {
+  final ChirpMessageFormatter formatter;
+  final void Function(String) output;
+
+  ConsoleChirpMessageWriter({
+    ChirpMessageFormatter? formatter,
+    void Function(String)? output,
+  })  : formatter = formatter ?? DefaultChirpMessageFormatter(),
+        output = output ?? print;
+
+  @override
+  void write(LogEntry entry) {
+    final formatted = formatter.format(entry);
+    output(formatted);
+  }
+}
+
+/// Buffers log entries in memory
+class BufferedChirpMessageWriter implements ChirpMessageWriter {
+  final List<LogEntry> buffer = [];
+
+  @override
+  void write(LogEntry entry) => buffer.add(entry);
+
+  void flush(ChirpMessageWriter target) {
+    for (final entry in buffer) {
+      target.write(entry);
+    }
+    buffer.clear();
+  }
+}
+
+/// Forwards to multiple writers
+class MultiChirpMessageWriter implements ChirpMessageWriter {
+  final List<ChirpMessageWriter> writers;
+
+  MultiChirpMessageWriter(this.writers);
+
+  @override
+  void write(LogEntry entry) {
+    for (final writer in writers) {
+      writer.write(entry);
+    }
+  }
+}

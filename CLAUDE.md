@@ -1,0 +1,1 @@
+- this is a pure dart project, don't use the flutter cli
