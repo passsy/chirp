@@ -24,7 +24,7 @@ class CompactChirpMessageFormatter extends ChirpMessageFormatter {
 
     // Try to get caller location first
     final String? callerLocation =
-        entry.caller != null ? getCallerLocation(entry.caller!) : null;
+        entry.caller != null ? getCallerInfo(entry.caller!)?.callerLocation : null;
 
     final className = entry.loggerName ??
         callerLocation ??

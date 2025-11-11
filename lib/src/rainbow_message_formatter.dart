@@ -40,7 +40,7 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
 
     final String? callerLocation = () {
       if (entry.caller != null) {
-        return getCallerLocation(entry.caller!);
+        return getCallerInfo(entry.caller!)?.callerLocation;
       }
       return null;
     }();
@@ -78,7 +78,7 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
         if (instanceInfo != null) return instanceInfo;
         if (entry.loggerName != null) return entry.loggerName;
         if (entry.caller != null) {
-          final name = getCallerName(entry.caller!);
+          final name = getCallerInfo(entry.caller!)?.callerName;
           if (name != null) {
             return name;
           }

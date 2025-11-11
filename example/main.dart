@@ -21,8 +21,14 @@ void main() {
   print('\n=== Example 6: Multiple Writers (Console + JSON) ===');
   multipleWritersExample();
 
+  UserService().processUser('robin');
+
   // Reset to default
   Chirp.root = ChirpLogger();
+
+  final bleLogger =
+      Chirp.root.child(name: 'BLE', context: {'bluetooth_state': 'on'});
+  bleLogger.info('Device connected');
 }
 
 /// Demonstrates all 7 log levels
@@ -30,6 +36,7 @@ void allLogLevelsExample() {
   Chirp.trace('Detailed execution trace', data: {'step': 1});
   Chirp.debug('Debug information', data: {'cache': 'miss'});
   Chirp.info('Application started');
+  Chirp.log('Application started', level: const ChirpLogLevel('robin', 600));
   Chirp.warning('Deprecated API used', data: {'api': 'v1'});
   Chirp.error('Operation failed', error: Exception('Timeout'));
   Chirp.critical('Database connection lost');
@@ -52,6 +59,7 @@ void namedLoggerExample() {
   logger.error(
     'Request failed',
     error: Exception('Not found'),
+    stackTrace: StackTrace.current,
     data: {'statusCode': 404},
   );
 }
@@ -156,5 +164,7 @@ void multipleWritersExample() {
 class UserService {
   void processUser(String userId) {
     chirp.info('Processing user', data: {'userId': userId});
+    // TODO why is it not capturing UserService?
+    Chirp.info('Processing user', data: {'userId': userId});
   }
 }
