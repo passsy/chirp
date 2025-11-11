@@ -37,10 +37,10 @@ void main() {
         ],
       );
 
-      Chirp.log('Debug test', level: LogLevel.debug);
-      Chirp.log('Info test', level: LogLevel.info);
-      Chirp.log('Warning test', level: LogLevel.warning);
-      Chirp.log('Error test', level: LogLevel.error);
+      Chirp.log('Debug test', level: ChirpLogLevel.debug);
+      Chirp.log('Info test', level: ChirpLogLevel.info);
+      Chirp.log('Warning test', level: ChirpLogLevel.warning);
+      Chirp.log('Error test', level: ChirpLogLevel.error);
 
       expect(messages.length, 4);
       expect(messages[0], contains('"level":"debug"'));

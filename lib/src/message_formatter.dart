@@ -207,9 +207,8 @@ class CompactChirpMessageFormatter extends ChirpMessageFormatter {
     final formattedTime = '$hour:$minute:$second.$ms';
 
     // Try to get caller location first
-    final String? callerLocation = entry.caller != null
-        ? getCallerLocation(entry.caller!)
-        : null;
+    final String? callerLocation =
+        entry.caller != null ? getCallerLocation(entry.caller!) : null;
 
     final className = entry.loggerName ??
         callerLocation ??
@@ -291,6 +290,31 @@ class GcpChirpMessageFormatter extends ChirpMessageFormatter {
     this.includeSourceLocation = false,
   }) : super();
 
+  /// Maps a ChirpLogLevel to GCP-compatible severity string
+  String _gcpSeverity(ChirpLogLevel level) {
+    // Map based on severity ranges following GCP's specification:
+    // https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
+    if (level.severity < 100) {
+      return 'DEFAULT'; // 0
+    } else if (level.severity < 200) {
+      return 'DEBUG'; // 100
+    } else if (level.severity < 300) {
+      return 'INFO'; // 200
+    } else if (level.severity < 400) {
+      return 'NOTICE'; // 300
+    } else if (level.severity < 500) {
+      return 'WARNING'; // 400
+    } else if (level.severity < 600) {
+      return 'ERROR'; // 500
+    } else if (level.severity < 700) {
+      return 'CRITICAL'; // 600
+    } else if (level.severity < 800) {
+      return 'ALERT'; // 700
+    } else {
+      return 'EMERGENCY'; // 800
+    }
+  }
+
   @override
   String format(LogRecord entry) {
     final className = entry.loggerName ??
@@ -299,7 +323,7 @@ class GcpChirpMessageFormatter extends ChirpMessageFormatter {
             : entry.className);
 
     final map = <String, dynamic>{
-      'severity': entry.level.gcpSeverity,
+      'severity': _gcpSeverity(entry.level),
       'message': entry.message?.toString(),
       'timestamp': entry.date.toIso8601String(),
     };

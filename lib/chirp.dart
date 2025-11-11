@@ -1,8 +1,10 @@
 import 'package:chirp/src/log_entry.dart';
+import 'package:chirp/src/log_level.dart';
 import 'package:chirp/src/message_writer.dart';
 import 'package:clock/clock.dart';
 
 export 'src/log_entry.dart';
+export 'src/log_level.dart';
 export 'src/message_formatter.dart';
 export 'src/message_writer.dart';
 
@@ -19,11 +21,26 @@ class Chirp {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
-    LogLevel level = LogLevel.info,
+    ChirpLogLevel level = ChirpLogLevel.info,
   }) {
     root.log(
       message,
       level: level,
+      error: error,
+      stackTrace: stackTrace,
+      data: data,
+    );
+  }
+
+  static void trace(
+    Object? message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?>? data,
+  }) {
+    root.log(
+      message,
+      level: ChirpLogLevel.trace,
       error: error,
       stackTrace: stackTrace,
       data: data,
@@ -85,6 +102,35 @@ class Chirp {
       data: data,
     );
   }
+
+  static void critical(
+    Object? message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?>? data,
+  }) {
+    root.critical(
+      message,
+      error: error,
+      stackTrace: stackTrace,
+      data: data,
+    );
+  }
+
+  static void wtf(
+    Object? message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?>? data,
+  }) {
+    root.log(
+      message,
+      level: ChirpLogLevel.wtf,
+      error: error,
+      stackTrace: stackTrace,
+      data: data,
+    );
+  }
 }
 
 /// Merge two data maps, with override taking precedence
@@ -141,7 +187,7 @@ class ChirpLogger {
   /// When called directly on a named logger, uses the logger's name.
   void log(
     Object? message, {
-    LogLevel level = LogLevel.info,
+    ChirpLogLevel level = ChirpLogLevel.info,
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
@@ -160,7 +206,31 @@ class ChirpLogger {
       data: _mergeData(context, data),
     );
 
-    logRecord(entry);
+    _logRecord(entry);
+  }
+
+  /// Log a trace message
+  void trace(
+    Object? message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?>? data,
+  }) {
+    final caller = StackTrace.current;
+
+    final entry = LogRecord(
+      message: message,
+      level: ChirpLogLevel.trace,
+      error: error,
+      stackTrace: stackTrace,
+      caller: caller,
+      date: clock.now(),
+      loggerName: name,
+      instance: instance,
+      data: _mergeData(context, data),
+    );
+
+    _logRecord(entry);
   }
 
   /// Log a debug message
@@ -174,7 +244,7 @@ class ChirpLogger {
 
     final entry = LogRecord(
       message: message,
-      level: LogLevel.debug,
+      level: ChirpLogLevel.debug,
       error: error,
       stackTrace: stackTrace,
       caller: caller,
@@ -184,7 +254,7 @@ class ChirpLogger {
       data: _mergeData(context, data),
     );
 
-    logRecord(entry);
+    _logRecord(entry);
   }
 
   /// Log an info message
@@ -198,7 +268,7 @@ class ChirpLogger {
 
     final entry = LogRecord(
       message: message,
-      level: LogLevel.info,
+      level: ChirpLogLevel.info,
       error: error,
       stackTrace: stackTrace,
       caller: caller,
@@ -208,7 +278,7 @@ class ChirpLogger {
       data: _mergeData(context, data),
     );
 
-    logRecord(entry);
+    _logRecord(entry);
   }
 
   /// Log a warning message
@@ -222,7 +292,7 @@ class ChirpLogger {
 
     final entry = LogRecord(
       message: message,
-      level: LogLevel.warning,
+      level: ChirpLogLevel.warning,
       error: error,
       stackTrace: stackTrace,
       caller: caller,
@@ -232,7 +302,7 @@ class ChirpLogger {
       data: _mergeData(context, data),
     );
 
-    logRecord(entry);
+    _logRecord(entry);
   }
 
   /// Log an error message
@@ -246,7 +316,7 @@ class ChirpLogger {
 
     final entry = LogRecord(
       message: message,
-      level: LogLevel.error,
+      level: ChirpLogLevel.error,
       error: error,
       stackTrace: stackTrace,
       caller: caller,
@@ -256,7 +326,7 @@ class ChirpLogger {
       data: _mergeData(context, data),
     );
 
-    logRecord(entry);
+    _logRecord(entry);
   }
 
   /// Log a critical message
@@ -270,7 +340,7 @@ class ChirpLogger {
 
     final entry = LogRecord(
       message: message,
-      level: LogLevel.critical,
+      level: ChirpLogLevel.critical,
       error: error,
       stackTrace: stackTrace,
       caller: caller,
@@ -280,10 +350,34 @@ class ChirpLogger {
       data: _mergeData(context, data),
     );
 
-    logRecord(entry);
+    _logRecord(entry);
   }
 
-  void logRecord(LogRecord record) {
+  /// Log a WTF (What a Terrible Failure) message - for impossible situations
+  void wtf(
+    Object? message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?>? data,
+  }) {
+    final caller = StackTrace.current;
+
+    final entry = LogRecord(
+      message: message,
+      level: ChirpLogLevel.wtf,
+      error: error,
+      stackTrace: stackTrace,
+      caller: caller,
+      date: clock.now(),
+      loggerName: name,
+      instance: instance,
+      data: _mergeData(context, data),
+    );
+
+    _logRecord(entry);
+  }
+
+  void _logRecord(LogRecord record) {
     for (final writer in writers) {
       writer.write(record);
     }
