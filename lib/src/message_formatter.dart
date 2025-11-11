@@ -2,16 +2,34 @@ import 'dart:convert';
 
 import 'package:ansicolor/ansicolor.dart';
 import 'package:chirp/chirp.dart';
+import 'package:chirp/src/stack_trace_util.dart';
 
 /// Transforms LogEntry into formatted string
 abstract class ChirpMessageFormatter {
+  ChirpMessageFormatter();
+
+  String format(LogRecord entry);
+}
+
+/// Function type for transforming an instance into a display name.
+///
+/// Return a non-null string to use that as the class name,
+/// or null to try the next transformer.
+typedef ClassNameTransformer = String? Function(Object instance);
+
+/// Default colored formatter (from experiment code)
+class RainbowMessageFormatter extends ChirpMessageFormatter {
+  /// Width of the metadata section (timestamp + padding + label)
+  final int metaWidth;
+
   /// Class name transformers for resolving instance class names
   final List<ClassNameTransformer> classNameTransformers;
 
-  ChirpMessageFormatter({List<ClassNameTransformer>? classNameTransformers})
-      : classNameTransformers = classNameTransformers ?? [];
-
-  String format(LogEntry entry);
+  RainbowMessageFormatter({
+    List<ClassNameTransformer>? classNameTransformers,
+    this.metaWidth = 60,
+  })  : classNameTransformers = classNameTransformers ?? [],
+        super();
 
   /// Resolve class name from instance using transformers
   String resolveClassName(Object instance) {
@@ -24,43 +42,71 @@ abstract class ChirpMessageFormatter {
     // Fallback to runtimeType
     return instance.runtimeType.toString();
   }
-}
-
-/// Default colored formatter (from experiment code)
-class DefaultChirpMessageFormatter extends ChirpMessageFormatter {
-  DefaultChirpMessageFormatter({super.classNameTransformers});
 
   @override
-  String format(LogEntry entry) {
+  String format(LogRecord entry) {
     ansiColorDisabled = false;
 
-    final className = entry.loggerName ??
-        (entry.instance != null ? resolveClassName(entry.instance!) : entry.className) ??
-        'Unknown';
-    final instanceHash = entry.instanceHash ?? 0;
+    final String? callerLocation = () {
+      if (entry.caller != null) {
+        return getCallerLocation(entry.caller!);
+      }
+      return null;
+    }();
 
-    // Always include instance hash for clarity
-    final hashHex = instanceHash.toRadixString(16).padLeft(4, '0');
-    final shortHash = hashHex.substring(hashHex.length >= 4 ? hashHex.length - 4 : 0);
-    final classLabel = '$className:$shortHash';
+    final String? instanceInfo = () {
+      if (entry.instance != null) {
+        final className = resolveClassName(entry.instance!);
+        final instanceHash = entry.instanceHash ?? 0;
+
+        // Always include instance hash for clarity
+        final hashHex = instanceHash.toRadixString(16).padLeft(4, '0');
+        final shortHash =
+            hashHex.substring(hashHex.length >= 4 ? hashHex.length - 4 : 0);
+        return '$className:$shortHash';
+      }
+      return null;
+    }();
+
+    final label = [callerLocation, instanceInfo, entry.loggerName]
+        .whereType<Object>()
+        .join(" ");
 
     // Generate readable color using HSL
     final double hue;
-    const saturation = 0.7;
-    const lightness = 0.6;
+    double saturation = 0.7;
+    double lightness = 0.7;
 
     if (entry.error != null) {
       // Use red color for errors/exceptions
       hue = 0.0; // Red
+      saturation = 0.7;
+      lightness = 0.6;
     } else {
-      // Hue varies by class name, avoiding red shades (reserved for errors)
-      // Hue range: 60° to 300° (yellow → green → cyan → blue → magenta, skipping red)
-      final hash = classLabel.hashCode;
-      const minHue = 60.0;
-      const maxHue = 300.0;
-      const hueRange = maxHue - minHue;
-      final hueDegrees = minHue + (hash.abs() % hueRange.toInt());
-      hue = hueDegrees / 360.0;
+      final hashableThing = () {
+        if (instanceInfo != null) return instanceInfo;
+        if (entry.loggerName != null) return entry.loggerName;
+        if (entry.caller != null) {
+          final name = getCallerName(entry.caller!);
+          if (name != null) {
+            return name;
+          }
+        }
+        return null;
+      }();
+      if (hashableThing != null) {
+        // Hue varies by class name, avoiding red shades (reserved for errors)
+        // Hue range: 60° to 300° (yellow → green → cyan → blue → magenta, skipping red)
+        final hash = hashableThing.hashCode;
+        const minHue = 60.0;
+        const maxHue = 300.0;
+        const hueRange = maxHue - minHue;
+        final hueDegrees = minHue + (hash.abs() % hueRange.toInt());
+        hue = hueDegrees / 360.0;
+      } else {
+        hue = 0.0;
+        saturation = 0.0; // white
+      }
     }
 
     final rgb = _hslToRgb(hue, saturation, lightness);
@@ -75,10 +121,9 @@ class DefaultChirpMessageFormatter extends ChirpMessageFormatter {
     final formattedTime = '$hour:$minute:$second.$ms';
 
     // Build meta line with padding
-    const metaWidth = 60;
-    final justText = '$formattedTime $classLabel';
+    final justText = '$formattedTime $label';
     final remaining = metaWidth - justText.length;
-    final meta = '$formattedTime ${"".padRight(remaining, '=')} $classLabel';
+    final meta = '$formattedTime ${"".padRight(remaining, '=')} $label';
 
     // Split message into lines
     final messageStr = entry.message?.toString() ?? '';
@@ -151,18 +196,26 @@ class DefaultChirpMessageFormatter extends ChirpMessageFormatter {
 
 /// Single-line compact format
 class CompactChirpMessageFormatter extends ChirpMessageFormatter {
-  CompactChirpMessageFormatter({super.classNameTransformers});
+  CompactChirpMessageFormatter() : super();
 
   @override
-  String format(LogEntry entry) {
+  String format(LogRecord entry) {
     final hour = entry.date.hour.toString().padLeft(2, '0');
     final minute = entry.date.minute.toString().padLeft(2, '0');
     final second = entry.date.second.toString().padLeft(2, '0');
     final ms = entry.date.millisecond.toString().padLeft(3, '0');
     final formattedTime = '$hour:$minute:$second.$ms';
 
+    // Try to get caller location first
+    final String? callerLocation = entry.caller != null
+        ? getCallerLocation(entry.caller!)
+        : null;
+
     final className = entry.loggerName ??
-        (entry.instance != null ? resolveClassName(entry.instance!) : entry.className) ??
+        callerLocation ??
+        (entry.instance != null
+            ? entry.instance!.runtimeType.toString()
+            : entry.className) ??
         'Unknown';
     final hash = (entry.instanceHash ?? 0).toRadixString(16).padLeft(4, '0');
     final shortHash = hash.substring(hash.length >= 4 ? hash.length - 4 : 0);
@@ -184,21 +237,104 @@ class CompactChirpMessageFormatter extends ChirpMessageFormatter {
 
 /// JSON format for structured logging
 class JsonChirpMessageFormatter extends ChirpMessageFormatter {
-  JsonChirpMessageFormatter({super.classNameTransformers});
+  JsonChirpMessageFormatter() : super();
 
   @override
-  String format(LogEntry entry) {
+  String format(LogRecord entry) {
     final className = entry.loggerName ??
-        (entry.instance != null ? resolveClassName(entry.instance!) : entry.className) ??
+        (entry.instance != null
+            ? entry.instance!.runtimeType.toString()
+            : entry.className) ??
         'Unknown';
 
     final map = <String, dynamic>{
       'timestamp': entry.date.toIso8601String(),
+      'level': entry.level.name,
       'class': className,
       'hash': (entry.instanceHash ?? 0).toRadixString(16).padLeft(4, '0'),
       'message': entry.message?.toString(),
     };
 
+    if (entry.error != null) {
+      map['error'] = entry.error.toString();
+    }
+
+    if (entry.stackTrace != null) {
+      map['stackTrace'] = entry.stackTrace.toString();
+    }
+
+    if (entry.data != null) {
+      map['data'] = entry.data;
+    }
+
+    return jsonEncode(map);
+  }
+}
+
+/// Google Cloud Platform (GCP) compatible JSON formatter
+///
+/// Formats logs according to the structure expected by Google Cloud Logging.
+/// See: https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
+class GcpChirpMessageFormatter extends ChirpMessageFormatter {
+  /// Optional GCP project ID
+  final String? projectId;
+
+  /// Optional GCP log name
+  final String? logName;
+
+  /// Whether to include source location information
+  final bool includeSourceLocation;
+
+  GcpChirpMessageFormatter({
+    this.projectId,
+    this.logName,
+    this.includeSourceLocation = false,
+  }) : super();
+
+  @override
+  String format(LogRecord entry) {
+    final className = entry.loggerName ??
+        (entry.instance != null
+            ? entry.instance!.runtimeType.toString()
+            : entry.className);
+
+    final map = <String, dynamic>{
+      'severity': entry.level.gcpSeverity,
+      'message': entry.message?.toString(),
+      'timestamp': entry.date.toIso8601String(),
+    };
+
+    // Add log name if provided
+    if (logName != null) {
+      map['logName'] = projectId != null
+          ? 'projects/$projectId/logs/$logName'
+          : 'logs/$logName';
+    }
+
+    // Add labels for classification
+    final labels = <String, String>{};
+    if (className != null) {
+      labels['class'] = className;
+    }
+    if (entry.instanceHash != null) {
+      labels['instance_hash'] =
+          entry.instanceHash!.toRadixString(16).padLeft(8, '0');
+    }
+    if (labels.isNotEmpty) {
+      map['labels'] = labels;
+    }
+
+    // Merge structured data at root level for GCP
+    if (entry.data != null) {
+      for (final kv in entry.data!.entries) {
+        // Avoid overwriting reserved GCP fields
+        if (!map.containsKey(kv.key)) {
+          map[kv.key] = kv.value;
+        }
+      }
+    }
+
+    // Add error information
     if (entry.error != null) {
       map['error'] = entry.error.toString();
     }

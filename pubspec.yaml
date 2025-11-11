@@ -8,6 +8,7 @@ environment:
 
 dependencies:
   ansicolor: ^2.0.3
+  clock: ^1.0.0
 
 dev_dependencies:
   lint: ^2.8.0

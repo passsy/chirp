@@ -3,7 +3,7 @@ import 'package:chirp/src/message_formatter.dart';
 
 /// Writes log entries to output
 abstract class ChirpMessageWriter {
-  void write(LogEntry entry);
+  void write(LogRecord entry);
 }
 
 /// Writes to console using print()
@@ -14,11 +14,11 @@ class ConsoleChirpMessageWriter implements ChirpMessageWriter {
   ConsoleChirpMessageWriter({
     ChirpMessageFormatter? formatter,
     void Function(String)? output,
-  })  : formatter = formatter ?? DefaultChirpMessageFormatter(),
+  })  : formatter = formatter ?? RainbowMessageFormatter(),
         output = output ?? print;
 
   @override
-  void write(LogEntry entry) {
+  void write(LogRecord entry) {
     final formatted = formatter.format(entry);
     output(formatted);
   }
@@ -26,10 +26,10 @@ class ConsoleChirpMessageWriter implements ChirpMessageWriter {
 
 /// Buffers log entries in memory
 class BufferedChirpMessageWriter implements ChirpMessageWriter {
-  final List<LogEntry> buffer = [];
+  final List<LogRecord> buffer = [];
 
   @override
-  void write(LogEntry entry) => buffer.add(entry);
+  void write(LogRecord entry) => buffer.add(entry);
 
   void flush(ChirpMessageWriter target) {
     for (final entry in buffer) {
@@ -46,7 +46,7 @@ class MultiChirpMessageWriter implements ChirpMessageWriter {
   MultiChirpMessageWriter(this.writers);
 
   @override
-  void write(LogEntry entry) {
+  void write(LogRecord entry) {
     for (final writer in writers) {
       writer.write(entry);
     }

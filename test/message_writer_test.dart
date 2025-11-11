@@ -106,13 +106,12 @@ void main() {
   });
 }
 
-/// Helper to create a LogEntry for testing
-LogEntry _createEntry(Object? message) {
-  return LogEntry(
+/// Helper to create a LogRecord for testing
+LogRecord _createEntry(Object? message) {
+  return LogRecord(
     message: message,
     date: DateTime.now(),
     className: 'TestClass',
-    instanceHash: 0x1234,
     instance: Object(),
   );
 }

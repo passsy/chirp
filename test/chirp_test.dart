@@ -4,18 +4,18 @@ import 'package:test/test.dart';
 void main() {
   group('Chirp', () {
     test('creates logger with name', () {
-      final logger = Chirp(name: 'TestLogger');
+      final logger = ChirpLogger(name: 'TestLogger');
       expect(logger.name, 'TestLogger');
     });
 
     test('creates logger without name', () {
-      final logger = Chirp();
+      final logger = ChirpLogger();
       expect(logger.name, isNull);
     });
 
     test('logs with named logger', () {
       final messages = <String>[];
-      final logger = Chirp(
+      final logger = ChirpLogger(
         name: 'HTTP',
         writers: [
           ConsoleChirpMessageWriter(
@@ -32,11 +32,11 @@ void main() {
       expect(messages[0], contains('Test message'));
     });
 
-    test('logs with instance', () {
+    test('logs with top-level chirp', () {
       final messages = <String>[];
       final originalRoot = Chirp.root;
 
-      Chirp.root = Chirp(
+      Chirp.root = ChirpLogger(
         writers: [
           ConsoleChirpMessageWriter(
             formatter: CompactChirpMessageFormatter(),
@@ -45,11 +45,10 @@ void main() {
         ],
       );
 
-      final instance = _TestClass();
-      instance.chirp('Test message');
+      Chirp.log('Test message');
 
       expect(messages.length, 1);
-      expect(messages[0], contains('_TestClass'));
+      expect(messages[0], contains('chirp_test'));
       expect(messages[0], contains('Test message'));
 
       Chirp.root = originalRoot;
@@ -57,7 +56,7 @@ void main() {
 
     test('logs with error and stack trace', () {
       final messages = <String>[];
-      final logger = Chirp(
+      final logger = ChirpLogger(
         name: 'ErrorLogger',
         writers: [
           ConsoleChirpMessageWriter(
@@ -78,105 +77,9 @@ void main() {
       expect(messages[0], contains('Test error'));
     });
 
-    test('applies class name transformers', () {
-      final messages = <String>[];
-      final originalRoot = Chirp.root;
-
-      Chirp.root = Chirp(
-        writers: [
-          ConsoleChirpMessageWriter(
-            formatter: CompactChirpMessageFormatter(
-              classNameTransformers: [
-                (instance) {
-                  if (instance is _TestClass) {
-                    return 'TransformedName';
-                  }
-                  return null;
-                },
-              ],
-            ),
-            output: messages.add,
-          ),
-        ],
-      );
-
-      final instance = _TestClass();
-      instance.chirp('Test message');
-
-      expect(messages.length, 1);
-      expect(messages[0], contains('TransformedName'));
-      expect(messages[0], isNot(contains('_TestClass')));
-
-      Chirp.root = originalRoot;
-    });
-
-    test('transformer precedence (first match wins)', () {
-      final messages = <String>[];
-      final originalRoot = Chirp.root;
-
-      Chirp.root = Chirp(
-        writers: [
-          ConsoleChirpMessageWriter(
-            formatter: CompactChirpMessageFormatter(
-              classNameTransformers: [
-                (instance) {
-                  if (instance is _TestClass) {
-                    return 'FirstTransformer';
-                  }
-                  return null;
-                },
-                (instance) {
-                  if (instance is _TestClass) {
-                    return 'SecondTransformer';
-                  }
-                  return null;
-                },
-              ],
-            ),
-            output: messages.add,
-          ),
-        ],
-      );
-
-      final instance = _TestClass();
-      instance.chirp('Test message');
-
-      expect(messages.length, 1);
-      expect(messages[0], contains('FirstTransformer'));
-      expect(messages[0], isNot(contains('SecondTransformer')));
-
-      Chirp.root = originalRoot;
-    });
-
-    test('uses runtimeType as fallback when no transformer matches', () {
-      final messages = <String>[];
-      final originalRoot = Chirp.root;
-
-      Chirp.root = Chirp(
-        writers: [
-          ConsoleChirpMessageWriter(
-            formatter: CompactChirpMessageFormatter(
-              classNameTransformers: [
-                (instance) => null, // Always returns null
-              ],
-            ),
-            output: messages.add,
-          ),
-        ],
-      );
-
-      final instance = _TestClass();
-      instance.chirp('Test message');
-
-      expect(messages.length, 1);
-      expect(messages[0], contains('_TestClass'));
-
-      Chirp.root = originalRoot;
-    });
-
     test('Chirp.root exists as static', () {
       expect(Chirp.root, isNotNull);
-      expect(Chirp.root, isA<Chirp>());
+      expect(Chirp.root, isA<ChirpLogger>());
     });
 
     test('can replace Chirp.root', () {
@@ -184,7 +87,7 @@ void main() {
       final messages = <String>[];
 
       // Replace root with custom logger
-      Chirp.root = Chirp(
+      Chirp.root = ChirpLogger(
         name: 'CustomRoot',
         writers: [
           ConsoleChirpMessageWriter(
@@ -204,5 +107,3 @@ void main() {
     });
   });
 }
-
-class _TestClass {}
