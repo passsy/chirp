@@ -18,7 +18,7 @@ void main() {
 
       final hash = identityHashCode(instance).toRadixString(16).padLeft(4, '0');
       final shortHash = hash.substring(hash.length >= 4 ? hash.length - 4 : 0);
-      expect(result, '10:23:45.123 _MyClass:$shortHash Test message');
+      expect(result, '10:23:45.123 _MyClass@$shortHash Test message');
     });
 
     test('CompactChirpMessageFormatter handles null className', () {
@@ -30,7 +30,7 @@ void main() {
       final formatter = CompactChirpMessageFormatter();
       final result = formatter.format(entry);
 
-      expect(result, '10:23:45.123 Unknown:0000 Test message');
+      expect(result, '10:23:45.123 Unknown@0000 Test message');
     });
 
     test('CompactChirpMessageFormatter handles error', () {
@@ -46,7 +46,7 @@ void main() {
       final formatter = CompactChirpMessageFormatter();
       final result = formatter.format(entry);
 
-      expect(result, contains('10:23:45.123 _MyClass:'));
+      expect(result, contains('10:23:45.123 _MyClass@'));
       expect(result, contains('Test message'));
       expect(result, contains('Exception: Something went wrong'));
     });

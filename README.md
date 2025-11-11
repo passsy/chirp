@@ -386,22 +386,6 @@ See [example/main.dart](example/main.dart) for a comprehensive example covering:
 - GCP Cloud Logging format
 - Multiple writers with different formats
 
-## Migration Guide
-
-### From withContext() to child()
-
-If you're upgrading from an earlier version:
-
-```dart
-// Old API (removed)
-final child = logger.withContext({'key': 'value'});
-
-// New API (use this)
-final child = logger.child(context: {'key': 'value'});
-```
-
-The `.child()` method is more flexible and follows winston's API design.
-
 ## License
 
 ```

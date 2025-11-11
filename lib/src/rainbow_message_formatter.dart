@@ -38,9 +38,9 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
   String format(LogRecord entry) {
     ansiColorDisabled = false;
 
-    final String? callerLocation = () {
+    final StackFrameInfo? callerInfo = () {
       if (entry.caller != null) {
-        return getCallerInfo(entry.caller!)?.callerLocation;
+        return getCallerInfo(entry.caller!);
       }
       return null;
     }();
@@ -54,14 +54,38 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
         final hashHex = instanceHash.toRadixString(16).padLeft(4, '0');
         final shortHash =
             hashHex.substring(hashHex.length >= 4 ? hashHex.length - 4 : 0);
-        return '$className:$shortHash';
+        return '$className@$shortHash';
       }
       return null;
     }();
 
-    final label = [callerLocation, instanceInfo, entry.loggerName]
-        .whereType<Object>()
-        .join(" ");
+    // Combine instanceInfo and callerMethod if they share the same class name
+    final String? combinedInstanceMethod = () {
+      if (instanceInfo != null && callerInfo?.callerMethod != null) {
+        final method = callerInfo!.callerMethod;
+        // Extract class name from instanceInfo (e.g., "UserService" from "UserService@1fec")
+        final instanceClass = instanceInfo.split('@').first;
+
+        // Check if method starts with the same class name
+        if (method.startsWith('$instanceClass.')) {
+          // Extract just the method name (e.g., "processUser" from "UserService.processUser")
+          final methodName = method.substring(instanceClass.length + 1);
+          return '$instanceInfo.$methodName'; // UserService@1fec.processUser
+        }
+      }
+      return null;
+    }();
+
+    final label = [
+      callerInfo?.callerLocation, // main:166
+      if (combinedInstanceMethod != null)
+        combinedInstanceMethod // UserService@1fec.processUser
+      else ...[
+        callerInfo?.callerMethod, // UserService.processUser (if not combined)
+        instanceInfo, // UserService@1fec (if not combined)
+      ],
+      entry.loggerName // UserLogger
+    ].whereType<Object>().join(" ");
 
     // Generate readable color using HSL
     final double hue;

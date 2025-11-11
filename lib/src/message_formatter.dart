@@ -36,7 +36,7 @@ class CompactChirpMessageFormatter extends ChirpMessageFormatter {
     final shortHash = hash.substring(hash.length >= 4 ? hash.length - 4 : 0);
 
     final buffer = StringBuffer();
-    buffer.write('$formattedTime $className:$shortHash ${entry.message}');
+    buffer.write('$formattedTime $className@$shortHash ${entry.message}');
 
     if (entry.error != null) {
       buffer.write('\n${entry.error}');

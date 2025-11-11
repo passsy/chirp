@@ -3,6 +3,8 @@
 import 'package:chirp/chirp.dart';
 
 void main() {
+  UserService().processUser('robin');
+
   print('=== Example 1: Static Methods - All Log Levels ===');
   allLogLevelsExample();
 
@@ -20,8 +22,6 @@ void main() {
 
   print('\n=== Example 6: Multiple Writers (Console + JSON) ===');
   multipleWritersExample();
-
-  UserService().processUser('robin');
 
   // Reset to default
   Chirp.root = ChirpLogger();
