@@ -3,37 +3,44 @@
 import 'package:chirp/chirp.dart';
 
 void main() {
-  // Example 1: Basic usage - call .log() on a Chirp instance
-  print('=== Example 1: Basic Chirp.log() ===');
-  final logger = ChirpLogger(name: 'MyApp');
-  logger.log('Application started');
-  logger.log('Processing data...');
-  logger.log('Error occurred', error: Exception('Something went wrong'));
+  print('=== Example 1: Static Methods - All Log Levels ===');
+  allLogLevelsExample();
 
-  // Example 2: Top-level chirp usage
-  print('\n=== Example 2: Top-level chirp ===');
-  Chirp.log('Processing data...');
-  Chirp.info('Info message');
-  Chirp.warning('Something is off');
-  Chirp.error('Error occurred');
+  print('\n=== Example 2: Named Logger & Structured Data ===');
+  namedLoggerExample();
 
-  // Example 3: From a service class
-  print('\n=== Example 3: Service Class ===');
-  final service = UserService();
-  service.fetchUser('user123');
-  service.simulateError();
+  print('\n=== Example 3: Child Loggers (Per-Request Context) ===');
+  childLoggerExample();
 
-  // Example 4: Named loggers for different subsystems
-  print('\n=== Example 4: Named Loggers ===');
-  final httpLogger = ChirpLogger(name: 'HTTP');
-  final dbLogger = ChirpLogger(name: 'Database');
-  httpLogger.log('GET /api/users');
-  dbLogger.log('Query executed');
+  print('\n=== Example 4: Instance Tracking with .chirp Extension ===');
+  instanceTrackingExample();
 
-  // Example 5: Structured logging with data
-  print('\n=== Example 5: Structured Logging ===');
-  final apiLogger = ChirpLogger(name: 'API');
-  apiLogger.info(
+  print('\n=== Example 5: GCP Cloud Logging Format ===');
+  gcpFormatterExample();
+
+  print('\n=== Example 6: Multiple Writers (Console + JSON) ===');
+  multipleWritersExample();
+
+  // Reset to default
+  Chirp.root = ChirpLogger();
+}
+
+/// Demonstrates all 7 log levels
+void allLogLevelsExample() {
+  Chirp.trace('Detailed execution trace', data: {'step': 1});
+  Chirp.debug('Debug information', data: {'cache': 'miss'});
+  Chirp.info('Application started');
+  Chirp.warning('Deprecated API used', data: {'api': 'v1'});
+  Chirp.error('Operation failed', error: Exception('Timeout'));
+  Chirp.critical('Database connection lost');
+  Chirp.wtf('User age is negative', data: {'age': -5});
+}
+
+/// Named logger with structured data
+void namedLoggerExample() {
+  final logger = ChirpLogger(name: 'API');
+
+  logger.info(
     'User request received',
     data: {
       'userId': 'user_123',
@@ -42,68 +49,112 @@ void main() {
     },
   );
 
-  // Example 6: Log levels
-  print('\n=== Example 6: Log Levels ===');
-  final svcLogger = ChirpLogger(name: 'Service');
-  svcLogger.debug('Debug information');
-  svcLogger.info('Info message');
-  svcLogger.warning('Warning message');
-  svcLogger.error('Error message');
+  logger.error(
+    'Request failed',
+    error: Exception('Not found'),
+    data: {'statusCode': 404},
+  );
+}
 
-  // Example 7: Custom formatter (Compact)
-  print('\n=== Example 7: Custom Formatter (Compact) ===');
+/// Child loggers inherit parent configuration
+void childLoggerExample() {
+  // Create request-scoped logger
+  final requestLogger = Chirp.root.child(context: {
+    'requestId': 'REQ-123',
+    'userId': 'user_456',
+  });
+
+  requestLogger.info('Request received');
+  requestLogger.info('Processing data');
+
+  // Nest children for transaction scope
+  final txLogger = requestLogger.child(context: {
+    'transactionId': 'TXN-789',
+    'action': 'login',
+    'cool package': 'https://pub.dev/packages/spot',
+    'pathToFile0':
+        'file:///Users/dev/Projects/MyProject/test/fake/fake_auth_service.dart:119:7',
+    'pathToFile1':
+        'file:///Users/dev/Projects/MyProject/test/fake/fake_auth_service.dart:119:7',
+    'pathToFile2':
+        'file:///Users/dev/Projects/MyProject/test/fake/fake_auth_service.dart:119:7',
+    'pathToFile3':
+        'file:///Users/dev/Projects/MyProject/test/fake/fake_auth_service.dart:119:7',
+  });
+
+  // Includes requestId, userId, AND transactionId
+  txLogger.info('Transaction started');
+  txLogger.info('Transaction completed');
+}
+
+/// Instance tracking differentiates object instances
+void instanceTrackingExample() {
+  final service1 = UserService();
+  final service2 = UserService();
+
+  // Different instances = different hashes
+  service1.chirp.info('From service 1');
+  service2.chirp.info('From service 2');
+
+  // Static method = same file:line for both
+  Chirp.info('From static method');
+}
+
+/// GCP Cloud Logging compatible JSON format
+void gcpFormatterExample() {
   Chirp.root = ChirpLogger(
     writers: [
+      ConsoleChirpMessageWriter(
+        formatter: GcpChirpMessageFormatter(
+          projectId: 'my-project',
+          logName: 'application-logs',
+        ),
+      ),
+    ],
+  );
+
+  Chirp.info('GCP format log', data: {
+    'userId': 'user_123',
+    'action': 'login',
+    'cool package': 'https://pub.dev/packages/spot',
+    'pathToFile':
+        'file:///Users/pascalwelsch/Projects/MyProject/test/fake/fake_auth_service.dart:119:7',
+  });
+
+  Chirp.error(
+    'GCP error log',
+    error: Exception('Connection failed'),
+  );
+
+  // Reset
+  Chirp.root = ChirpLogger();
+}
+
+/// Multiple writers send to different destinations with different formats
+void multipleWritersExample() {
+  Chirp.root = ChirpLogger(
+    writers: [
+      // Human-readable format for console
       ConsoleChirpMessageWriter(
         formatter: CompactChirpMessageFormatter(),
+        output: (msg) => print('[CONSOLE] $msg'),
       ),
-    ],
-  );
-  Chirp.log('Compact format message');
-
-  // Example 8: JSON formatter
-  print('\n=== Example 8: JSON Formatter ===');
-  Chirp.root = ChirpLogger(
-    writers: [
-      ConsoleChirpMessageWriter(
-        formatter: JsonChirpMessageFormatter(),
-      ),
-    ],
-  );
-  Chirp.log('JSON format message');
-
-  // Example 9: Multiple writers - different formats per destination
-  print('\n=== Example 9: Multiple Writers ===');
-  Chirp.root = ChirpLogger(
-    writers: [
-      ConsoleChirpMessageWriter(
-        formatter: RainbowMessageFormatter(),
-      ),
+      // Machine-readable JSON
       ConsoleChirpMessageWriter(
         formatter: JsonChirpMessageFormatter(),
         output: (msg) => print('[JSON] $msg'),
       ),
     ],
   );
-  Chirp.log('Logged with both formatters!');
 
-  // Reset to default
+  Chirp.info('Logged with both formatters!');
+
+  // Reset
   Chirp.root = ChirpLogger();
 }
 
 class UserService {
-  void fetchUser(String userId) {
-    chirp.info('Fetching user: $userId');
-    Chirp.info('Fetching user: $userId');
-    // Simulate work
-    chirp.debug('User fetched successfully');
-  }
-
-  void simulateError() {
-    try {
-      throw Exception('Something went wrong');
-    } catch (e, stackTrace) {
-      chirp.log('Error in UserService', error: e, stackTrace: stackTrace);
-    }
+  void processUser(String userId) {
+    chirp.info('Processing user', data: {'userId': userId});
   }
 }

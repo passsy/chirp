@@ -7,6 +7,7 @@ export 'src/log_entry.dart';
 export 'src/log_level.dart';
 export 'src/message_formatter.dart';
 export 'src/message_writer.dart';
+export 'src/rainbow_message_formatter.dart';
 
 // ignore: non_constant_identifier_names
 // ChirpLogger get Chirp => ChirpLogger.root;

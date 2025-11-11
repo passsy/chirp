@@ -1,30 +1,48 @@
 # Chirp
 
-A lightweight, flexible logging library for Dart with instance tracking and multiple output formats.
+A lightweight, flexible logging library for Dart with instance tracking, child loggers, and multiple output formats.
 
 ## Features
 
-- **Simple API**: Just call `.log()` on a `Chirp` instance or `.chirp()` on any object
+- **Simple API**: Static methods, named loggers, or `.chirp` extension on any object
+- **Child Loggers**: Winston-style `.child()` method for creating loggers with inherited configuration
 - **Instance Tracking**: Automatically tracks object instances with unique hashes
 - **Named Loggers**: Create loggers for different subsystems (HTTP, Database, etc.)
 - **Structured Logging**: Attach key-value data to log entries for machine-readable logs
 - **Contextual Logging**: Per-request/per-transaction loggers with automatic context propagation
-- **Log Levels**: Debug, info, warning, error, and critical with GCP-compatible severity
-- **Multiple Formats**: Default, compact, JSON, and GCP formatters included
-- **Multiple Writers**: Send logs to multiple destinations with different formats
+- **7 Log Levels**: Trace, debug, info, warning, error, critical, and wtf with comprehensive documentation
+- **Multiple Formats**: Compact, JSON, GCP, and Rainbow formatters included
+- **Multiple Writers**: Send logs to multiple destinations with different formats per writer
 - **GCP Integration**: First-class support for Google Cloud Platform logging
 - **Customizable**: Transform class names and create custom formatters
 
 ## Usage
 
-### Basic Logging
+### Basic Logging - Static Methods
+
+Use static methods for quick logging without creating logger instances:
 
 ```dart
 import 'package:chirp/chirp.dart';
 
-final logger = Chirp(name: 'MyApp');
-logger.log('Application started');
-logger.log('Error occurred', error: Exception('Something went wrong'));
+// Static methods on Chirp class
+Chirp.trace('Detailed trace information');
+Chirp.debug('Debug information');
+Chirp.info('Application started');
+Chirp.warning('Deprecated API used');
+Chirp.error('Failed to connect', error: e, stackTrace: st);
+Chirp.critical('Database connection lost');
+Chirp.wtf('Impossible state detected'); // What a Terrible Failure
+```
+
+### Named Loggers
+
+Create named loggers for different parts of your application:
+
+```dart
+final logger = ChirpLogger(name: 'MyApp');
+logger.info('Application started');
+logger.error('Error occurred', error: Exception('Something went wrong'));
 ```
 
 ### Extension-Based Logging
@@ -34,48 +52,38 @@ Log from any object with automatic instance tracking:
 ```dart
 class UserService {
   void fetchUser(String userId) {
-    chirp('Fetching user: $userId');
+    chirp.info('Fetching user: $userId');
     // Simulate work
-    chirp('User fetched successfully');
+    chirp.info('User fetched successfully');
   }
 }
+
+// Different instances get different hash codes
+final service1 = UserService();
+final service2 = UserService();
+service1.chirp.info('From service 1'); // Instance hash: a1b2
+service2.chirp.info('From service 2'); // Instance hash: c3d4
 ```
 
-### Custom Formatters
+### Child Loggers (Winston-Style)
+
+Create child loggers that inherit their parent's writers configuration but add their own context. Perfect for per-request or per-transaction logging:
 
 ```dart
-Chirp.root = Chirp(
+// Configure root logger once
+Chirp.root = ChirpLogger(
   writers: [
     ConsoleChirpMessageWriter(
-      formatter: CompactChirpMessageFormatter(),
+      formatter: GcpChirpMessageFormatter(
+        projectId: 'my-project',
+        logName: 'app-logs',
+      ),
     ),
   ],
 );
-```
 
-### Structured Logging
-
-Attach key-value data to your logs for better searchability and analysis:
-
-```dart
-final logger = Chirp(name: 'API');
-logger.info(
-  'User logged in',
-  data: {
-    'userId': 'user_123',
-    'email': 'user@example.com',
-    'loginMethod': 'oauth',
-  },
-);
-```
-
-### Contextual Logging (Per-Request Loggers)
-
-Create loggers with contextual data that automatically attaches to all logs. Perfect for per-request or per-transaction logging:
-
-```dart
-// Immutable pattern - create logger with all context upfront
-final requestLogger = Chirp.root.withContext({
+// Create child logger with context
+final requestLogger = Chirp.root.child(context: {
   'requestId': 'REQ-123',
   'userId': 'user_456',
 });
@@ -84,13 +92,53 @@ final requestLogger = Chirp.root.withContext({
 requestLogger.info('Request received');
 requestLogger.info('Processing payment');
 requestLogger.info('Request completed');
+
+// Nest children for deeper context
+final transactionLogger = requestLogger.child(context: {
+  'transactionId': 'TXN-789',
+});
+
+// Includes requestId, userId, AND transactionId
+transactionLogger.info('Transaction started');
 ```
 
-Or use the mutable pattern to add context as it becomes available:
+**Child Logger Features:**
+- **Inherit writers**: Child loggers use their parent's (eventually root's) writers
+- **Merge context**: Parent context + child context + log call data
+- **Set name**: `logger.child(name: 'PaymentService')`
+- **Set instance**: `logger.child(instance: this)`
+- **Combine all**: `logger.child(name: 'API', instance: this, context: {...})`
+
+### Structured Logging
+
+Attach key-value data to your logs for better searchability and analysis:
+
+```dart
+Chirp.info(
+  'User logged in',
+  data: {
+    'userId': 'user_123',
+    'email': 'user@example.com',
+    'loginMethod': 'oauth',
+  },
+);
+
+// Data is merged with context
+final logger = Chirp.root.child(context: {'app': 'myapp'});
+logger.info('Event', data: {'event': 'click'});
+// Output includes: app=myapp, event=click
+```
+
+### Mutable Context Pattern
+
+Add context to a logger as information becomes available:
 
 ```dart
 // Start with minimal context
-final logger = Chirp(name: 'API', context: {'requestId': 'REQ-123'});
+final logger = Chirp.root.child(
+  name: 'API',
+  context: {'requestId': 'REQ-123'},
+);
 
 logger.info('Request received');
 
@@ -106,21 +154,37 @@ logger.context.addAll({
 logger.info('Processing request');
 ```
 
-Benefits for cloud logging:
-- All logs from a request share the same `requestId` for easy correlation in GCP Logs Explorer
-- Add user context, session IDs, trace IDs, etc. automatically to every log
-- Create nested contexts (request → transaction → operation)
-
 ### Log Levels
 
-Use semantic log levels for better filtering and severity indication:
+Chirp provides 7 semantic log levels with comprehensive documentation:
+
+| Level | Severity | Use For | Example |
+|-------|----------|---------|---------|
+| **trace** | 0 | Most detailed execution flow | Loop iterations, variable values |
+| **debug** | 100 | Diagnostic information | Function parameters, state changes |
+| **info** | 200 | Routine operational messages (DEFAULT) | App started, request completed |
+| **warning** | 400 | Potentially problematic situations | Deprecated usage, resource limits |
+| **error** | 500 | Errors that prevent specific operations | API failures, validation errors |
+| **critical** | 600 | Severe errors affecting core functionality | Database connection lost |
+| **wtf** | 1000 | Impossible situations that should never happen | Invariant violations |
 
 ```dart
-logger.debug('Debugging info');
-logger.info('General information');
-logger.warning('Warning message');
-logger.error('Error occurred');
-logger.critical('Critical system failure');
+Chirp.trace('Entering loop iteration', data: {'i': 42});
+Chirp.debug('Cache miss for key: $key');
+Chirp.info('User logged in', data: {'userId': 'user_123'});
+Chirp.warning('API rate limit approaching', data: {'used': 950, 'limit': 1000});
+Chirp.error('Payment failed', error: e, stackTrace: st);
+Chirp.critical('Database connection lost', data: {'attempt': 3});
+Chirp.wtf('User has negative age', data: {'age': -5}); // Should be impossible!
+```
+
+**Custom Log Levels:**
+```dart
+// Create your own levels
+const verbose = ChirpLogLevel('verbose', 50);
+const fatal = ChirpLogLevel('fatal', 700);
+
+Chirp.log('Custom message', level: verbose);
 ```
 
 ### Google Cloud Platform (GCP) Integration
@@ -128,7 +192,7 @@ logger.critical('Critical system failure');
 Chirp includes a GCP-compatible formatter that outputs logs in the format expected by Google Cloud Logging:
 
 ```dart
-Chirp.root = Chirp(
+Chirp.root = ChirpLogger(
   writers: [
     ConsoleChirpMessageWriter(
       formatter: GcpChirpMessageFormatter(
@@ -140,44 +204,203 @@ Chirp.root = Chirp(
 );
 
 // Logs are automatically formatted for GCP with proper severity levels
-service.chirpError(
+Chirp.error(
   'Payment failed',
   error: e,
+  stackTrace: st,
   data: {'userId': 'user_123', 'amount': 99.99},
 );
 ```
 
-The GCP formatter outputs JSON with:
-- `severity`: GCP-compatible severity levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-- `message`: Your log message
-- `timestamp`: ISO 8601 formatted timestamp
-- `logName`: Properly formatted GCP log name
-- `labels`: Class name and instance tracking
-- Structured data merged at the root level for easy querying
+**GCP Formatter Output:**
+```json
+{
+  "severity": "ERROR",
+  "message": "Payment failed",
+  "timestamp": "2025-11-11T05:00:00.000Z",
+  "logName": "projects/my-project-id/logs/application-logs",
+  "userId": "user_123",
+  "amount": 99.99,
+  "error": "Exception: Insufficient funds",
+  "stackTrace": "..."
+}
+```
 
-### Multiple Writers
+**GCP Severity Mapping:**
+- `trace` (0-99) → `DEFAULT`
+- `debug` (100-199) → `DEBUG`
+- `info` (200-299) → `INFO`
+- `warning` (400-499) → `WARNING`
+- `error` (500-599) → `ERROR`
+- `critical` (600-699) → `CRITICAL`
+- `wtf` (1000+) → `EMERGENCY`
 
-Send the same log to multiple destinations with different formats:
+### Multiple Writers with Different Formats
+
+Each writer can have its own formatter, perfect for multi-environment setups:
 
 ```dart
-Chirp.root = Chirp(
+Chirp.root = ChirpLogger(
   writers: [
+    // Colorful console logs for development
     ConsoleChirpMessageWriter(
-      formatter: DefaultChirpMessageFormatter(),
+      formatter: CompactChirpMessageFormatter(),
     ),
+    // JSON logs to file for production
     ConsoleChirpMessageWriter(
       formatter: JsonChirpMessageFormatter(),
-      output: (msg) => writeToFile(msg),
+      output: (msg) => writeToFile('app.log', msg),
+    ),
+    // GCP format for cloud logging
+    ConsoleChirpMessageWriter(
+      formatter: GcpChirpMessageFormatter(
+        projectId: 'my-project',
+        logName: 'app-logs',
+      ),
+      output: (msg) => sendToGcp(msg),
     ),
   ],
 );
 ```
 
+### Available Formatters
+
+**CompactChirpMessageFormatter** - Colorful, human-readable format for development
+```
+08:30:45.123 ══════════════════════════════════ UserService:a1b2
+User logged in
+```
+
+**JsonChirpMessageFormatter** - Machine-readable JSON format
+```json
+{"timestamp":"2025-11-11T08:30:45.123","level":"info","class":"UserService","hash":"a1b2","message":"User logged in"}
+```
+
+**GcpChirpMessageFormatter** - Google Cloud Platform compatible format
+```json
+{"severity":"INFO","message":"User logged in","timestamp":"2025-11-11T08:30:45.123Z","logName":"projects/my-project/logs/app"}
+```
+
+**RainbowMessageFormatter** - Colorful, categorized format with class name colors
+```
+08:30:45.123 ══════════════════════════════════ UserService:a1b2
+User logged in
+  data: userId=user_123, email=user@example.com
+```
+
+## Configuration
+
+### Root Logger
+
+Configure the global root logger that all child loggers and extensions inherit from:
+
+```dart
+void main() {
+  // Configure once at app startup
+  Chirp.root = ChirpLogger(
+    writers: [
+      ConsoleChirpMessageWriter(
+        formatter: GcpChirpMessageFormatter(
+          projectId: 'my-project',
+          logName: 'app-logs',
+        ),
+      ),
+    ],
+  );
+
+  // All loggers now use GCP format
+  runApp();
+}
+```
+
+### Custom Formatters
+
+Create your own formatter by extending `ChirpMessageFormatter`:
+
+```dart
+class MyCustomFormatter extends ChirpMessageFormatter {
+  @override
+  String format(LogRecord entry) {
+    return '[${entry.level.name.toUpperCase()}] ${entry.message}';
+  }
+}
+```
+
+## Real-World Example
+
+```dart
+// Setup (once at app startup)
+void main() {
+  Chirp.root = ChirpLogger(
+    writers: [
+      ConsoleChirpMessageWriter(
+        formatter: GcpChirpMessageFormatter(
+          projectId: 'my-project',
+          logName: 'app-logs',
+        ),
+      ),
+    ],
+  );
+
+  runApp();
+}
+
+// Per-request handler
+Future<void> handleRequest(Request req) async {
+  // Create request-scoped logger with context
+  final logger = Chirp.root.child(context: {
+    'requestId': req.id,
+    'method': req.method,
+    'path': req.path,
+  });
+
+  logger.info('Request received');
+
+  try {
+    // Add user context when available
+    final user = await authenticate(req);
+    logger.context['userId'] = user.id;
+    logger.info('User authenticated');
+
+    // Process with full context
+    final result = await processRequest(req, user);
+
+    logger.info('Request completed', data: {'statusCode': 200});
+    return result;
+  } catch (e, stackTrace) {
+    logger.error('Request failed', error: e, stackTrace: stackTrace);
+    rethrow;
+  }
+}
+```
+
+All logs from this request will include `requestId`, `method`, `path`, and (after auth) `userId` automatically.
+
 ## Examples
 
-- [example/main.dart](example/main.dart) - Basic usage, formatters, and multiple writers
-- [example/gcp_logging.dart](example/gcp_logging.dart) - GCP Cloud Logging integration
-- [example/contextual_logging.dart](example/contextual_logging.dart) - Per-request loggers and contextual data
+See [example/main.dart](example/main.dart) for a comprehensive example covering:
+- All 7 log levels (trace through wtf)
+- Named loggers with structured data
+- Child loggers for per-request context
+- Instance tracking with `.chirp` extension
+- GCP Cloud Logging format
+- Multiple writers with different formats
+
+## Migration Guide
+
+### From withContext() to child()
+
+If you're upgrading from an earlier version:
+
+```dart
+// Old API (removed)
+final child = logger.withContext({'key': 'value'});
+
+// New API (use this)
+final child = logger.child(context: {'key': 'value'});
+```
+
+The `.child()` method is more flexible and follows winston's API design.
 
 ## License
 
@@ -205,4 +428,3 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ```
-      

@@ -1,5 +1,6 @@
 import 'package:chirp/src/log_entry.dart';
 import 'package:chirp/src/message_formatter.dart';
+import 'package:chirp/src/rainbow_message_formatter.dart';
 
 /// Writes log entries to output
 abstract class ChirpMessageWriter {
