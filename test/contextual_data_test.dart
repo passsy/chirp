@@ -102,7 +102,7 @@ void main() {
       expect(messages[0], isNot(contains('"status":"pending"')));
     });
 
-    test('withContext creates new logger with merged context', () {
+    test('child() creates new logger with merged context', () {
       final messages = <String>[];
       final baseLogger = ChirpLogger(
         name: 'API',
@@ -115,7 +115,7 @@ void main() {
         ],
       );
 
-      final requestLogger = baseLogger.withContext({
+      final requestLogger = baseLogger.child(context: {
         'requestId': 'REQ-123',
         'userId': 'user_456',
       });
@@ -127,7 +127,7 @@ void main() {
       expect(messages[0], contains('"userId":"user_456"'));
     });
 
-    test('withContext does not mutate original logger', () {
+    test('child() does not mutate original logger', () {
       final messages = <String>[];
       final baseLogger = ChirpLogger(
         name: 'API',
@@ -140,7 +140,7 @@ void main() {
         ],
       );
 
-      final requestLogger = baseLogger.withContext({'requestId': 'REQ-123'});
+      final requestLogger = baseLogger.child(context: {'requestId': 'REQ-123'});
 
       baseLogger.info('From base logger');
       expect(messages[0], contains('"app":"myapp"'));

@@ -30,8 +30,8 @@ void main() {
 
 /// Example 1: Create a new logger per request with all known context
 void immutablePerRequestLogger() {
-  // Create a logger with all request context
-  final requestLogger = Chirp.root.withContext({
+  // Create a child logger with all request context
+  final requestLogger = Chirp.root.child(context: {
     'requestId': 'REQ-001',
     'userId': 'user_123',
     'sessionId': 'sess_456',
@@ -47,7 +47,7 @@ void immutablePerRequestLogger() {
 /// Example 2: Start with minimal context and add more as it becomes available
 void mutableLogger() {
   // Start with just requestId
-  final logger = ChirpLogger(
+  final logger = Chirp.root.child(
     name: 'API',
     context: {'requestId': 'REQ-002'},
   );
@@ -76,8 +76,8 @@ void mutableLogger() {
 void handleHttpRequest(String method, String path, String userId) {
   final requestId = 'REQ-${DateTime.now().millisecondsSinceEpoch}';
 
-  // Create logger with initial request context
-  final logger = Chirp.root.withContext({
+  // Create child logger with initial request context
+  final logger = Chirp.root.child(context: {
     'requestId': requestId,
     'method': method,
     'path': path,
@@ -117,16 +117,16 @@ void handleHttpRequest(String method, String path, String userId) {
 /// Example 4: Nested context - transaction within a request
 void nestedContext() {
   // Request-level logger
-  final requestLogger = Chirp.root.withContext({
+  final requestLogger = Chirp.root.child(context: {
     'requestId': 'REQ-003',
     'userId': 'user_999',
   });
 
   requestLogger.info('Processing batch operation');
 
-  // Create transaction-level loggers from request logger
+  // Create transaction-level loggers from request logger (nested children)
   for (var i = 1; i <= 3; i++) {
-    final txLogger = requestLogger.withContext({
+    final txLogger = requestLogger.child(context: {
       'transactionId': 'TX-00$i',
       'batchIndex': i,
     });

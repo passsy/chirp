@@ -151,8 +151,20 @@ class ChirpLogger {
 
   final Object? instance;
 
-  /// The writers used by this logger
-  final List<ChirpMessageWriter> writers;
+  /// Parent logger for delegation (child loggers inherit parent's writers)
+  final ChirpLogger? parent;
+
+  /// Writers owned by this logger (only root loggers have their own writers)
+  final List<ChirpMessageWriter>? _ownWriters;
+
+  /// Get the writers for this logger (delegates to parent if this is a child)
+  List<ChirpMessageWriter> get writers {
+    final p = parent;
+    if (p != null) {
+      return p.writers;
+    }
+    return _ownWriters ?? [ConsoleChirpMessageWriter()];
+  }
 
   /// Contextual data attached to all logs from this logger
   ///
@@ -176,9 +188,12 @@ class ChirpLogger {
   ChirpLogger({
     this.name,
     this.instance,
+    this.parent,
     List<ChirpMessageWriter>? writers,
     Map<String, Object?>? context,
-  })  : writers = List.unmodifiable(writers ?? [ConsoleChirpMessageWriter()]),
+  })  : _ownWriters = parent == null
+            ? (writers != null ? List.unmodifiable(writers) : null)
+            : null,
         context = context ?? {};
 
   /// Log a message
@@ -268,7 +283,6 @@ class ChirpLogger {
 
     final entry = LogRecord(
       message: message,
-      level: ChirpLogLevel.info,
       error: error,
       stackTrace: stackTrace,
       caller: caller,
@@ -383,38 +397,55 @@ class ChirpLogger {
     }
   }
 
-  /// Create a new logger with additional context
+  /// Create a child logger with optional name, instance, and/or context (winston-style)
   ///
-  /// This creates a new logger instance with merged context,
-  /// useful for creating per-request or per-transaction loggers:
+  /// Child loggers inherit their parent's writers configuration but can
+  /// have their own name, instance, and context. This is useful for creating
+  /// per-request or per-transaction loggers:
+  ///
   /// ```dart
-  /// final requestLogger = Chirp.root.withContext({
+  /// // Add context only
+  /// final requestLogger = Chirp.root.child(context: {
   ///   'requestId': 'REQ-123',
   ///   'userId': 'user_456',
   /// });
   ///
-  /// // All logs from requestLogger will include requestId and userId
+  /// // Add name only
+  /// final apiLogger = Chirp.root.child(name: 'API');
+  ///
+  /// // Add instance (for object tracking)
+  /// final instanceLogger = Chirp.root.child(instance: this);
+  ///
+  /// // Combine name and context
+  /// final logger = Chirp.root.child(
+  ///   name: 'PaymentService',
+  ///   context: {'requestId': 'REQ-123'},
+  /// );
+  ///
+  /// // All logs from child logger inherit parent's writers
   /// requestLogger.info('Processing request');
   /// ```
   ///
-  /// Context from this logger will be merged with the new context,
-  /// with new context taking precedence.
-  ChirpLogger withContext(Map<String, Object?> additionalContext) {
-    final merged = {...context, ...additionalContext};
+  /// Context from the parent logger is merged with the new context,
+  /// with new context taking precedence. Child loggers always use
+  /// their parent's (eventually root's) writers configuration.
+  ChirpLogger child({
+    String? name,
+    Object? instance,
+    Map<String, Object?>? context,
+  }) {
     return ChirpLogger(
-      name: name,
-      writers: writers,
-      context: merged,
+      name: name ?? this.name,
+      instance: instance ?? this.instance,
+      parent: this,
+      context: context != null ? {...this.context, ...context} : this.context,
     );
   }
 
   static final Expando<ChirpLogger> _instanceCache = Expando();
 
   factory ChirpLogger.forInstance(Object object) {
-    return _instanceCache[object] ??= ChirpLogger(
-      instance: object,
-      writers: Chirp.root.writers,
-    );
+    return _instanceCache[object] ??= Chirp.root.child(instance: object);
   }
 }
 

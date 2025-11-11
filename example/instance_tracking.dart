@@ -43,8 +43,7 @@ void demonstrateDifference() {
   service1.processWithExtension();
   service2.processWithExtension();
 
-  print(
-      '\n💡 Notice: Extension .chirp gives unique hashes (e.g., a1b2, c3d4)');
+  print('\n💡 Notice: Extension .chirp gives unique hashes (e.g., a1b2, c3d4)');
   print('   Static Chirp.log() gives file:line (same for both: main:XX)');
 }
 
@@ -59,10 +58,4 @@ class UserService {
     // This is the natural way to use it
     chirp.log('Processing with extension');
   }
-}
-
-// Top-level helper to demonstrate true top-level usage
-void logFromTopLevel() {
-  // Here, Chirp.log() is the static method (no instance)
-  Chirp.log('From true top-level context');
 }

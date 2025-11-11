@@ -1,5 +1,4 @@
 import 'package:chirp/chirp.dart';
-import 'package:chirp/src/log_entry.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -96,7 +95,6 @@ void main() {
       final infoEntry = LogRecord(
         message: 'Info',
         date: now,
-        level: ChirpLogLevel.info,
       );
       expect(formatter.format(infoEntry), contains('"severity":"INFO"'));
 

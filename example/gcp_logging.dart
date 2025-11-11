@@ -59,36 +59,42 @@ void logLevels() {
   Chirp.debug('Entering function', data: {'function': 'processOrder'});
   Chirp.info('Order received', data: {'orderId': 'ORD-123'});
   Chirp.warning('Inventory low', data: {'productId': 'PROD-456', 'stock': 5});
-  Chirp.error('Order failed', data: {'orderId': 'ORD-123', 'reason': 'timeout'});
+  Chirp.error('Order failed',
+      data: {'orderId': 'ORD-123', 'reason': 'timeout'});
   Chirp.critical('Database connection lost', data: {'attempt': 3});
   Chirp.wtf('Impossible state detected', data: {'state': 'invalid'});
 }
 
-/// Example 3: Using named loggers with the root GCP formatter
+/// Example 3: Child loggers (winston-style)
 void namedLoggers() {
-  // Create a named logger that uses the root logger's configuration
-  final paymentLogger = ChirpLogger(
-    name: 'PaymentService',
-    writers: Chirp.root.writers,
-  );
+  // Create a child logger with context that inherits root's writers
+  final requestLogger = Chirp.root.child(context: {'requestId': 'REQ-789'});
 
-  paymentLogger.info(
-    'Processing payment',
+  requestLogger.info(
+    'Request started',
     data: {
-      'userId': 'user_789',
-      'amount': 149.99,
-      'currency': 'USD',
+      'method': 'POST',
+      'path': '/payments',
     },
   );
+
+  // Create a child with both name and context
+  final paymentLogger = requestLogger.child(
+    name: 'PaymentService',
+    context: {
+      'userId': 'user_789',
+      'amount': 149.99,
+    },
+  );
+
+  paymentLogger.info('Processing payment');
 
   paymentLogger.warning(
     'Large payment requires approval',
-    data: {
-      'userId': 'user_789',
-      'amount': 149.99,
-      'threshold': 100,
-    },
+    data: {'threshold': 100},
   );
+
+  // Context is merged: requestId from parent + userId/amount from child + threshold from log call
 }
 
 /// Example 4: Real-world GCP usage scenario
@@ -103,55 +109,7 @@ void realWorldGcpUsage() {
   api.handleRequest();
 }
 
-// Example service using extension methods
-class PaymentService {
-  void processPayment(String userId, double amount) {
-    chirp.info(
-      'Processing payment',
-      data: {
-        'userId': userId,
-        'amount': amount,
-        'currency': 'USD',
-      },
-    );
-
-    // Simulate validation
-    if (amount > 1000) {
-      chirp.warning(
-        'Large payment requires approval',
-        data: {
-          'userId': userId,
-          'amount': amount,
-          'threshold': 1000,
-        },
-      );
-    }
-
-    // Simulate processing
-    try {
-      // Payment logic here...
-      chirp.info(
-        'Payment processed successfully',
-        data: {
-          'userId': userId,
-          'amount': amount,
-          'transactionId': 'TXN-${DateTime.now().millisecondsSinceEpoch}',
-        },
-      );
-    } catch (e, stackTrace) {
-      chirp.error(
-        'Payment processing failed',
-        error: e,
-        stackTrace: stackTrace,
-        data: {
-          'userId': userId,
-          'amount': amount,
-        },
-      );
-    }
-  }
-}
-
+// Example classes using extension methods
 class ApiHandler {
   void handleRequest() {
     chirp.info(

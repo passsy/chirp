@@ -38,7 +38,7 @@ void main() {
       );
 
       Chirp.log('Debug test', level: ChirpLogLevel.debug);
-      Chirp.log('Info test', level: ChirpLogLevel.info);
+      Chirp.log('Info test');
       Chirp.log('Warning test', level: ChirpLogLevel.warning);
       Chirp.log('Error test', level: ChirpLogLevel.error);
 
