@@ -3,25 +3,35 @@
 import 'package:chirp/chirp.dart';
 
 void main() {
+  // Configure root logger with GCP formatter once
+  Chirp.root = ChirpLogger(
+    writers: [
+      ConsoleChirpMessageWriter(
+        formatter: GcpChirpMessageFormatter(
+          projectId: 'my-project',
+          logName: 'application-logs',
+        ),
+      ),
+    ],
+  );
+
   print('=== Example 1: Basic Structured Logging ===');
   basicStructuredLogging();
 
   print('\n=== Example 2: Log Levels ===');
   logLevels();
 
-  print('\n=== Example 3: GCP Formatter ===');
-  gcpFormatter();
+  print('\n=== Example 3: Named Loggers ===');
+  namedLoggers();
 
   print('\n=== Example 4: Real-world GCP Usage ===');
   realWorldGcpUsage();
 }
 
-/// Example 1: Basic structured logging with data fields
+/// Example 1: Basic structured logging with data fields using static methods
 void basicStructuredLogging() {
-  final logger = ChirpLogger(name: 'API');
-
-  // Log with structured data
-  logger.info(
+  // Use Chirp static methods which use the configured root logger
+  Chirp.info(
     'User logged in',
     data: {
       'userId': 'user_123',
@@ -31,7 +41,7 @@ void basicStructuredLogging() {
   );
 
   // Log error with structured data
-  logger.error(
+  Chirp.error(
     'Failed to process payment',
     error: Exception('Insufficient funds'),
     data: {
@@ -43,58 +53,51 @@ void basicStructuredLogging() {
   );
 }
 
-/// Example 2: Using different log levels
+/// Example 2: Using all log levels via static methods
 void logLevels() {
-  final logger = ChirpLogger(name: 'Service');
-
-  logger.debug('Entering function', data: {'function': 'processOrder'});
-  logger.info('Order received', data: {'orderId': 'ORD-123'});
-  logger.warning('Inventory low', data: {'productId': 'PROD-456', 'stock': 5});
-  logger
-      .error('Order failed', data: {'orderId': 'ORD-123', 'reason': 'timeout'});
-  logger.critical('Database connection lost', data: {'attempt': 3});
+  Chirp.trace('Detailed execution trace', data: {'step': 1});
+  Chirp.debug('Entering function', data: {'function': 'processOrder'});
+  Chirp.info('Order received', data: {'orderId': 'ORD-123'});
+  Chirp.warning('Inventory low', data: {'productId': 'PROD-456', 'stock': 5});
+  Chirp.error('Order failed', data: {'orderId': 'ORD-123', 'reason': 'timeout'});
+  Chirp.critical('Database connection lost', data: {'attempt': 3});
+  Chirp.wtf('Impossible state detected', data: {'state': 'invalid'});
 }
 
-/// Example 3: GCP-compatible formatter
-void gcpFormatter() {
-  // Configure Chirp to use GCP formatter
-  Chirp.root = ChirpLogger(
-    writers: [
-      ConsoleChirpMessageWriter(
-        formatter: GcpChirpMessageFormatter(
-          projectId: 'my-project-id',
-          logName: 'application-logs',
-        ),
-      ),
-    ],
+/// Example 3: Using named loggers with the root GCP formatter
+void namedLoggers() {
+  // Create a named logger that uses the root logger's configuration
+  final paymentLogger = ChirpLogger(
+    name: 'PaymentService',
+    writers: Chirp.root.writers,
   );
 
-  final service = PaymentService();
-  service.processPayment('user_789', 149.99);
+  paymentLogger.info(
+    'Processing payment',
+    data: {
+      'userId': 'user_789',
+      'amount': 149.99,
+      'currency': 'USD',
+    },
+  );
+
+  paymentLogger.warning(
+    'Large payment requires approval',
+    data: {
+      'userId': 'user_789',
+      'amount': 149.99,
+      'threshold': 100,
+    },
+  );
 }
 
 /// Example 4: Real-world GCP usage scenario
 void realWorldGcpUsage() {
-  // In production, you'd configure this once at app startup
-  Chirp.root = ChirpLogger(
-    writers: [
-      // Console output for local development with colored formatting
-      ConsoleChirpMessageWriter(
-        formatter: CompactChirpMessageFormatter(),
-      ),
-      // GCP JSON output that gets picked up by Cloud Logging
-      ConsoleChirpMessageWriter(
-        formatter: GcpChirpMessageFormatter(
-          projectId: 'my-gcp-project',
-          logName: 'app-logs',
-        ),
-        output: (msg) {
-          // In production, this would write to stdout where GCP picks it up
-          print('[GCP] $msg');
-        },
-      ),
-    ],
-  );
+  // The root logger is already configured with GCP formatter in main()
+  // In a real application, you might have multiple writers:
+  // - One for local development (colored console output)
+  // - One for GCP Cloud Logging (JSON format)
+  // Here we're just demonstrating that the classes use the root logger
 
   final api = ApiHandler();
   api.handleRequest();

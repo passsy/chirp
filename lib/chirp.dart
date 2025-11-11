@@ -411,7 +411,10 @@ class ChirpLogger {
   static final Expando<ChirpLogger> _instanceCache = Expando();
 
   factory ChirpLogger.forInstance(Object object) {
-    return _instanceCache[object] ??= ChirpLogger(instance: object);
+    return _instanceCache[object] ??= ChirpLogger(
+      instance: object,
+      writers: Chirp.root.writers,
+    );
   }
 }
 
