@@ -69,6 +69,76 @@ service1.chirp.info('From service 1'); // Instance hash: a1b2
 service2.chirp.info('From service 2'); // Instance hash: c3d4
 ```
 
+### When to Use `Chirp` vs `chirp` in Classes
+
+**Use `chirp` (extension) for instance methods:**
+- ✅ When you need to track and differentiate between multiple instances of the same class
+- ✅ When debugging object lifecycle issues (creation, state changes, disposal)
+- ✅ In services where multiple instances might exist simultaneously
+- ✅ When troubleshooting which specific instance is causing issues
+
+```dart
+class ConnectionPool {
+  void connect() {
+    chirp.info('Connecting to database');
+    // Different pool instances will have different hashes
+  }
+}
+```
+
+**Output with `chirp` (instance tracking):**
+```
+18:30:45.123 connection_pool:42 connect ConnectionPool@a1b2 │ Connecting to database
+18:30:46.789 connection_pool:42 connect ConnectionPool@c3d4 │ Connecting to database
+                                                       ^^^^  <- Different instance hashes
+```
+
+**Use `Chirp` (static methods) for:**
+- ✅ Static methods and top-level functions
+- ✅ When instance differentiation isn't meaningful
+- ✅ Simple utility classes
+- ✅ When you want cleaner output without instance hashes
+
+```dart
+class ConfigLoader {
+  static void load() {
+    Chirp.info('Loading configuration');
+    // No instance hash needed - it's a static method
+  }
+}
+```
+
+**Output with `Chirp` (no instance tracking):**
+```
+18:30:45.123 config_loader:15 load ConfigLoader │ Loading configuration
+18:30:46.789 config_loader:15 load ConfigLoader │ Loading configuration
+                                                   <- Same output, no instance differentiation
+```
+
+**Mixed approach example:**
+```dart
+class PaymentProcessor {
+  static void validateConfig() {
+    Chirp.info('Validating payment configuration');  // Static: no instance
+  }
+
+  void processPayment(double amount) {
+    chirp.info('Processing payment', data: {'amount': amount});  // Instance: track which processor
+  }
+}
+```
+
+**Output comparison:**
+```
+// Static method (Chirp) - no instance hash
+18:30:45.123 payment_processor:10 validateConfig PaymentProcessor │ Validating payment configuration
+
+// Instance method (chirp) - with instance hash
+18:30:46.234 payment_processor:14 processPayment PaymentProcessor@a1b2 │ Processing payment
+18:30:47.345 payment_processor:14 processPayment PaymentProcessor@c3d4 │ Processing payment
+                                                                 ^^^^  <- Different processors
+```
+
 ### Child Loggers (Winston-Style)
 
 Create child loggers that inherit their parent's writers configuration but add their own context. Perfect for per-request or per-transaction logging:
