@@ -16,9 +16,13 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
   /// Class name transformers for resolving instance class names
   final List<ClassNameTransformer> classNameTransformers;
 
+  /// Whether to use ANSI color codes in output
+  final bool color;
+
   RainbowMessageFormatter({
     List<ClassNameTransformer>? classNameTransformers,
     this.metaWidth = 80,
+    this.color = true,
   })  : classNameTransformers = classNameTransformers ?? [],
         super();
 
@@ -34,9 +38,14 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
     return instance.runtimeType.toString();
   }
 
+  /// Remove anonymous closure markers from method names
+  String _cleanMethodName(String methodName) {
+    return methodName.replaceAll('.<anonymous closure>', '');
+  }
+
   @override
   String format(LogRecord entry) {
-    ansiColorDisabled = false;
+    ansiColorDisabled = !color;
 
     final StackFrameInfo? callerInfo = () {
       if (entry.caller != null) {
@@ -69,7 +78,8 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
         // Check if method starts with the same class name
         if (method.startsWith('$instanceClass.')) {
           // Extract just the method name (e.g., "processUser" from "UserService.processUser")
-          return method.substring(instanceClass.length + 1);
+          final methodName = method.substring(instanceClass.length + 1);
+          return _cleanMethodName(methodName);
         }
       }
       return null;
@@ -80,18 +90,20 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
       if (extractedMethodName != null) ...[
         extractedMethodName, // processUser
         instanceInfo, // UserService@1fec
-      ] else if (instanceInfo != null) ...[
-        callerInfo?.callerMethod, // UserService.processUser
+      ] else if (instanceInfo != null && callerInfo != null) ...[
+        _cleanMethodName(callerInfo.callerMethod), // UserService.processUser
         instanceInfo, // UserService@1fec
+      ] else if (instanceInfo != null) ...[
+        instanceInfo, // UserService@1fec (no caller info)
       ] else if (callerInfo?.callerClassName != null) ...[
         // No instance but has class name - split method and class for static methods
         // For "UserService.logStatic", show "logStatic" then "UserService"
-        callerInfo!.callerMethod
-            .substring(callerInfo.callerClassName!.length + 1), // logStatic
+        _cleanMethodName(callerInfo!.callerMethod
+            .substring(callerInfo.callerClassName!.length + 1)), // logStatic
         callerInfo.callerClassName, // UserService
-      ] else
+      ] else if (callerInfo?.callerMethod != null)
         // Top-level function - show as is
-        callerInfo?.callerMethod,
+        _cleanMethodName(callerInfo!.callerMethod),
       entry.loggerName // UserLogger
     ].whereType<Object>().join(" ");
 

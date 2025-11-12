@@ -142,11 +142,184 @@ void main() {
       }
     });
   });
+
+  group('RainbowMessageFormatter anonymous closure cleaning', () {
+    test('removes anonymous closure from instance method', () {
+      final formatter = RainbowMessageFormatter();
+      final instance = _TestClass();
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        instance: instance,
+        caller: StackTrace.fromString(
+          '#0      DeviceManager._startAutoConnectScanning.<anonymous closure>.<anonymous closure> (package:app/device_manager.dart:809:5)',
+        ),
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+
+      // Should show cleaned method name without anonymous closures
+      expect(cleanResult, contains('_startAutoConnectScanning'));
+      expect(cleanResult, isNot(contains('.<anonymous closure>')));
+    });
+
+    test('removes anonymous closure from static method', () {
+      final formatter = RainbowMessageFormatter();
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        caller: StackTrace.fromString(
+          '#0      UserService.logStatic.<anonymous closure> (package:app/user_service.dart:100:5)',
+        ),
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+
+      expect(cleanResult, contains('logStatic'));
+      expect(cleanResult, isNot(contains('.<anonymous closure>')));
+    });
+
+    test('removes anonymous closure from top-level function', () {
+      final formatter = RainbowMessageFormatter();
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        caller: StackTrace.fromString(
+          '#0      processData.<anonymous closure>.<anonymous closure> (package:app/utils.dart:42:5)',
+        ),
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+
+      expect(cleanResult, contains('processData'));
+      expect(cleanResult, isNot(contains('.<anonymous closure>')));
+    });
+
+    test('removes multiple nested anonymous closures', () {
+      final formatter = RainbowMessageFormatter();
+      final instance = _TestClass();
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        instance: instance,
+        caller: StackTrace.fromString(
+          '#0      MyClass.myMethod.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:app/my_class.dart:50:5)',
+        ),
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+
+      expect(cleanResult, contains('myMethod'));
+      expect(cleanResult, isNot(contains('.<anonymous closure>')));
+    });
+
+    test('preserves method name when no anonymous closure present', () {
+      final formatter = RainbowMessageFormatter();
+      final instance = _TestClass();
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        instance: instance,
+        caller: StackTrace.fromString(
+          '#0      MyClass.normalMethod (package:app/my_class.dart:50:5)',
+        ),
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+
+      expect(cleanResult, contains('normalMethod'));
+    });
+
+    test('handles instance method with matching class name and anonymous closures', () {
+      final formatter = RainbowMessageFormatter();
+      final instance = _TestClass();
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        instance: instance,
+        caller: StackTrace.fromString(
+          '#0      _TestClass.processData.<anonymous closure> (package:app/test_class.dart:100:5)',
+        ),
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+
+      // Should show cleaned method name
+      expect(cleanResult, contains('processData'));
+      expect(cleanResult, isNot(contains('.<anonymous closure>')));
+      // Should show class with hash
+      expect(cleanResult, contains('_TestClass@'));
+    });
+  });
+
+  group('RainbowMessageFormatter color option', () {
+    test('includes ANSI color codes when color is true (default)', () {
+      final formatter = RainbowMessageFormatter();
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+      );
+
+      final result = formatter.format(entry);
+
+      // Should contain ANSI escape codes
+      expect(result, contains(RegExp(r'\x1B\[')));
+    });
+
+    test('excludes ANSI color codes when color is false', () {
+      final formatter = RainbowMessageFormatter(color: false);
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+      );
+
+      final result = formatter.format(entry);
+
+      // Should not contain ANSI escape codes
+      expect(result, isNot(contains(RegExp(r'\x1B\['))));
+      // But should still contain the actual content
+      expect(result, contains('Test message'));
+      expect(result, contains('│'));
+    });
+
+    test('color:false produces plain text output', () {
+      final formatter = RainbowMessageFormatter(color: false);
+      final instance = _TestClass();
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        instance: instance,
+        loggerName: 'TestLogger',
+      );
+
+      final result = formatter.format(entry);
+
+      // Result should be the same as stripped version (no ANSI codes)
+      expect(result, _stripAnsiCodes(result));
+      // And should still have all the content
+      expect(result, contains('Test message'));
+      expect(result, contains('_TestClass@'));
+      expect(result, contains('TestLogger'));
+    });
+  });
 }
+
+class _TestClass {}
 
 /// Finds the position of │ character in a line, stripping ANSI codes first
 int _findPipePosition(String line) {
   // Remove ANSI color codes
-  final cleanLine = line.replaceAll(RegExp(r'\x1B\[[0-9;]*[mGKH]'), '');
+  final cleanLine = _stripAnsiCodes(line);
   return cleanLine.indexOf('│');
+}
+
+/// Strips ANSI color codes from a string
+String _stripAnsiCodes(String text) {
+  return text.replaceAll(RegExp(r'\x1B\[[0-9;]*[mGKH]'), '');
 }
