@@ -140,16 +140,25 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
     final remaining = metaWidth - justText.length;
     final meta = '$formattedTime ${"".padRight(remaining, '=')} $label';
 
+    // Calculate actual meta width (can exceed metaWidth if label is very long)
+    final actualMetaWidth = meta.length;
+
     // Split message into lines
     final messageStr = entry.message?.toString() ?? '';
     final messageLines = messageStr.split('\n');
 
-    // Build data lines
+    // Build data lines with indentation to align after │
     final dataBuffer = StringBuffer();
     if (entry.data != null && entry.data!.isNotEmpty) {
-      final dataStr =
-          entry.data!.entries.map((e) => '${e.key}=${e.value}').join(', ');
-      dataBuffer.write('\n$dataStr');
+      // Calculate indentation to align with the │ separator
+      // meta is actualMetaWidth chars, then we add " │ "
+      // so │ is at position actualMetaWidth+1
+      // For data lines: actualMetaWidth spaces + " │" puts │ at actualMetaWidth+1
+      final indent = ''.padRight(actualMetaWidth);
+
+      for (final dataEntry in entry.data!.entries) {
+        dataBuffer.write('\n$indent │ ${dataEntry.key}=${dataEntry.value}');
+      }
     }
 
     // Build exception/stack trace lines
