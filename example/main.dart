@@ -104,8 +104,8 @@ void instanceTrackingExample() {
   service1.chirp.info('From service 1');
   service2.chirp.info('From service 2');
 
-  // Static method = same file:line for both
-  Chirp.info('From static method');
+  // Static method - shows class name without instance
+  UserService.logStatic();
 }
 
 /// GCP Cloud Logging compatible JSON format
@@ -164,7 +164,10 @@ void multipleWritersExample() {
 class UserService {
   void processUser(String userId) {
     chirp.info('Processing user', data: {'userId': userId});
-    // TODO why is it not capturing UserService?
     Chirp.info('Processing user', data: {'userId': userId});
+  }
+
+  static void logStatic() {
+    Chirp.info('From static method');
   }
 }

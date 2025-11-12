@@ -32,6 +32,41 @@ class StackFrameInfo {
     return fileName.replaceAll('.dart', '');
   }
 
+  /// Extracts the class/type name from the caller method
+  ///
+  /// Examples:
+  /// - "UserService.processUser" -> "UserService"
+  /// - "OuterClass.InnerClass.method" -> "OuterClass.InnerClass"
+  /// - "MyClass.method.\<anonymous closure\>" -> "MyClass"
+  /// - "main" -> null (top-level function)
+  /// - "\<unknown\>" -> null
+  String? get callerClassName {
+    // Handle special cases
+    if (callerMethod == '<unknown>' || !callerMethod.contains('.')) {
+      return null;
+    }
+
+    // Find the last dot before the method name
+    // For "UserService.processUser" we want "UserService"
+    // For "OuterClass.InnerClass.method" we want "OuterClass.InnerClass"
+    // For "MyClass.method.<anonymous closure>" we want "MyClass"
+
+    // Remove closure suffix if present
+    var methodStr = callerMethod;
+    final closureIndex = methodStr.indexOf('.<anonymous');
+    if (closureIndex != -1) {
+      methodStr = methodStr.substring(0, closureIndex);
+    }
+
+    // Find last dot - everything before it is the class name
+    final lastDotIndex = methodStr.lastIndexOf('.');
+    if (lastDotIndex == -1) {
+      return null; // Top-level function
+    }
+
+    return methodStr.substring(0, lastDotIndex);
+  }
+
   @override
   String toString() {
     return 'StackFrameInfo(callerMethod: $callerMethod, file: $file, line: $line, column: $column)';

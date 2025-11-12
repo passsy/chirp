@@ -372,6 +372,69 @@ void main() {
       expect(info.callerName, 'main');
     });
 
+    test('callerClassName extracts class from simple method', () {
+      final info = StackFrameInfo(
+        callerMethod: 'UserService.processUser',
+        file: 'package:app/user_service.dart',
+        line: 168,
+        column: 11,
+      );
+
+      expect(info.callerClassName, 'UserService');
+    });
+
+    test('callerClassName extracts class from nested class', () {
+      final info = StackFrameInfo(
+        callerMethod: 'OuterClass.InnerClass.method',
+        file: 'package:app/nested.dart',
+        line: 50,
+        column: 3,
+      );
+
+      expect(info.callerClassName, 'OuterClass.InnerClass');
+    });
+
+    test('callerClassName extracts class from closure', () {
+      final info = StackFrameInfo(
+        callerMethod: 'MyClass.method.<anonymous closure>',
+        file: 'package:app/closures.dart',
+        line: 75,
+        column: 20,
+      );
+
+      expect(info.callerClassName, 'MyClass');
+    });
+
+    test('callerClassName returns null for top-level function', () {
+      final info = StackFrameInfo(
+        callerMethod: 'main',
+        file: 'file:///path/to/main.dart',
+        line: 10,
+      );
+
+      expect(info.callerClassName, isNull);
+    });
+
+    test('callerClassName returns null for doSomething function', () {
+      final info = StackFrameInfo(
+        callerMethod: 'doSomething',
+        file: 'package:app/utils.dart',
+        line: 99,
+      );
+
+      expect(info.callerClassName, isNull);
+    });
+
+    test('callerClassName returns null for <unknown>', () {
+      final info = StackFrameInfo(
+        callerMethod: '<unknown>',
+        file: 'my_file.dart',
+        line: 42,
+      );
+
+      expect(info.callerClassName, isNull);
+    });
+
     test('toString returns full debug information', () {
       final info = StackFrameInfo(
         callerMethod: 'UserService.processUser',

@@ -18,7 +18,7 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
 
   RainbowMessageFormatter({
     List<ClassNameTransformer>? classNameTransformers,
-    this.metaWidth = 60,
+    this.metaWidth = 80,
   })  : classNameTransformers = classNameTransformers ?? [],
         super();
 
@@ -59,8 +59,8 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
       return null;
     }();
 
-    // Combine instanceInfo and callerMethod if they share the same class name
-    final String? combinedInstanceMethod = () {
+    // Extract method name if instanceInfo and callerMethod share the same class name
+    final String? extractedMethodName = () {
       if (instanceInfo != null && callerInfo?.callerMethod != null) {
         final method = callerInfo!.callerMethod;
         // Extract class name from instanceInfo (e.g., "UserService" from "UserService@1fec")
@@ -69,8 +69,7 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
         // Check if method starts with the same class name
         if (method.startsWith('$instanceClass.')) {
           // Extract just the method name (e.g., "processUser" from "UserService.processUser")
-          final methodName = method.substring(instanceClass.length + 1);
-          return '$instanceInfo.$methodName'; // UserService@1fec.processUser
+          return method.substring(instanceClass.length + 1);
         }
       }
       return null;
@@ -78,12 +77,21 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
 
     final label = [
       callerInfo?.callerLocation, // main:166
-      if (combinedInstanceMethod != null)
-        combinedInstanceMethod // UserService@1fec.processUser
-      else ...[
-        callerInfo?.callerMethod, // UserService.processUser (if not combined)
-        instanceInfo, // UserService@1fec (if not combined)
-      ],
+      if (extractedMethodName != null) ...[
+        extractedMethodName, // processUser
+        instanceInfo, // UserService@1fec
+      ] else if (instanceInfo != null) ...[
+        callerInfo?.callerMethod, // UserService.processUser
+        instanceInfo, // UserService@1fec
+      ] else if (callerInfo?.callerClassName != null) ...[
+        // No instance but has class name - split method and class for static methods
+        // For "UserService.logStatic", show "logStatic" then "UserService"
+        callerInfo!.callerMethod
+            .substring(callerInfo.callerClassName!.length + 1), // logStatic
+        callerInfo.callerClassName, // UserService
+      ] else
+        // Top-level function - show as is
+        callerInfo?.callerMethod,
       entry.loggerName // UserLogger
     ].whereType<Object>().join(" ");
 
@@ -99,13 +107,16 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
       lightness = 0.6;
     } else {
       final hashableThing = () {
-        if (instanceInfo != null) return instanceInfo;
+        if (entry.instance != null) {
+          return entry.instance.runtimeType.toString();
+        }
         if (entry.loggerName != null) return entry.loggerName;
-        if (entry.caller != null) {
-          final name = getCallerInfo(entry.caller!)?.callerName;
-          if (name != null) {
-            return name;
-          }
+        if (callerInfo?.callerClassName != null) {
+          return callerInfo!.callerClassName;
+        }
+        final name = callerInfo?.callerName;
+        if (name != null) {
+          return name;
         }
         return null;
       }();
@@ -118,6 +129,17 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
         const hueRange = maxHue - minHue;
         final hueDegrees = minHue + (hash.abs() % hueRange.toInt());
         hue = hueDegrees / 360.0;
+
+        // Vary lightness based on instance hash to differentiate instances
+        // Lightness range: 0.6 to 0.8 (readable range)
+        if (entry.instanceHash != null) {
+          const minLightness = 0.6;
+          const maxLightness = 0.8;
+          const lightnessRange = maxLightness - minLightness;
+          final lightnessOffset =
+              (entry.instanceHash!.abs() % 100) / 100.0 * lightnessRange;
+          lightness = minLightness + lightnessOffset;
+        }
       } else {
         hue = 0.0;
         saturation = 0.0; // white
