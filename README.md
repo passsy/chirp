@@ -7,14 +7,18 @@ A lightweight, flexible logging library for Dart with instance tracking, child l
 - **Simple API**: Static methods, named loggers, or `.chirp` extension on any object
 - **Child Loggers**: Winston-style `.child()` method for creating loggers with inherited configuration
 - **Instance Tracking**: Automatically tracks object instances with unique hashes
+- **Automatic Caller Detection**: Extracts class names, method names, and file locations from stack traces
 - **Named Loggers**: Create loggers for different subsystems (HTTP, Database, etc.)
 - **Structured Logging**: Attach key-value data to log entries for machine-readable logs
 - **Contextual Logging**: Per-request/per-transaction loggers with automatic context propagation
-- **7 Log Levels**: Trace, debug, info, warning, error, critical, and wtf with comprehensive documentation
-- **Multiple Formats**: Compact, JSON, GCP, and Rainbow formatters included
+- **Flexible Log Levels**: 7 built-in levels (trace, debug, info, warning, error, critical, wtf) plus support for custom levels
+- **Multiple Formats**: Compact, structural JSON and Rainbow formatters included
 - **Multiple Writers**: Send logs to multiple destinations with different formats per writer
-- **GCP Integration**: First-class support for Google Cloud Platform logging
-- **Customizable**: Transform class names and create custom formatters
+
+## Why "Chirp"?
+
+Birds chirp to express everything from danger to delight, your app chirps through its logs.
+The name celebrates Dart and Flutter's feathered identity.
 
 ## Usage
 
