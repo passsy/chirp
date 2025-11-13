@@ -51,12 +51,13 @@ void basicInstanceLoggingExample() {
 void allLogLevelsExample() {
   Chirp.trace('Detailed execution trace', data: {'step': 1});
   Chirp.debug('Debug information', data: {'cache': 'miss'});
-  Chirp.info('Application started');
-  Chirp.log('Application started', level: const ChirpLogLevel('robin', 600));
-  Chirp.warning('Deprecated API used', data: {'api': 'v1'});
-  Chirp.error('Operation failed', error: Exception('Timeout'));
-  Chirp.critical('Database connection lost');
-  Chirp.wtf('User age is negative', data: {'age': -5});
+  Chirp.info('Application started info');
+  Chirp.log('Application started custom level 600',
+      level: const ChirpLogLevel('alert', 600));
+  Chirp.warning('Deprecated API used warning', data: {'api': 'v1'});
+  Chirp.error('Operation failed error', error: Exception('Timeout'));
+  Chirp.critical('Database connection lost (critical)');
+  Chirp.wtf('User age is negative WTF', data: {'age': -5});
 }
 
 /// Named logger with structured data

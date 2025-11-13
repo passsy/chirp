@@ -240,13 +240,16 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
     // Format output with color
     final dataStr = dataBuffer.toString();
     // Use effectiveOptions from top of method
+    // Use grey for data on info/debug/trace, main color for warnings/errors
+    final greyPenForData = AnsiPen()..rgb(r: 0.5, g: 0.5, b: 0.5);
+    final dataPen = entry.level.severity < 400 ? greyPenForData : pen;
     final coloredDataLines = dataStr.isNotEmpty &&
             effectiveOptions.data == DataPresentation.multiline
-        ? dataStr.split('\n').map((line) => pen(line)).join('\n')
+        ? dataStr.split('\n').map((line) => dataPen(line)).join('\n')
         : '';
     final inlineDataStr =
         dataStr.isNotEmpty && effectiveOptions.data == DataPresentation.inline
-            ? pen(dataStr)
+            ? dataPen(dataStr)
             : '';
     final coloredErrorLines = errorLines.isNotEmpty
         ? errorLines.split('\n').map((line) => pen('  $line')).join('\n')
@@ -263,32 +266,38 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
             .join('\n')
         : '';
 
+    // Use grey for message text and pipe on info/debug/trace levels
+    final greyPen = AnsiPen()..rgb(r: 0.5, g: 0.5, b: 0.5);
+    final messagePen = entry.level.severity < 400 ? greyPen : pen;
+    final pipePen = entry.level.severity < 400 ? greyPen : pen;
+
     // Plain layout: metadata line in color, then message/data at left margin
     if (effectiveOptions.layout == LayoutStyle.plain) {
       final buffer = StringBuffer();
 
-      // Print metadata line in color
-      buffer.writeln(pen('$meta │ <plain message below>'));
+      // Print metadata line with grey pipe for info/debug/trace
+      buffer.write(pen(meta));
+      buffer.writeln(pipePen(' │ <plain message below>'));
 
-      // Add message at left margin
+      // Add message at left margin in grey (or warning/error color)
       final messageStr = entry.message?.toString() ?? '';
       if (messageStr.isNotEmpty) {
-        buffer.writeln(messageStr);
+        buffer.writeln(messagePen(messageStr));
       }
 
-      // Add data at left margin
+      // Add data at left margin in grey (or warning/error color)
       if (entry.data != null && entry.data!.isNotEmpty) {
         for (final dataEntry in entry.data!.entries) {
-          buffer.writeln('${dataEntry.key}=${dataEntry.value}');
+          buffer.writeln(dataPen('${dataEntry.key}=${dataEntry.value}'));
         }
       }
 
-      // Add error/stacktrace if present
+      // Add error/stacktrace if present (in warning/error color)
       if (entry.error != null) {
-        buffer.writeln(entry.error.toString());
+        buffer.writeln(pen(entry.error.toString()));
       }
       if (entry.stackTrace != null) {
-        buffer.writeln(entry.stackTrace.toString());
+        buffer.writeln(stackTracePen(entry.stackTrace.toString()));
       }
 
       // Remove trailing newline
@@ -301,7 +310,9 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
     // Build final output
     final output = StringBuffer();
     if (messageLines.length <= 1) {
-      output.write(pen('$meta │ $messageStr'));
+      output.write(pen(meta));
+      output.write(pipePen(' │ '));
+      output.write(messagePen(messageStr));
       if (inlineDataStr.isNotEmpty) {
         output.write(inlineDataStr);
       }
@@ -318,20 +329,21 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
       // Multiline message: first line after pipe, remaining lines indented
       final indent = ''.padRight(actualMetaWidth);
       output.write(pen(meta));
-      output.write(pen(' │ '));
+      output.write(pipePen(' │ '));
       // First line directly after pipe
-      output.write(pen(messageLines[0]));
+      output.write(messagePen(messageLines[0]));
       // Remaining lines indented with pipe
       if (messageLines.length > 1) {
         output.write('\n');
         output.write(messageLines
             .skip(1)
-            .map((line) => pen('$indent │ $line'))
+            .map((line) => '${pen(indent)}${pipePen(' │ ')}${messagePen(line)}')
             .join('\n'));
       }
       if (inlineDataStr.isNotEmpty) {
         output.write('\n');
-        output.write(pen('$indent │'));
+        output.write(pen(indent));
+        output.write(pipePen(' │'));
         output.write(inlineDataStr);
       }
       if (coloredDataLines.isNotEmpty) {

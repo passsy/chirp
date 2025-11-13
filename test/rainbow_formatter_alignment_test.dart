@@ -654,7 +654,7 @@ void main() {
       expect(lines[2], 'key=value');
     });
 
-    test('plain layout has colored metadata but plain content', () {
+    test('plain layout has colored metadata and grey message content', () {
       final formatter = RainbowMessageFormatter(
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
@@ -668,9 +668,10 @@ void main() {
       // Should have ANSI codes for metadata line
       expect(result, contains('\x1B['));
 
-      // But message line should be plain text
+      // Message line should also have color codes (grey for info level)
       final lines = result.split('\n');
-      expect(lines[1], 'Colored message'); // No color codes in message
+      expect(lines[1], contains('\x1B[')); // Has color codes
+      expect(lines[1], contains('Colored message'));
     });
   });
 }
