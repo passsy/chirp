@@ -1,8 +1,10 @@
+import 'package:chirp/src/format_option.dart';
 import 'package:chirp/src/log_entry.dart';
 import 'package:chirp/src/log_level.dart';
 import 'package:chirp/src/message_writer.dart';
 import 'package:clock/clock.dart';
 
+export 'src/format_option.dart';
 export 'src/log_entry.dart';
 export 'src/log_level.dart';
 export 'src/message_formatter.dart';
@@ -23,6 +25,7 @@ class Chirp {
     StackTrace? stackTrace,
     Map<String, Object?>? data,
     ChirpLogLevel level = ChirpLogLevel.info,
+    List<FormatOptions>? formatOptions,
   }) {
     root.log(
       message,
@@ -30,6 +33,7 @@ class Chirp {
       error: error,
       stackTrace: stackTrace,
       data: data,
+      formatOptions: formatOptions,
     );
   }
 
@@ -38,6 +42,7 @@ class Chirp {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     root.log(
       message,
@@ -45,6 +50,7 @@ class Chirp {
       error: error,
       stackTrace: stackTrace,
       data: data,
+      formatOptions: formatOptions,
     );
   }
 
@@ -53,12 +59,14 @@ class Chirp {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     root.debug(
       message,
       error: error,
       stackTrace: stackTrace,
       data: data,
+      formatOptions: formatOptions,
     );
   }
 
@@ -67,12 +75,14 @@ class Chirp {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     root.info(
       message,
       error: error,
       stackTrace: stackTrace,
       data: data,
+      formatOptions: formatOptions,
     );
   }
 
@@ -81,12 +91,14 @@ class Chirp {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     root.warning(
       message,
       error: error,
       stackTrace: stackTrace,
       data: data,
+      formatOptions: formatOptions,
     );
   }
 
@@ -95,12 +107,14 @@ class Chirp {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     root.error(
       message,
       error: error,
       stackTrace: stackTrace,
       data: data,
+      formatOptions: formatOptions,
     );
   }
 
@@ -109,12 +123,14 @@ class Chirp {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     root.critical(
       message,
       error: error,
       stackTrace: stackTrace,
       data: data,
+      formatOptions: formatOptions,
     );
   }
 
@@ -123,6 +139,7 @@ class Chirp {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     root.log(
       message,
@@ -130,6 +147,7 @@ class Chirp {
       error: error,
       stackTrace: stackTrace,
       data: data,
+      formatOptions: formatOptions,
     );
   }
 }
@@ -207,6 +225,7 @@ class ChirpLogger {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     final caller = StackTrace.current;
 
@@ -220,6 +239,7 @@ class ChirpLogger {
       loggerName: name,
       instance: instance,
       data: _mergeData(context, data),
+      formatOptions: formatOptions,
     );
 
     _logRecord(entry);
@@ -231,6 +251,7 @@ class ChirpLogger {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     final caller = StackTrace.current;
 
@@ -244,6 +265,7 @@ class ChirpLogger {
       loggerName: name,
       instance: instance,
       data: _mergeData(context, data),
+      formatOptions: formatOptions,
     );
 
     _logRecord(entry);
@@ -255,6 +277,7 @@ class ChirpLogger {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     final caller = StackTrace.current;
 
@@ -268,6 +291,7 @@ class ChirpLogger {
       loggerName: name,
       instance: instance,
       data: _mergeData(context, data),
+      formatOptions: formatOptions,
     );
 
     _logRecord(entry);
@@ -279,6 +303,7 @@ class ChirpLogger {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     final caller = StackTrace.current;
 
@@ -291,6 +316,7 @@ class ChirpLogger {
       loggerName: name,
       instance: instance,
       data: _mergeData(context, data),
+      formatOptions: formatOptions,
     );
 
     _logRecord(entry);
@@ -302,6 +328,7 @@ class ChirpLogger {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     final caller = StackTrace.current;
 
@@ -315,6 +342,7 @@ class ChirpLogger {
       loggerName: name,
       instance: instance,
       data: _mergeData(context, data),
+      formatOptions: formatOptions,
     );
 
     _logRecord(entry);
@@ -326,6 +354,7 @@ class ChirpLogger {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     final caller = StackTrace.current;
 
@@ -339,6 +368,7 @@ class ChirpLogger {
       loggerName: name,
       instance: instance,
       data: _mergeData(context, data),
+      formatOptions: formatOptions,
     );
 
     _logRecord(entry);
@@ -350,6 +380,7 @@ class ChirpLogger {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     final caller = StackTrace.current;
 
@@ -363,6 +394,7 @@ class ChirpLogger {
       loggerName: name,
       instance: instance,
       data: _mergeData(context, data),
+      formatOptions: formatOptions,
     );
 
     _logRecord(entry);
@@ -374,6 +406,7 @@ class ChirpLogger {
     Object? error,
     StackTrace? stackTrace,
     Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
   }) {
     final caller = StackTrace.current;
 
@@ -387,6 +420,7 @@ class ChirpLogger {
       loggerName: name,
       instance: instance,
       data: _mergeData(context, data),
+      formatOptions: formatOptions,
     );
 
     _logRecord(entry);

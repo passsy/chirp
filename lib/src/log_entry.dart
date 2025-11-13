@@ -1,3 +1,4 @@
+import 'package:chirp/src/format_option.dart';
 import 'package:chirp/src/log_level.dart';
 
 class LogRecord {
@@ -31,6 +32,12 @@ class LogRecord {
   /// Structured data (key-value pairs) for machine-readable logging
   final Map<String, Object?>? data;
 
+  /// Format options for this specific log entry
+  ///
+  /// These options override the formatter's default options.
+  /// Each formatter interprets options specific to its implementation.
+  final List<FormatOptions>? formatOptions;
+
   const LogRecord({
     required this.message,
     required this.date,
@@ -42,6 +49,7 @@ class LogRecord {
     this.caller,
     this.loggerName,
     this.data,
+    this.formatOptions,
   });
 }
 

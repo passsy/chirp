@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, avoid_redundant_argument_values
 
 import 'package:chirp/chirp.dart';
 
@@ -22,6 +22,12 @@ void main() {
 
   print('\n=== Example 6: Multiple Writers (Console + JSON) ===');
   multipleWritersExample();
+
+  print('\n=== Example 7: Format Options (Inline vs Multiline Data) ===');
+  formatOptionsExample();
+
+  print('\n=== Example 8: Multiline Messages ===');
+  multilineMessagesExample();
 
   // Reset to default
   Chirp.root = ChirpLogger();
@@ -161,8 +167,82 @@ void multipleWritersExample() {
   Chirp.root = ChirpLogger();
 }
 
+/// Demonstrates different format options for RainbowMessageFormatter
+void formatOptionsExample() {
+  // Multiline data display (default)
+  print('--- Multiline Data (default) ---');
+  Chirp.root = ChirpLogger(
+    writers: [
+      ConsoleChirpMessageWriter(
+        formatter: RainbowMessageFormatter(
+          options: const RainbowFormatOptions(data: DataPresentation.multiline),
+        ),
+      ),
+    ],
+  );
+
+  Chirp.info('User logged in', data: {
+    'userId': 'user_123',
+    'email': 'user@example.com',
+    'loginMethod': 'oauth',
+  });
+
+  // Force inline
+  Chirp.info(
+    'User logged in',
+    data: {
+      'userId': 'user_123',
+      'email': 'user@example.com',
+      'loginMethod': 'oauth',
+    },
+    formatOptions: [const RainbowFormatOptions(data: DataPresentation.inline)],
+  );
+
+  // Reset
+  Chirp.root = ChirpLogger();
+}
+
+/// Demonstrates logging messages with newlines
+void multilineMessagesExample() {
+  // Single line message
+  Chirp.info('Single line message');
+
+  // Multiline message with \n
+  Chirp.info('Line 1\nLine 2\nLine 3');
+
+  // Multiline message with data (inline by default)
+  Chirp.info(
+    'Processing complete:\n- Step 1: Success\n- Step 2: Success\n- Step 3: Success',
+    data: {'duration': '2.5s', 'status': 'ok'},
+  );
+
+  // Multiline message with multiline data
+  Chirp.root = ChirpLogger(
+    writers: [
+      ConsoleChirpMessageWriter(
+        formatter: RainbowMessageFormatter(
+          options: const RainbowFormatOptions(data: DataPresentation.multiline),
+        ),
+      ),
+    ],
+  );
+
+  Chirp.info(
+    'Deployment summary:\n- Service: api-gateway\n- Version: 1.2.3\n- Status: deployed',
+    data: {
+      'environment': 'production',
+      'region': 'us-east-1',
+      'instances': 3,
+    },
+  );
+
+  // Reset
+  Chirp.root = ChirpLogger();
+}
+
 class UserService {
   void processUser(String userId) {
+    chirp.info('Processing user', data: {'userId': userId});
     chirp.info('Processing user', data: {'userId': userId});
     Chirp.info('Processing user', data: {'userId': userId});
   }

@@ -235,7 +235,9 @@ void main() {
       expect(cleanResult, contains('normalMethod'));
     });
 
-    test('handles instance method with matching class name and anonymous closures', () {
+    test(
+        'handles instance method with matching class name and anonymous closures',
+        () {
       final formatter = RainbowMessageFormatter();
       final instance = _TestClass();
       final entry = LogRecord(
@@ -306,6 +308,159 @@ void main() {
       expect(result, contains('Test message'));
       expect(result, contains('_TestClass@'));
       expect(result, contains('TestLogger'));
+    });
+  });
+
+  group('RainbowMessageFormatter format options', () {
+    test('writes data on separate lines by default (multiline)', () {
+      final formatter = RainbowMessageFormatter();
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        data: {
+          'userId': 'user_123',
+          'action': 'login',
+        },
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+      final lines = cleanResult.split('\n');
+
+      // Should have multiple lines
+      expect(lines.length, greaterThan(1));
+      // Each data property should be on its own line
+      expect(cleanResult, contains('│ userId=user_123'));
+      expect(cleanResult, contains('│ action=login'));
+    });
+
+    test('writes data inline when formatOptions contains dataInline', () {
+      final formatter = RainbowMessageFormatter(
+          options: const RainbowFormatOptions(data: DataPresentation.inline));
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        data: {
+          'userId': 'user_123',
+          'action': 'login',
+        },
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+
+      // Should be single line
+      expect(cleanResult.split('\n').length, 1);
+      // Data should be in parentheses and comma-separated
+      expect(cleanResult, contains('(userId=user_123, action=login)'));
+      // Or reversed order (map order is not guaranteed)
+      // So check that both keys are present in inline format
+      expect(cleanResult, contains('userId=user_123'));
+      expect(cleanResult, contains('action=login'));
+      expect(cleanResult, contains('('));
+      expect(cleanResult, contains(')'));
+    });
+
+    test('inline data appears on same line as message', () {
+      final formatter = RainbowMessageFormatter(
+          options: const RainbowFormatOptions(data: DataPresentation.inline));
+      final entry = LogRecord(
+        message: 'User action',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        data: {
+          'userId': 'user_123',
+        },
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+
+      // Everything should be on one line
+      expect(cleanResult.contains('\n'), false);
+      expect(cleanResult, contains('User action (userId=user_123)'));
+    });
+
+    test('inline data works with multiple properties', () {
+      final formatter = RainbowMessageFormatter(
+          options: const RainbowFormatOptions(data: DataPresentation.inline));
+      final entry = LogRecord(
+        message: 'Request',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        data: {
+          'method': 'POST',
+          'endpoint': '/api/users',
+          'status': 200,
+        },
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+
+      // Single line with all data
+      expect(cleanResult.split('\n').length, 1);
+      expect(cleanResult, contains('method=POST'));
+      expect(cleanResult, contains('endpoint=/api/users'));
+      expect(cleanResult, contains('status=200'));
+      // Check comma-separated format
+      expect(cleanResult, matches(RegExp(r'\([^)]+, [^)]+, [^)]+\)')));
+    });
+
+    test('inline data with no data produces no inline annotation', () {
+      final formatter = RainbowMessageFormatter(
+          options: const RainbowFormatOptions(data: DataPresentation.inline));
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+      );
+
+      final result = formatter.format(entry);
+      final cleanResult = _stripAnsiCodes(result);
+
+      // No parentheses when no data
+      expect(cleanResult, isNot(contains('(')));
+      expect(cleanResult, isNot(contains(')')));
+      expect(cleanResult, contains('Test message'));
+    });
+  });
+
+  group('RainbowMessageFormatter exception formatting', () {
+    test('exceptions are indented with 2 spaces', () {
+      final formatter = RainbowMessageFormatter(color: false);
+      final entry = LogRecord(
+        message: 'Operation failed',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        error: Exception('Something went wrong'),
+      );
+
+      final result = formatter.format(entry);
+      final lines = result.split('\n');
+
+      // First line is the main message
+      expect(lines[0], contains('Operation failed'));
+      // Exception line should be indented with 2 spaces
+      expect(lines[1], startsWith('  '));
+      expect(lines[1], contains('Exception: Something went wrong'));
+    });
+
+    test('stack traces are indented with 2 spaces', () {
+      final formatter = RainbowMessageFormatter(color: false);
+      final entry = LogRecord(
+        message: 'Error occurred',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        error: Exception('Test error'),
+        stackTrace: StackTrace.fromString(
+            '#0      main (file.dart:10:5)\n#1      test (file.dart:20:3)'),
+      );
+
+      final result = formatter.format(entry);
+      final lines = result.split('\n');
+
+      // Exception and stack trace lines should be indented
+      expect(
+          lines.where((line) => line.startsWith('  #')).length, greaterThan(0));
+      // Check specific stack frames are indented
+      expect(result, contains('  #0      main'));
+      expect(result, contains('  #1      test'));
     });
   });
 }

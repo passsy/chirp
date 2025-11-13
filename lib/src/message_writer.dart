@@ -15,7 +15,9 @@ class ConsoleChirpMessageWriter implements ChirpMessageWriter {
   ConsoleChirpMessageWriter({
     ChirpMessageFormatter? formatter,
     void Function(String)? output,
-  })  : formatter = formatter ?? RainbowMessageFormatter(),
+  })  : formatter = formatter ??
+            RainbowMessageFormatter(
+                options: const RainbowFormatOptions(data: DataPresentation.inline)),
         output = output ?? print;
 
   @override

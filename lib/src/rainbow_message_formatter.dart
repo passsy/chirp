@@ -19,11 +19,16 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
   /// Whether to use ANSI color codes in output
   final bool color;
 
+  /// Formatting options for this formatter
+  final RainbowFormatOptions options;
+
   RainbowMessageFormatter({
     List<ClassNameTransformer>? classNameTransformers,
     this.metaWidth = 80,
     this.color = true,
-  })  : classNameTransformers = classNameTransformers ?? [],
+    RainbowFormatOptions? options,
+  })  : options = options ?? const RainbowFormatOptions(),
+        classNameTransformers = classNameTransformers ?? [],
         super();
 
   /// Resolve class name from instance using transformers
@@ -184,14 +189,26 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
     // Build data lines with indentation to align after │
     final dataBuffer = StringBuffer();
     if (entry.data != null && entry.data!.isNotEmpty) {
-      // Calculate indentation to align with the │ separator
-      // meta is actualMetaWidth chars, then we add " │ "
-      // so │ is at position actualMetaWidth+1
-      // For data lines: actualMetaWidth spaces + " │" puts │ at actualMetaWidth+1
-      final indent = ''.padRight(actualMetaWidth);
+      // Use per-message formatOptions if provided, otherwise use formatter's default
+      final effectiveOptions = options.merge(
+          entry.formatOptions?.firstWhereTypeOrNull<RainbowFormatOptions>());
 
-      for (final dataEntry in entry.data!.entries) {
-        dataBuffer.write('\n$indent │ ${dataEntry.key}=${dataEntry.value}');
+      if (effectiveOptions.data == DataPresentation.inline) {
+        // Inline mode: write all data on a single line
+        final dataStr =
+            entry.data!.entries.map((e) => '${e.key}=${e.value}').join(', ');
+        dataBuffer.write(' ($dataStr)');
+      } else {
+        // Multi-line mode: one property per line with indentation
+        // Calculate indentation to align with the │ separator
+        // meta is actualMetaWidth chars, then we add " │ "
+        // so │ is at position actualMetaWidth+1
+        // For data lines: actualMetaWidth spaces + " │" puts │ at actualMetaWidth+1
+        final indent = ''.padRight(actualMetaWidth);
+
+        for (final dataEntry in entry.data!.entries) {
+          dataBuffer.write('\n$indent │ ${dataEntry.key}=${dataEntry.value}');
+        }
       }
     }
 
@@ -206,17 +223,28 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
     final extraLines = buffer.toString();
 
     // Format output with color
-    final coloredDataLines = dataBuffer.toString().isNotEmpty
-        ? dataBuffer.toString().split('\n').map((line) => pen(line)).join('\n')
+    final dataStr = dataBuffer.toString();
+    final effectiveOptions = options.merge(
+        entry.formatOptions?.firstWhereTypeOrNull<RainbowFormatOptions>());
+    final coloredDataLines = dataStr.isNotEmpty &&
+            effectiveOptions.data == DataPresentation.multiline
+        ? dataStr.split('\n').map((line) => pen(line)).join('\n')
         : '';
+    final inlineDataStr =
+        dataStr.isNotEmpty && effectiveOptions.data == DataPresentation.inline
+            ? pen(dataStr)
+            : '';
     final coloredExtraLines = extraLines.isNotEmpty
-        ? extraLines.split('\n').map((line) => pen(line)).join('\n')
+        ? extraLines.split('\n').map((line) => pen('  $line')).join('\n')
         : '';
 
     // Build final output
     final output = StringBuffer();
     if (messageLines.length <= 1) {
       output.write(pen('$meta │ $messageStr'));
+      if (inlineDataStr.isNotEmpty) {
+        output.write(inlineDataStr);
+      }
       if (coloredDataLines.isNotEmpty) {
         output.write(coloredDataLines);
       }
@@ -224,9 +252,15 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
         output.write(coloredExtraLines);
       }
     } else {
+      // Multiline message: indent all lines to align with │
+      final indent = ''.padRight(actualMetaWidth);
       output.write(pen(meta));
-      output.write(' │ \n');
-      output.write(messageLines.map((line) => pen(line)).join('\n'));
+      output.write(pen(' │ \n'));
+      output.write(
+          messageLines.map((line) => pen('$indent │ $line')).join('\n'));
+      if (inlineDataStr.isNotEmpty) {
+        output.write(inlineDataStr);
+      }
       if (coloredDataLines.isNotEmpty) {
         output.write(coloredDataLines);
       }
@@ -237,6 +271,40 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
 
     return output.toString();
   }
+}
+
+/// Format options specific to [RainbowMessageFormatter]
+///
+/// Extends [FormatOptions] to provide type safety for rainbow formatter options.
+class RainbowFormatOptions extends FormatOptions {
+  const RainbowFormatOptions({this.data = DataPresentation.multiline});
+
+  final DataPresentation data;
+
+  /// Merge this options with another, preferring values from [other]
+  RainbowFormatOptions merge(RainbowFormatOptions? other) {
+    final merged = RainbowFormatOptions(
+      data: other?.data ?? data,
+    );
+    return merged;
+  }
+}
+
+enum DataPresentation {
+  /// Display all data properties inline on the same line as the message
+  ///
+  /// Example: `User logged in (userId=user_123, action=login)`
+  inline,
+
+  /// Display each data property on a separate line
+  ///
+  /// Example:
+  /// ```txt
+  /// User logged in
+  /// │ userId=user_123
+  /// │ action=login
+  /// ```
+  multiline,
 }
 
 /// Converts HSL color to RGB.
@@ -267,4 +335,10 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
   final b = hue2rgb(p, q, h - 1 / 3);
 
   return (r, g, b);
+}
+
+extension _FirstWhereTypeOrNull<T> on Iterable<T> {
+  R? firstWhereTypeOrNull<R>() {
+    return whereType<R>().firstOrNull;
+  }
 }
