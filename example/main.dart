@@ -3,33 +3,34 @@
 import 'package:chirp/chirp.dart';
 
 void main() {
-  UserService().processUser('robin');
+  Chirp.warning('=== Example 0: Basic Instance Logging ===');
+  basicInstanceLoggingExample();
 
-  print('=== Example 1: Static Methods - All Log Levels ===');
+  Chirp.warning('=== Example 1: Static Methods - All Log Levels ===');
   allLogLevelsExample();
 
-  print('\n=== Example 2: Named Logger & Structured Data ===');
+  Chirp.warning('=== Example 2: Named Logger & Structured Data ===');
   namedLoggerExample();
 
-  print('\n=== Example 3: Child Loggers (Per-Request Context) ===');
+  Chirp.warning('=== Example 3: Child Loggers (Per-Request Context) ===');
   childLoggerExample();
 
-  print('\n=== Example 4: Instance Tracking with .chirp Extension ===');
+  Chirp.warning('=== Example 4: Instance Tracking with .chirp Extension ===');
   instanceTrackingExample();
 
-  print('\n=== Example 5: GCP Cloud Logging Format ===');
+  Chirp.warning('=== Example 5: GCP Cloud Logging Format ===');
   gcpFormatterExample();
 
-  print('\n=== Example 6: Multiple Writers (Console + JSON) ===');
+  Chirp.warning('=== Example 6: Multiple Writers (Console + JSON) ===');
   multipleWritersExample();
 
-  print('\n=== Example 7: Format Options (Inline vs Multiline Data) ===');
+  Chirp.warning('=== Example 7: Format Options (Inline vs Multiline Data) ===');
   formatOptionsExample();
 
-  print('\n=== Example 8: Multiline Messages ===');
+  Chirp.warning('=== Example 8: Multiline Messages ===');
   multilineMessagesExample();
 
-  print('\n=== Example 9: Stacktraces with Different Log Levels ===');
+  Chirp.warning('=== Example 9: Stacktraces with Different Log Levels ===');
   stacktraceLevelsExample();
 
   // Reset to default
@@ -38,6 +39,12 @@ void main() {
   final bleLogger =
       Chirp.root.child(name: 'BLE', context: {'bluetooth_state': 'on'});
   bleLogger.info('Device connected');
+}
+
+/// Basic example showing instance method logging
+void basicInstanceLoggingExample() {
+  final userService = UserService();
+  userService.processUser('robin');
 }
 
 /// Demonstrates all 7 log levels
@@ -173,7 +180,6 @@ void multipleWritersExample() {
 /// Demonstrates different format options for RainbowMessageFormatter
 void formatOptionsExample() {
   // Multiline data display (default)
-  print('--- Multiline Data (default) ---');
   Chirp.root = ChirpLogger(
     writers: [
       ConsoleChirpMessageWriter(
@@ -215,28 +221,27 @@ void multilineMessagesExample() {
 
   // Multiline message with data (inline by default)
   Chirp.info(
-    'Processing complete:\n- Step 1: Success\n- Step 2: Success\n- Step 3: Success',
+    'Deployment summary:\n- Service: api-gateway\n- Version: 1.2.3\n- Status: deployed',
     data: {'duration': '2.5s', 'status': 'ok'},
-  );
-
-  // Multiline message with multiline data
-  Chirp.root = ChirpLogger(
-    writers: [
-      ConsoleChirpMessageWriter(
-        formatter: RainbowMessageFormatter(
-          options: const RainbowFormatOptions(data: DataPresentation.multiline),
-        ),
-      ),
-    ],
   );
 
   Chirp.info(
     'Deployment summary:\n- Service: api-gateway\n- Version: 1.2.3\n- Status: deployed',
+    data: {'duration': '2.5s', 'status': 'ok'},
+    formatOptions: [
+      const RainbowFormatOptions(data: DataPresentation.multiline),
+    ],
+  );
+
+  // Force zero indentation
+  Chirp.info(
+    'User logged in',
     data: {
-      'environment': 'production',
-      'region': 'us-east-1',
-      'instances': 3,
+      'userId': 'user_123',
+      'email': 'user@example.com',
+      'loginMethod': 'oauth',
     },
+    formatOptions: [const RainbowFormatOptions(layout: LayoutStyle.plain)],
   );
 
   // Reset

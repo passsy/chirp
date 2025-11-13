@@ -12,7 +12,10 @@ class StackFrameInfo {
   /// The column number (optional)
   final int? column;
 
+  final StackTrace stackTrace;
+
   StackFrameInfo({
+    required this.stackTrace,
     required this.callerMethod,
     required this.file,
     required this.line,
@@ -27,7 +30,7 @@ class StackFrameInfo {
   }
 
   /// Returns just the file name without extension, like "my_service"
-  String get callerName {
+  String get callerFileName {
     final fileName = file.split('/').last;
     return fileName.replaceAll('.dart', '');
   }
@@ -97,7 +100,7 @@ StackFrameInfo? getCallerInfo(StackTrace stackTrace, {int skipFrames = 0}) {
     }
 
     // Try to extract stack frame info
-    final info = parseStackFrame(line);
+    final info = parseStackFrame(stackTrace, line);
     if (info != null) return info;
   }
 
@@ -114,7 +117,7 @@ StackFrameInfo? getCallerInfo(StackTrace stackTrace, {int skipFrames = 0}) {
 /// Returns null if the frame cannot be parsed.
 ///
 /// Inspired by: https://github.com/kmartins/groveman/blob/main/packages/groveman/lib/src/util/stack_trace_util.dart
-StackFrameInfo? parseStackFrame(String frame) {
+StackFrameInfo? parseStackFrame(StackTrace stackTrace, String frame) {
   // Pattern: #1      MyClass.method (package:my_app/my_file.dart:42:10)
   // Pattern: #1      main (file:///path/to/my_file.dart:42:10)
   // Pattern: at MyClass.method (packages/my_app/my_file.dart:42:10)
@@ -130,9 +133,11 @@ StackFrameInfo? parseStackFrame(String frame) {
     final callerMethod = vmMatch.group(1)!.trim();
     final file = vmMatch.group(2)!;
     final line = int.parse(vmMatch.group(3)!);
-    final column = vmMatch.group(4) != null ? int.parse(vmMatch.group(4)!) : null;
+    final column =
+        vmMatch.group(4) != null ? int.parse(vmMatch.group(4)!) : null;
 
     return StackFrameInfo(
+      stackTrace: stackTrace,
       callerMethod: callerMethod,
       file: file,
       line: line,
@@ -151,9 +156,12 @@ StackFrameInfo? parseStackFrame(String frame) {
     final callerMethod = browserMatch.group(1)!.trim();
     final file = browserMatch.group(2)!;
     final line = int.parse(browserMatch.group(3)!);
-    final column = browserMatch.group(4) != null ? int.parse(browserMatch.group(4)!) : null;
+    final column = browserMatch.group(4) != null
+        ? int.parse(browserMatch.group(4)!)
+        : null;
 
     return StackFrameInfo(
+      stackTrace: stackTrace,
       callerMethod: callerMethod,
       file: file,
       line: line,
@@ -171,10 +179,12 @@ StackFrameInfo? parseStackFrame(String frame) {
   if (webMatch != null) {
     final file = webMatch.group(1)!;
     final line = int.parse(webMatch.group(2)!);
-    final column = webMatch.group(3) != null ? int.parse(webMatch.group(3)!) : null;
+    final column =
+        webMatch.group(3) != null ? int.parse(webMatch.group(3)!) : null;
     final methodName = webMatch.group(4)?.trim();
 
     return StackFrameInfo(
+      stackTrace: stackTrace,
       callerMethod: (methodName != null && methodName.isNotEmpty)
           ? methodName
           : '<unknown>',
@@ -186,8 +196,8 @@ StackFrameInfo? parseStackFrame(String frame) {
 
   // Fallback: Try to find just .dart file reference
   // my_file.dart:42
-  final dartMatch = RegExp(r'([a-zA-Z_][a-zA-Z0-9_]*\.dart)(?::(\d+))?')
-      .firstMatch(frame);
+  final dartMatch =
+      RegExp(r'([a-zA-Z_][a-zA-Z0-9_]*\.dart)(?::(\d+))?').firstMatch(frame);
 
   if (dartMatch != null) {
     final fileName = dartMatch.group(1)!;
@@ -195,6 +205,7 @@ StackFrameInfo? parseStackFrame(String frame) {
 
     if (lineNumber != null) {
       return StackFrameInfo(
+        stackTrace: stackTrace,
         callerMethod: '<unknown>',
         file: fileName,
         line: int.parse(lineNumber),

@@ -503,8 +503,9 @@ void main() {
   });
 
   group('plain layout', () {
-    test('plain layout outputs only message, no metadata', () {
+    test('plain layout outputs metadata line then message at left margin', () {
       final formatter = RainbowMessageFormatter(
+        color: false,
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -514,15 +515,19 @@ void main() {
 
       final result = formatter.format(entry);
 
-      expect(result, 'Simple message');
-      // No timestamp
-      expect(result, isNot(contains('10:23:45')));
-      // No pipes
-      expect(result, isNot(contains('│')));
+      // Should have metadata line with timestamp
+      expect(result, contains('10:23:45'));
+      // Should have pipe in metadata line
+      expect(result, contains('│'));
+      // Message should be on next line at left margin
+      final lines = result.split('\n');
+      expect(lines.length, 2);
+      expect(lines[1], 'Simple message');
     });
 
-    test('plain layout with data outputs message and data', () {
+    test('plain layout with data outputs message and data at left margin', () {
       final formatter = RainbowMessageFormatter(
+        color: false,
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -539,13 +544,20 @@ void main() {
       expect(result, contains('User action'));
       expect(result, contains('userId=user_123'));
       expect(result, contains('action=login'));
-      // No metadata
-      expect(result, isNot(contains('10:23:45')));
-      expect(result, isNot(contains('│')));
+      // Should have metadata line
+      expect(result, contains('10:23:45'));
+      expect(result, contains('│'));
+
+      // Message and data should be on subsequent lines at left margin
+      final lines = result.split('\n');
+      expect(lines[1], 'User action');
+      expect(lines[2], 'userId=user_123');
+      expect(lines[3], 'action=login');
     });
 
     test('plain layout with multiline message', () {
       final formatter = RainbowMessageFormatter(
+        color: false,
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -555,15 +567,20 @@ void main() {
 
       final result = formatter.format(entry);
 
-      expect(result, 'Line 1\nLine 2\nLine 3');
-      // No metadata or formatting
-      expect(result, isNot(contains('10:23:45')));
-      expect(result, isNot(contains('│')));
-      expect(result, isNot(contains('=')));
+      // Should have metadata line
+      expect(result, contains('10:23:45'));
+      expect(result, contains('│'));
+
+      // Message lines should follow at left margin
+      final lines = result.split('\n');
+      expect(lines[1], 'Line 1');
+      expect(lines[2], 'Line 2');
+      expect(lines[3], 'Line 3');
     });
 
     test('plain layout with error and stacktrace', () {
       final formatter = RainbowMessageFormatter(
+        color: false,
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -579,12 +596,13 @@ void main() {
       expect(result, contains('Exception: Test error'));
       expect(result, contains('#0      main'));
       expect(result, contains('#1      test'));
-      // No metadata
-      expect(result, isNot(contains('10:23:45')));
+      // Should have metadata
+      expect(result, contains('10:23:45'));
     });
 
     test('plain layout with only data, no message', () {
       final formatter = RainbowMessageFormatter(
+        color: false,
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -600,13 +618,18 @@ void main() {
 
       expect(result, contains('key1=value1'));
       expect(result, contains('key2=value2'));
-      // Should start with data, not an empty line
-      expect(result, startsWith('key'));
+
+      // Should have metadata line first, then data at left margin
+      // When message is empty, data starts right after metadata
+      final lines = result.split('\n');
+      expect(lines[1], 'key1=value1');
+      expect(lines[2], 'key2=value2');
     });
 
     test('per-message plain layout overrides aligned formatter', () {
       final formatter = RainbowMessageFormatter(
-        options: const RainbowFormatOptions(layout: LayoutStyle.aligned),
+        color: false,
+        options: const RainbowFormatOptions(),
       );
       final entry = LogRecord(
         message: 'Test message',
@@ -619,16 +642,20 @@ void main() {
 
       final result = formatter.format(entry);
 
-      // Should use plain layout despite formatter default being standard
+      // Should use plain layout with metadata line
       expect(result, contains('Test message'));
       expect(result, contains('key=value'));
-      expect(result, isNot(contains('10:23:45')));
-      expect(result, isNot(contains('│')));
+      expect(result, contains('10:23:45'));
+      expect(result, contains('│'));
+
+      // Message and data should be at left margin
+      final lines = result.split('\n');
+      expect(lines[1], 'Test message');
+      expect(lines[2], 'key=value');
     });
 
-    test('plain layout has no ANSI color codes', () {
+    test('plain layout has colored metadata but plain content', () {
       final formatter = RainbowMessageFormatter(
-        color: true, // Enable color
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -638,9 +665,12 @@ void main() {
 
       final result = formatter.format(entry);
 
-      // Should have no ANSI codes
-      expect(result, isNot(contains('\x1B[')));
-      expect(result, 'Colored message');
+      // Should have ANSI codes for metadata line
+      expect(result, contains('\x1B['));
+
+      // But message line should be plain text
+      final lines = result.split('\n');
+      expect(lines[1], 'Colored message'); // No color codes in message
     });
   });
 }

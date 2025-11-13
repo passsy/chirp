@@ -2,13 +2,16 @@ import 'package:chirp/src/stack_trace_util.dart';
 import 'package:test/test.dart';
 
 void main() {
+  // ignore: prefer_const_declarations
+  final testStackTrace = StackTrace.empty;
+
   group('parseStackFrame', () {
     group('Android/iOS VM stack traces', () {
       test('parses standard VM stack trace with line and column', () {
         const frame =
             '#2      UserService.processUser (file:///Users/pascalwelsch/Projects/passsy/chirp/example/main.dart:168:11)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'UserService.processUser');
@@ -24,7 +27,7 @@ void main() {
         const frame =
             '#0      MyClass.method (package:my_app/my_file.dart:42:10)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'MyClass.method');
@@ -36,7 +39,7 @@ void main() {
       test('parses VM stack trace without column', () {
         const frame = '#1      main (file:///path/to/my_file.dart:123)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'main');
@@ -48,7 +51,7 @@ void main() {
       test('parses VM stack trace with top-level function', () {
         const frame = '#3      doSomething (package:app/utils.dart:99:5)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'doSomething');
@@ -61,7 +64,7 @@ void main() {
         const frame =
             '#4      MyClass.asyncMethod (package:my_app/service.dart:200:15)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'MyClass.asyncMethod');
@@ -74,7 +77,7 @@ void main() {
         const frame =
             '#5      OuterClass.InnerClass.method (package:my_app/nested.dart:50:3)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'OuterClass.InnerClass.method');
@@ -87,7 +90,7 @@ void main() {
         const frame =
             '#6      MyClass.method.<anonymous closure> (package:my_app/closures.dart:75:20)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'MyClass.method.<anonymous closure>');
@@ -102,7 +105,7 @@ void main() {
         const frame =
             'at Object.MyClass_method (packages/my_app/my_file.dart:42:10)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         // Should extract the file reference even if the format is different
         expect(result, isNotNull);
@@ -113,7 +116,7 @@ void main() {
       test('parses web stack trace without method name in parentheses', () {
         const frame = 'packages/my_app/utils.dart:100:5  helperFunction';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.file, 'packages/my_app/utils.dart');
@@ -123,7 +126,7 @@ void main() {
       test('parses dart-sdk internal frame', () {
         const frame = 'dart-sdk/lib/async/schedule_microtask.dart:40:5';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.file, 'dart-sdk/lib/async/schedule_microtask.dart');
@@ -136,7 +139,7 @@ void main() {
         const frame =
             'at MyClass.method (http://localhost:8080/main.dart:50:20)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.file, 'http://localhost:8080/main.dart');
@@ -147,7 +150,7 @@ void main() {
         const frame =
             '    at processData (file:///C:/Projects/app/lib/service.dart:123:15)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.file, 'file:///C:/Projects/app/lib/service.dart');
@@ -159,7 +162,7 @@ void main() {
       test('parses file reference without method name', () {
         const frame = 'my_file.dart:42';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, '<unknown>');
@@ -171,7 +174,7 @@ void main() {
       test('parses filename with underscores and numbers', () {
         const frame = 'user_service_v2.dart:999';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.file, 'user_service_v2.dart');
@@ -183,7 +186,7 @@ void main() {
       test('returns null for empty string', () {
         const frame = '';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNull);
       });
@@ -191,7 +194,7 @@ void main() {
       test('returns null for whitespace only', () {
         const frame = '   \n  \t  ';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNull);
       });
@@ -199,7 +202,7 @@ void main() {
       test('returns null for non-Dart file reference', () {
         const frame = '#0      someFunction (file.txt:10:5)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNull);
       });
@@ -207,7 +210,7 @@ void main() {
       test('returns null for malformed frame', () {
         const frame = 'random text without proper format';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNull);
       });
@@ -216,7 +219,7 @@ void main() {
         const frame =
             '*** *** *** *** *** *** *** *** *** *** *** *** *** *** ***';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNull);
       });
@@ -225,7 +228,7 @@ void main() {
         const frame =
             '#0      VeryLongClassName.veryLongMethodNameThatKeepsGoing (package:app/file.dart:1:1)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(
@@ -238,7 +241,7 @@ void main() {
         const frame =
             '#0      MyClass.method (file:///Users/user-name/my_app/lib/file.dart:10:5)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(
@@ -253,7 +256,7 @@ void main() {
         const frame =
             '#0      _AssertionError._throwNew (dart:core-patch/errors_patch.dart:46:39)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, '_AssertionError._throwNew');
@@ -266,7 +269,7 @@ void main() {
         const frame =
             '#1      MyWidget.build (package:flutter_app/widgets/my_widget.dart:89:12)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'MyWidget.build');
@@ -278,7 +281,7 @@ void main() {
       test('parses Flutter Web production stack trace', () {
         const frame = 'packages/flutter/src/widgets/framework.dart:5000:15';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.file, 'packages/flutter/src/widgets/framework.dart');
@@ -289,7 +292,7 @@ void main() {
         const frame =
             '#2      main (file:///C:/Users/Developer/Projects/app/lib/main.dart:25:7)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'main');
@@ -305,7 +308,7 @@ void main() {
         const frame =
             '#3      AppState.initState (file:///Users/dev/flutter_app/lib/app.dart:150:3)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'AppState.initState');
@@ -318,7 +321,7 @@ void main() {
         const frame =
             '#4      DatabaseService.query (file:///home/user/projects/app/lib/db.dart:200:9)';
 
-        final result = parseStackFrame(frame);
+        final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
         expect(result!.callerMethod, 'DatabaseService.query');
@@ -332,6 +335,7 @@ void main() {
   group('StackFrameInfo', () {
     test('callerLocation returns simplified location', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'MyClass.method',
         file: 'package:my_app/services/my_service.dart',
         line: 42,
@@ -343,6 +347,7 @@ void main() {
 
     test('callerLocation handles file:// URIs', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'main',
         file: 'file:///Users/dev/app/lib/main.dart',
         line: 123,
@@ -353,27 +358,30 @@ void main() {
 
     test('callerName returns file name without extension', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'MyClass.method',
         file: 'package:my_app/services/my_service.dart',
         line: 42,
         column: 10,
       );
 
-      expect(info.callerName, 'my_service');
+      expect(info.callerFileName, 'my_service');
     });
 
     test('callerName handles file:// URIs', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'main',
         file: 'file:///Users/dev/app/lib/main.dart',
         line: 123,
       );
 
-      expect(info.callerName, 'main');
+      expect(info.callerFileName, 'main');
     });
 
     test('callerClassName extracts class from simple method', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'UserService.processUser',
         file: 'package:app/user_service.dart',
         line: 168,
@@ -385,6 +393,7 @@ void main() {
 
     test('callerClassName extracts class from nested class', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'OuterClass.InnerClass.method',
         file: 'package:app/nested.dart',
         line: 50,
@@ -396,6 +405,7 @@ void main() {
 
     test('callerClassName extracts class from closure', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'MyClass.method.<anonymous closure>',
         file: 'package:app/closures.dart',
         line: 75,
@@ -407,6 +417,7 @@ void main() {
 
     test('callerClassName returns null for top-level function', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'main',
         file: 'file:///path/to/main.dart',
         line: 10,
@@ -417,6 +428,7 @@ void main() {
 
     test('callerClassName returns null for doSomething function', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'doSomething',
         file: 'package:app/utils.dart',
         line: 99,
@@ -427,6 +439,7 @@ void main() {
 
     test('callerClassName returns null for <unknown>', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: '<unknown>',
         file: 'my_file.dart',
         line: 42,
@@ -437,6 +450,7 @@ void main() {
 
     test('toString returns full debug information', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'UserService.processUser',
         file: 'package:app/user_service.dart',
         line: 168,
@@ -451,6 +465,7 @@ void main() {
 
     test('toString handles null column', () {
       final info = StackFrameInfo(
+        stackTrace: testStackTrace,
         callerMethod: 'helper',
         file: 'package:app/utils.dart',
         line: 50,
@@ -561,7 +576,7 @@ void main() {
 #0      MyClass.method (package:my_app/services/my_service.dart:42:10)
 ''');
 
-      final result = getCallerInfo(stackTrace)?.callerName;
+      final result = getCallerInfo(stackTrace)?.callerFileName;
 
       expect(result, 'my_service');
     });
