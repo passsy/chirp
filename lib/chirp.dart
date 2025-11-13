@@ -86,6 +86,22 @@ class Chirp {
     );
   }
 
+  static void notice(
+    Object? message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
+  }) {
+    root.notice(
+      message,
+      error: error,
+      stackTrace: stackTrace,
+      data: data,
+      formatOptions: formatOptions,
+    );
+  }
+
   static void warning(
     Object? message, {
     Object? error,
@@ -309,6 +325,34 @@ class ChirpLogger {
 
     final entry = LogRecord(
       message: message,
+      // ignore: avoid_redundant_argument_values
+      level: ChirpLogLevel.info,
+      error: error,
+      stackTrace: stackTrace,
+      caller: caller,
+      date: clock.now(),
+      loggerName: name,
+      instance: instance,
+      data: _mergeData(context, data),
+      formatOptions: formatOptions,
+    );
+
+    _logRecord(entry);
+  }
+
+  /// Log a notice message
+  void notice(
+    Object? message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
+  }) {
+    final caller = StackTrace.current;
+
+    final entry = LogRecord(
+      message: message,
+      level: ChirpLogLevel.notice,
       error: error,
       stackTrace: stackTrace,
       caller: caller,

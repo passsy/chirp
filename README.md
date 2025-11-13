@@ -11,7 +11,7 @@ A lightweight, flexible logging library for Dart with instance tracking, child l
 - **Named Loggers**: Create loggers for different subsystems (HTTP, Database, etc.)
 - **Structured Logging**: Attach key-value data to log entries for machine-readable logs
 - **Contextual Logging**: Per-request/per-transaction loggers with automatic context propagation
-- **Flexible Log Levels**: 7 built-in levels (trace, debug, info, warning, error, critical, wtf) plus support for custom levels
+- **Flexible Log Levels**: 8 built-in levels (trace, debug, info, notice, warning, error, critical, wtf) plus support for custom levels
 - **Multiple Formats**: Compact, structural JSON and Rainbow formatters included
 - **Multiple Writers**: Send logs to multiple destinations with different formats per writer
 
@@ -33,6 +33,7 @@ import 'package:chirp/chirp.dart';
 Chirp.trace('Detailed trace information');
 Chirp.debug('Debug information');
 Chirp.info('Application started');
+Chirp.notice('User role changed'); // Normal but significant events
 Chirp.warning('Deprecated API used');
 Chirp.error('Failed to connect', error: e, stackTrace: st);
 Chirp.critical('Database connection lost');
@@ -230,13 +231,14 @@ logger.info('Processing request');
 
 ### Log Levels
 
-Chirp provides 7 semantic log levels with comprehensive documentation:
+Chirp provides 8 semantic log levels with comprehensive documentation:
 
 | Level | Severity | Use For | Example |
 |-------|----------|---------|---------|
 | **trace** | 0 | Most detailed execution flow | Loop iterations, variable values |
 | **debug** | 100 | Diagnostic information | Function parameters, state changes |
 | **info** | 200 | Routine operational messages (DEFAULT) | App started, request completed |
+| **notice** | 300 | Normal but significant events | Security events, configuration changes |
 | **warning** | 400 | Potentially problematic situations | Deprecated usage, resource limits |
 | **error** | 500 | Errors that prevent specific operations | API failures, validation errors |
 | **critical** | 600 | Severe errors affecting core functionality | Database connection lost |
@@ -246,6 +248,7 @@ Chirp provides 7 semantic log levels with comprehensive documentation:
 Chirp.trace('Entering loop iteration', data: {'i': 42});
 Chirp.debug('Cache miss for key: $key');
 Chirp.info('User logged in', data: {'userId': 'user_123'});
+Chirp.notice('User role changed', data: {'userId': 'user_123', 'oldRole': 'user', 'newRole': 'admin'});
 Chirp.warning('API rate limit approaching', data: {'used': 950, 'limit': 1000});
 Chirp.error('Payment failed', error: e, stackTrace: st);
 Chirp.critical('Database connection lost', data: {'attempt': 3});
@@ -304,6 +307,7 @@ Chirp.error(
 - `trace` (0-99) → `DEFAULT`
 - `debug` (100-199) → `DEBUG`
 - `info` (200-299) → `INFO`
+- `notice` (300-399) → `NOTICE`
 - `warning` (400-499) → `WARNING`
 - `error` (500-599) → `ERROR`
 - `critical` (600-699) → `CRITICAL`
@@ -453,7 +457,7 @@ All logs from this request will include `requestId`, `method`, `path`, and (afte
 ## Examples
 
 See [example/main.dart](example/main.dart) for a comprehensive example covering:
-- All 7 log levels (trace through wtf)
+- All 8 log levels (trace through wtf)
 - Named loggers with structured data
 - Child loggers for per-request context
 - Instance tracking with `.chirp` extension

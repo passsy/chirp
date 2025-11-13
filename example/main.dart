@@ -47,13 +47,14 @@ void basicInstanceLoggingExample() {
   userService.processUser('robin');
 }
 
-/// Demonstrates all 7 log levels
+/// Demonstrates all 8 log levels
 void allLogLevelsExample() {
   Chirp.trace('Detailed execution trace', data: {'step': 1});
   Chirp.debug('Debug information', data: {'cache': 'miss'});
   Chirp.info('Application started info');
+  Chirp.notice('Device connected', data: {'id': '32168', 'name': 'DPE 2'});
   Chirp.log('Application started custom level 600',
-      level: const ChirpLogLevel('alert', 600));
+      level: const ChirpLogLevel('myAlert', 600));
   Chirp.warning('Deprecated API used warning', data: {'api': 'v1'});
   Chirp.error('Operation failed error', error: Exception('Timeout'));
   Chirp.critical('Database connection lost (critical)');

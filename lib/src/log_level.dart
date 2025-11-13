@@ -7,6 +7,7 @@
 /// - trace (0) - Most detailed information
 /// - debug (100) - Debug information
 /// - info (200) - Routine information
+/// - notice (300) - Normal but significant events
 /// - warning (400) - Warning events
 /// - error (500) - Error events
 /// - critical (600) - Critical events
@@ -64,6 +65,21 @@ class ChirpLogLevel {
   /// Standard production logging level. Should be meaningful to operators.
   /// Severity: 200 (default)
   static const info = ChirpLogLevel('info', 200);
+
+  /// **Notice** - Normal but significant events
+  ///
+  /// Use for:
+  /// - Important state transitions
+  /// - Security events (successful login, permission changes)
+  /// - Configuration changes applied
+  /// - Significant business events
+  /// - Data migrations started/completed
+  /// - System mode changes (maintenance mode, read-only mode)
+  ///
+  /// More significant than info but not a warning. Commonly used in
+  /// GCP Cloud Logging, Syslog, and other logging systems.
+  /// Severity: 300
+  static const notice = ChirpLogLevel('notice', 300);
 
   /// **Warning** - Potentially problematic situations
   ///

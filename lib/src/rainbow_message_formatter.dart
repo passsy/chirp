@@ -121,16 +121,20 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
     double saturation = 0.5;
     double lightness = 0.8;
 
-    if (entry.error != null) {
+    if (entry.level.severity >= 500) {
       // Use red color for errors/exceptions
       hue = 0.0; // Red
       saturation = 0.8;
       lightness = 0.6;
-    } else if (entry.level.severity == 400) {
+    } else if (entry.level.severity >= 400) {
       // Use orange color for warnings
       hue = 30.0 / 360.0; // Orange
       saturation = 0.8;
       lightness = 0.6;
+    } else if (entry.level.severity >= 300) {
+      // White for notices
+      hue = 0.0;
+      saturation = 0.0; // white
     } else {
       final hashableThing = () {
         if (entry.instance != null) {
@@ -178,8 +182,10 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
           lightness = minLightness + lightnessOffset;
         }
       } else {
+        // default grey
         hue = 0.0;
-        saturation = 0.0; // white
+        lightness = 0.5;
+        saturation = 0.0;
       }
     }
 
@@ -242,7 +248,7 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
     // Use effectiveOptions from top of method
     // Use grey for data on info/debug/trace, main color for warnings/errors
     final greyPenForData = AnsiPen()..rgb(r: 0.5, g: 0.5, b: 0.5);
-    final dataPen = entry.level.severity < 400 ? greyPenForData : pen;
+    final dataPen = entry.level.severity < 300 ? greyPenForData : pen;
     final coloredDataLines = dataStr.isNotEmpty &&
             effectiveOptions.data == DataPresentation.multiline
         ? dataStr.split('\n').map((line) => dataPen(line)).join('\n')
@@ -256,7 +262,7 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
         : '';
 
     // Use grey color for stacktraces on info/debug/trace levels
-    final stackTracePen = entry.level.severity < 400
+    final stackTracePen = entry.level.severity < 300
         ? (AnsiPen()..rgb(r: 0.5, g: 0.5, b: 0.5)) // Grey
         : pen; // Use main color for warning/error/critical/wtf
     final coloredStackTraceLines = stackTraceLines.isNotEmpty
@@ -268,7 +274,7 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
 
     // Use grey for message text and pipe on info/debug/trace levels
     final greyPen = AnsiPen()..rgb(r: 0.5, g: 0.5, b: 0.5);
-    final messagePen = entry.level.severity < 400 ? greyPen : pen;
+    final messagePen = entry.level.severity < 300 ? greyPen : pen;
     final pipePen = greyPen; // Always grey for pipes
 
     // Plain layout: metadata line in color, then message/data at left margin
