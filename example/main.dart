@@ -18,20 +18,20 @@ void main() {
   Chirp.warning('=== Example 4: Instance Tracking with .chirp Extension ===');
   instanceTrackingExample();
 
-  Chirp.warning('=== Example 5: GCP Cloud Logging Format ===');
-  gcpFormatterExample();
-
-  Chirp.warning('=== Example 6: Multiple Writers (Console + JSON) ===');
-  multipleWritersExample();
-
-  Chirp.warning('=== Example 7: Format Options (Inline vs Multiline Data) ===');
+  Chirp.warning('=== Example 5: Format Options (Inline vs Multiline Data) ===');
   formatOptionsExample();
 
-  Chirp.warning('=== Example 8: Multiline Messages ===');
+  Chirp.warning('=== Example 6: Multiline Messages ===');
   multilineMessagesExample();
 
-  Chirp.warning('=== Example 9: Stacktraces with Different Log Levels ===');
+  Chirp.warning('=== Example 7: Stacktraces with Different Log Levels ===');
   stacktraceLevelsExample();
+
+  Chirp.warning('=== Example 8: GCP Cloud Logging Format ===');
+  gcpFormatterExample();
+
+  Chirp.warning('=== Example 9: Multiple Writers (Console + JSON) ===');
+  multipleWritersExample();
 
   // Reset to default
   Chirp.root = ChirpLogger();
@@ -97,14 +97,6 @@ void childLoggerExample() {
     'transactionId': 'TXN-789',
     'action': 'login',
     'cool package': 'https://pub.dev/packages/spot',
-    'pathToFile0':
-        'file:///Users/dev/Projects/MyProject/test/fake/fake_auth_service.dart:119:7',
-    'pathToFile1':
-        'file:///Users/dev/Projects/MyProject/test/fake/fake_auth_service.dart:119:7',
-    'pathToFile2':
-        'file:///Users/dev/Projects/MyProject/test/fake/fake_auth_service.dart:119:7',
-    'pathToFile3':
-        'file:///Users/dev/Projects/MyProject/test/fake/fake_auth_service.dart:119:7',
   });
 
   // Includes requestId, userId, AND transactionId

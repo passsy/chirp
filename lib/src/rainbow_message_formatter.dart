@@ -269,7 +269,7 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
     // Use grey for message text and pipe on info/debug/trace levels
     final greyPen = AnsiPen()..rgb(r: 0.5, g: 0.5, b: 0.5);
     final messagePen = entry.level.severity < 400 ? greyPen : pen;
-    final pipePen = entry.level.severity < 400 ? greyPen : pen;
+    final pipePen = greyPen; // Always grey for pipes
 
     // Plain layout: metadata line in color, then message/data at left margin
     if (effectiveOptions.layout == LayoutStyle.plain) {
@@ -309,6 +309,13 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
 
     // Build final output
     final output = StringBuffer();
+
+    // Add grey pipe separator before warnings/errors for visual separation
+    if (entry.level.severity >= 400) {
+      final indent = ''.padRight(actualMetaWidth);
+      output.write(greyPen('$indent │\n'));
+    }
+
     if (messageLines.length <= 1) {
       output.write(pen(meta));
       output.write(pipePen(' │ '));
