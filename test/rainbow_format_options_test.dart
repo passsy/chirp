@@ -8,7 +8,7 @@ void main() {
     test('formatter with multiline default shows data on separate lines', () {
       final formatter = RainbowMessageFormatter(
         color: false,
-        options: const RainbowFormatOptions(),
+        options: const RainbowFormatOptions(data: DataPresentation.multiline),
       );
 
       final entry = LogRecord(
@@ -82,7 +82,7 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
         formatOptions: const [
-          RainbowFormatOptions(),
+          RainbowFormatOptions(data: DataPresentation.multiline),
         ],
       );
 
@@ -120,7 +120,7 @@ void main() {
     test('null formatOptions uses formatter default', () {
       final formatter = RainbowMessageFormatter(
         color: false,
-        options: const RainbowFormatOptions(),
+        options: const RainbowFormatOptions(data: DataPresentation.multiline),
       );
 
       final entry = LogRecord(

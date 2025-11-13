@@ -366,7 +366,7 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
 /// Extends [FormatOptions] to provide type safety for rainbow formatter options.
 class RainbowFormatOptions extends FormatOptions {
   const RainbowFormatOptions({
-    this.data = DataPresentation.multiline,
+    this.data = DataPresentation.inline,
     this.layout = LayoutStyle.aligned,
   });
 

@@ -41,7 +41,9 @@ void main() {
     });
 
     test('pipe alignment with different label lengths', () {
-      final formatter = RainbowMessageFormatter();
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(data: DataPresentation.multiline),
+      );
 
       // Test with short label
       final shortEntry = LogRecord(
@@ -350,8 +352,10 @@ void main() {
   });
 
   group('RainbowMessageFormatter format options', () {
-    test('writes data on separate lines by default (multiline)', () {
-      final formatter = RainbowMessageFormatter();
+    test('writes data on separate lines with multiline option', () {
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(data: DataPresentation.multiline),
+      );
       final entry = LogRecord(
         message: 'Test message',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
