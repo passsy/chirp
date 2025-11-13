@@ -29,6 +29,9 @@ void main() {
   print('\n=== Example 8: Multiline Messages ===');
   multilineMessagesExample();
 
+  print('\n=== Example 9: Stacktraces with Different Log Levels ===');
+  stacktraceLevelsExample();
+
   // Reset to default
   Chirp.root = ChirpLogger();
 
@@ -238,6 +241,37 @@ void multilineMessagesExample() {
 
   // Reset
   Chirp.root = ChirpLogger();
+}
+
+/// Demonstrates how stacktraces are colored differently based on log level
+void stacktraceLevelsExample() {
+  // Info level with stacktrace - stacktrace appears in grey
+  Chirp.info(
+    'Debug checkpoint reached',
+    stackTrace: StackTrace.current,
+  );
+
+  // Warning level with stacktrace - stacktrace appears in warning color
+  Chirp.warning(
+    'Deprecated method called',
+    stackTrace: StackTrace.current,
+    data: {'method': 'oldApiCall'},
+  );
+
+  // Error level with error and stacktrace - both appear in error color
+  Chirp.error(
+    'Failed to process request',
+    error: Exception('Connection timeout'),
+    stackTrace: StackTrace.current,
+    data: {'retries': 3},
+  );
+
+  // Debug level with stacktrace - stacktrace appears in grey
+  Chirp.debug(
+    'Entering critical section',
+    stackTrace: StackTrace.current,
+    data: {'threadId': 42},
+  );
 }
 
 class UserService {

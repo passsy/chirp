@@ -77,7 +77,7 @@ void main() {
     });
 
     test('pipe alignment with multiline message', () {
-      final formatter = RainbowMessageFormatter();
+      final formatter = RainbowMessageFormatter(color: false);
       final entry = LogRecord(
         message: 'Line 1\nLine 2\nLine 3',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
@@ -87,9 +87,26 @@ void main() {
       final result = formatter.format(entry);
       final lines = result.split('\n');
 
-      // First line should have the pipe
+      // First line should have the pipe with first message line
+      expect(lines[0], contains('│ Line 1'));
+
+      // Find the pipe position in first line
       final mainPipePos = _findPipePosition(lines[0]);
       expect(mainPipePos, isNot(-1));
+
+      // Second and third lines should have pipes at same position with message content
+      expect(lines[1], contains('│ Line 2'));
+      expect(lines[2], contains('│ Line 3'));
+
+      final line2PipePos = _findPipePosition(lines[1]);
+      final line3PipePos = _findPipePosition(lines[2]);
+
+      expect(line2PipePos, mainPipePos,
+          reason:
+              'Line 2 pipe at position $line2PipePos should align with main pipe at $mainPipePos');
+      expect(line3PipePos, mainPipePos,
+          reason:
+              'Line 3 pipe at position $line3PipePos should align with main pipe at $mainPipePos');
 
       // Find data lines (they contain '=')
       for (var i = 0; i < lines.length; i++) {
@@ -102,6 +119,27 @@ void main() {
           );
         }
       }
+    });
+
+    test('multiline message first line is on same line as metadata', () {
+      final formatter = RainbowMessageFormatter(color: false);
+      final entry = LogRecord(
+        message: 'First line\nSecond line',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+      );
+
+      final result = formatter.format(entry);
+      final lines = result.split('\n');
+
+      // Should have exactly 2 lines (no empty line)
+      expect(lines.length, 2);
+
+      // First line should contain metadata and first message line
+      expect(lines[0], contains('│ First line'));
+      expect(lines[0], contains('10:23:45.123'));
+
+      // Second line should be indented with pipe
+      expect(lines[1], contains('│ Second line'));
     });
 
     test('pipe alignment when label is very long (exceeds metaWidth)', () {
@@ -461,6 +499,148 @@ void main() {
       // Check specific stack frames are indented
       expect(result, contains('  #0      main'));
       expect(result, contains('  #1      test'));
+    });
+  });
+
+  group('plain layout', () {
+    test('plain layout outputs only message, no metadata', () {
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(layout: LayoutStyle.plain),
+      );
+      final entry = LogRecord(
+        message: 'Simple message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+      );
+
+      final result = formatter.format(entry);
+
+      expect(result, 'Simple message');
+      // No timestamp
+      expect(result, isNot(contains('10:23:45')));
+      // No pipes
+      expect(result, isNot(contains('│')));
+    });
+
+    test('plain layout with data outputs message and data', () {
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(layout: LayoutStyle.plain),
+      );
+      final entry = LogRecord(
+        message: 'User action',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        data: {
+          'userId': 'user_123',
+          'action': 'login',
+        },
+      );
+
+      final result = formatter.format(entry);
+
+      expect(result, contains('User action'));
+      expect(result, contains('userId=user_123'));
+      expect(result, contains('action=login'));
+      // No metadata
+      expect(result, isNot(contains('10:23:45')));
+      expect(result, isNot(contains('│')));
+    });
+
+    test('plain layout with multiline message', () {
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(layout: LayoutStyle.plain),
+      );
+      final entry = LogRecord(
+        message: 'Line 1\nLine 2\nLine 3',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+      );
+
+      final result = formatter.format(entry);
+
+      expect(result, 'Line 1\nLine 2\nLine 3');
+      // No metadata or formatting
+      expect(result, isNot(contains('10:23:45')));
+      expect(result, isNot(contains('│')));
+      expect(result, isNot(contains('=')));
+    });
+
+    test('plain layout with error and stacktrace', () {
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(layout: LayoutStyle.plain),
+      );
+      final entry = LogRecord(
+        message: 'Error occurred',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        error: Exception('Test error'),
+        stackTrace: StackTrace.fromString('#0      main\n#1      test'),
+      );
+
+      final result = formatter.format(entry);
+
+      expect(result, contains('Error occurred'));
+      expect(result, contains('Exception: Test error'));
+      expect(result, contains('#0      main'));
+      expect(result, contains('#1      test'));
+      // No metadata
+      expect(result, isNot(contains('10:23:45')));
+    });
+
+    test('plain layout with only data, no message', () {
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(layout: LayoutStyle.plain),
+      );
+      final entry = LogRecord(
+        message: '',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        data: {
+          'key1': 'value1',
+          'key2': 'value2',
+        },
+      );
+
+      final result = formatter.format(entry);
+
+      expect(result, contains('key1=value1'));
+      expect(result, contains('key2=value2'));
+      // Should start with data, not an empty line
+      expect(result, startsWith('key'));
+    });
+
+    test('per-message plain layout overrides aligned formatter', () {
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(layout: LayoutStyle.aligned),
+      );
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        data: {'key': 'value'},
+        formatOptions: const [
+          RainbowFormatOptions(layout: LayoutStyle.plain),
+        ],
+      );
+
+      final result = formatter.format(entry);
+
+      // Should use plain layout despite formatter default being standard
+      expect(result, contains('Test message'));
+      expect(result, contains('key=value'));
+      expect(result, isNot(contains('10:23:45')));
+      expect(result, isNot(contains('│')));
+    });
+
+    test('plain layout has no ANSI color codes', () {
+      final formatter = RainbowMessageFormatter(
+        color: true, // Enable color
+        options: const RainbowFormatOptions(layout: LayoutStyle.plain),
+      );
+      final entry = LogRecord(
+        message: 'Colored message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+      );
+
+      final result = formatter.format(entry);
+
+      // Should have no ANSI codes
+      expect(result, isNot(contains('\x1B[')));
+      expect(result, 'Colored message');
     });
   });
 }

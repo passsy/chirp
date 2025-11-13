@@ -52,6 +52,43 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
   String format(LogRecord entry) {
     ansiColorDisabled = !color;
 
+    // Check for plain layout option
+    final effectiveOptions = options.merge(
+        entry.formatOptions?.firstWhereTypeOrNull<RainbowFormatOptions>());
+    if (effectiveOptions.layout == LayoutStyle.plain) {
+      // Plain layout: just message and data at left margin, no formatting
+      final buffer = StringBuffer();
+
+      // Add message
+      final messageStr = entry.message?.toString() ?? '';
+      buffer.write(messageStr);
+
+      // Add data
+      if (entry.data != null && entry.data!.isNotEmpty) {
+        if (messageStr.isNotEmpty) {
+          buffer.write('\n');
+        }
+        for (final dataEntry in entry.data!.entries) {
+          buffer.write('${dataEntry.key}=${dataEntry.value}\n');
+        }
+        // Remove trailing newline
+        final result = buffer.toString();
+        return result.substring(0, result.length - 1);
+      }
+
+      // Add error/stacktrace if present
+      if (entry.error != null) {
+        buffer.write('\n');
+        buffer.write(entry.error.toString());
+      }
+      if (entry.stackTrace != null) {
+        buffer.write('\n');
+        buffer.write(entry.stackTrace.toString());
+      }
+
+      return buffer.toString();
+    }
+
     final StackFrameInfo? callerInfo = () {
       if (entry.caller != null) {
         return getCallerInfo(entry.caller!);
@@ -122,6 +159,11 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
       hue = 0.0; // Red
       saturation = 0.7;
       lightness = 0.6;
+    } else if (entry.level.severity == 400) {
+      // Use orange color for warnings
+      hue = 30.0 / 360.0; // Orange
+      saturation = 0.7;
+      lightness = 0.6;
     } else {
       final hashableThing = () {
         if (entry.instance != null) {
@@ -138,8 +180,8 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
         return null;
       }();
       if (hashableThing != null) {
-        // Hue varies by class name, avoiding red shades (reserved for errors)
-        // Hue range: 60° to 300° (yellow → green → cyan → blue → magenta, skipping red)
+        // Hue varies by class name, avoiding red/orange (reserved for errors/warnings)
+        // Hue range: 60° to 300° (yellow → green → cyan → blue → magenta, skipping red and orange)
         final hash = hashableThing.hashCode;
         const minHue = 60.0;
         const maxHue = 300.0;
@@ -213,19 +255,13 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
     }
 
     // Build exception/stack trace lines
-    final buffer = StringBuffer();
-    if (entry.error != null) {
-      buffer.write('\n${entry.error}');
-    }
-    if (entry.stackTrace != null) {
-      buffer.write('\n${entry.stackTrace}');
-    }
-    final extraLines = buffer.toString();
+    final errorLines = entry.error != null ? '\n${entry.error}' : '';
+    final stackTraceLines =
+        entry.stackTrace != null ? '\n${entry.stackTrace}' : '';
 
     // Format output with color
     final dataStr = dataBuffer.toString();
-    final effectiveOptions = options.merge(
-        entry.formatOptions?.firstWhereTypeOrNull<RainbowFormatOptions>());
+    // Use effectiveOptions from top of method
     final coloredDataLines = dataStr.isNotEmpty &&
             effectiveOptions.data == DataPresentation.multiline
         ? dataStr.split('\n').map((line) => pen(line)).join('\n')
@@ -234,8 +270,16 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
         dataStr.isNotEmpty && effectiveOptions.data == DataPresentation.inline
             ? pen(dataStr)
             : '';
-    final coloredExtraLines = extraLines.isNotEmpty
-        ? extraLines.split('\n').map((line) => pen('  $line')).join('\n')
+    final coloredErrorLines = errorLines.isNotEmpty
+        ? errorLines.split('\n').map((line) => pen('  $line')).join('\n')
+        : '';
+
+    // Use grey color for stacktraces on info/debug/trace levels
+    final stackTracePen = entry.level.severity < 400
+        ? (AnsiPen()..rgb(r: 0.5, g: 0.5, b: 0.5)) // Grey
+        : pen; // Use main color for warning/error/critical/wtf
+    final coloredStackTraceLines = stackTraceLines.isNotEmpty
+        ? stackTraceLines.split('\n').map((line) => stackTracePen('  $line')).join('\n')
         : '';
 
     // Build final output
@@ -248,24 +292,38 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
       if (coloredDataLines.isNotEmpty) {
         output.write(coloredDataLines);
       }
-      if (coloredExtraLines.isNotEmpty) {
-        output.write(coloredExtraLines);
+      if (coloredErrorLines.isNotEmpty) {
+        output.write(coloredErrorLines);
+      }
+      if (coloredStackTraceLines.isNotEmpty) {
+        output.write(coloredStackTraceLines);
       }
     } else {
-      // Multiline message: indent all lines to align with │
+      // Multiline message: first line after pipe, remaining lines indented
       final indent = ''.padRight(actualMetaWidth);
       output.write(pen(meta));
-      output.write(pen(' │ \n'));
-      output.write(
-          messageLines.map((line) => pen('$indent │ $line')).join('\n'));
+      output.write(pen(' │ '));
+      // First line directly after pipe
+      output.write(pen(messageLines[0]));
+      // Remaining lines indented with pipe
+      if (messageLines.length > 1) {
+        output.write('\n');
+        output.write(messageLines
+            .skip(1)
+            .map((line) => pen('$indent │ $line'))
+            .join('\n'));
+      }
       if (inlineDataStr.isNotEmpty) {
         output.write(inlineDataStr);
       }
       if (coloredDataLines.isNotEmpty) {
         output.write(coloredDataLines);
       }
-      if (coloredExtraLines.isNotEmpty) {
-        output.write(coloredExtraLines);
+      if (coloredErrorLines.isNotEmpty) {
+        output.write(coloredErrorLines);
+      }
+      if (coloredStackTraceLines.isNotEmpty) {
+        output.write(coloredStackTraceLines);
       }
     }
 
@@ -277,17 +335,38 @@ class RainbowMessageFormatter extends ChirpMessageFormatter {
 ///
 /// Extends [FormatOptions] to provide type safety for rainbow formatter options.
 class RainbowFormatOptions extends FormatOptions {
-  const RainbowFormatOptions({this.data = DataPresentation.multiline});
+  const RainbowFormatOptions({
+    this.data = DataPresentation.multiline,
+    this.layout = LayoutStyle.aligned,
+  });
 
   final DataPresentation data;
+  final LayoutStyle layout;
 
   /// Merge this options with another, preferring values from [other]
   RainbowFormatOptions merge(RainbowFormatOptions? other) {
     final merged = RainbowFormatOptions(
       data: other?.data ?? data,
+      layout: other?.layout ?? layout,
     );
     return merged;
   }
+}
+
+enum LayoutStyle {
+  /// Aligned layout with metadata, pipes, colors, and indentation
+  aligned,
+
+  /// Plain layout - only message and data at left margin, no metadata or formatting
+  ///
+  /// Useful for copying output without needing to strip formatting.
+  /// Example output:
+  /// ```txt
+  /// Line 1
+  /// Line 2
+  /// key=value
+  /// ```
+  plain,
 }
 
 enum DataPresentation {
