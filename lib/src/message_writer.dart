@@ -1,4 +1,4 @@
-import 'package:chirp/src/log_entry.dart';
+import 'package:chirp/src/log_record.dart';
 import 'package:chirp/src/message_formatter.dart';
 import 'package:chirp/src/rainbow_message_formatter.dart';
 
@@ -15,9 +15,7 @@ class ConsoleChirpMessageWriter implements ChirpMessageWriter {
   ConsoleChirpMessageWriter({
     ChirpMessageFormatter? formatter,
     void Function(String)? output,
-  })  : formatter = formatter ??
-            RainbowMessageFormatter(
-                options: const RainbowFormatOptions(data: DataPresentation.inline)),
+  })  : formatter = formatter ?? RainbowMessageFormatter(),
         output = output ?? print;
 
   @override

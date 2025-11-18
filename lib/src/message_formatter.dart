@@ -23,8 +23,9 @@ class CompactChirpMessageFormatter extends ChirpMessageFormatter {
     final formattedTime = '$hour:$minute:$second.$ms';
 
     // Try to get caller location first
-    final String? callerLocation =
-        entry.caller != null ? getCallerInfo(entry.caller!)?.callerLocation : null;
+    final String? callerLocation = entry.caller != null
+        ? getCallerInfo(entry.caller!)?.callerLocation
+        : null;
 
     final className = entry.loggerName ??
         callerLocation ??

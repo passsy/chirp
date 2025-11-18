@@ -1,6 +1,6 @@
-import 'package:chirp/src/format_option.dart';
-import 'package:chirp/src/log_entry.dart';
-import 'package:chirp/src/rainbow_message_formatter.dart';
+// ignore_for_file: avoid_redundant_argument_values
+
+import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
 void main() {

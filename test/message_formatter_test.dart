@@ -1,5 +1,4 @@
-import 'package:chirp/src/log_entry.dart';
-import 'package:chirp/src/message_formatter.dart';
+import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
 void main() {

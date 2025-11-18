@@ -145,7 +145,7 @@ void main() {
       final noticeEntry = LogRecord(
         message: 'Notice',
         date: now,
-        level: const ChirpLogLevel('notice', 300),
+        level: ChirpLogLevel.notice,
       );
       expect(formatter.format(noticeEntry), contains('"severity":"NOTICE"'));
 
