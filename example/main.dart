@@ -122,7 +122,7 @@ void instanceTrackingExample() {
 void gcpFormatterExample() {
   Chirp.root = ChirpLogger(
     writers: [
-      ConsoleChirpMessageWriter(
+      ConsoleAppender(
         formatter: GcpChirpMessageFormatter(
           projectId: 'my-project',
           logName: 'application-logs',
@@ -153,13 +153,13 @@ void multipleWritersExample() {
   Chirp.root = ChirpLogger(
     writers: [
       // Human-readable format for console
-      ConsoleChirpMessageWriter(
+      ConsoleAppender(
         formatter: CompactChirpMessageFormatter(),
         output: (msg) => print('[CONSOLE] $msg'),
       ),
       // Machine-readable JSON
-      ConsoleChirpMessageWriter(
-        formatter: JsonChirpMessageFormatter(),
+      ConsoleAppender(
+        formatter: JsonMessageFormatter(),
         output: (msg) => print('[JSON] $msg'),
       ),
     ],
@@ -176,7 +176,7 @@ void formatOptionsExample() {
   // Multiline data display (default)
   Chirp.root = ChirpLogger(
     writers: [
-      ConsoleChirpMessageWriter(
+      ConsoleAppender(
         formatter: RainbowMessageFormatter(
           options: const RainbowFormatOptions(data: DataPresentation.multiline),
         ),

@@ -1,5 +1,6 @@
 import 'package:chirp/src/format_option.dart';
 import 'package:chirp/src/log_level.dart';
+import 'package:chirp/src/stack_trace_util.dart';
 
 class LogRecord {
   /// The log message
@@ -20,8 +21,8 @@ class LogRecord {
   /// The stacktrace of the log method call
   final StackTrace? caller;
 
-  /// Resolved class name (after transformers)
-  final String? className;
+  /// Number of stack frames to skip when resolving caller info
+  final int skipFrames;
 
   /// Original instance that logged this
   final Object? instance;
@@ -44,9 +45,9 @@ class LogRecord {
     this.level = ChirpLogLevel.info,
     this.error,
     this.stackTrace,
-    this.className,
     this.instance,
     this.caller,
+    this.skipFrames = 0,
     this.loggerName,
     this.data,
     this.formatOptions,
@@ -57,5 +58,35 @@ extension LogEntryExt on LogRecord {
   int? get instanceHash {
     if (instance == null) return null;
     return identityHashCode(instance);
+  }
+
+  /// Extracts caller info from this record's stack trace
+  StackFrameInfo? get callerInfo {
+    if (caller == null) return null;
+    return getCallerInfo(caller!, skipFrames: skipFrames);
+  }
+
+  /// Returns formatted time string like "HH:mm:ss.mmm"
+  String get formattedTime {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
+    final ms = date.millisecond.toString().padLeft(3, '0');
+    return '$hour:$minute:$second.$ms';
+  }
+
+  /// Returns a formatted instance identifier like "ClassName@a1b2"
+  ///
+  /// Uses [resolveClassName] to get the class name if provided,
+  /// otherwise falls back to runtimeType.
+  String? instanceLabel([String Function(Object)? resolveClassName]) {
+    if (instance == null) return null;
+    final className =
+        resolveClassName?.call(instance!) ?? instance.runtimeType.toString();
+    final hash = instanceHash ?? 0;
+    final hashHex = hash.toRadixString(16).padLeft(4, '0');
+    final shortHash =
+        hashHex.substring(hashHex.length >= 4 ? hashHex.length - 4 : 0);
+    return '$className@$shortHash';
   }
 }

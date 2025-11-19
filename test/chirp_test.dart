@@ -18,7 +18,7 @@ void main() {
       final logger = ChirpLogger(
         name: 'HTTP',
         writers: [
-          ConsoleChirpMessageWriter(
+          ConsoleAppender(
             formatter: CompactChirpMessageFormatter(),
             output: messages.add,
           ),
@@ -38,7 +38,7 @@ void main() {
 
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleChirpMessageWriter(
+          ConsoleAppender(
             formatter: CompactChirpMessageFormatter(),
             output: messages.add,
           ),
@@ -59,7 +59,7 @@ void main() {
       final logger = ChirpLogger(
         name: 'ErrorLogger',
         writers: [
-          ConsoleChirpMessageWriter(
+          ConsoleAppender(
             formatter: CompactChirpMessageFormatter(),
             output: messages.add,
           ),
@@ -90,7 +90,7 @@ void main() {
       Chirp.root = ChirpLogger(
         name: 'CustomRoot',
         writers: [
-          ConsoleChirpMessageWriter(
+          ConsoleAppender(
             formatter: CompactChirpMessageFormatter(),
             output: messages.add,
           ),

@@ -16,7 +16,9 @@ void main() {
         },
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final lines = result.split('\n');
 
       // Find the position of │ in the first line (main line)
@@ -54,7 +56,9 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final shortResult = formatter.format(shortEntry);
+      final shortBuilder = ConsoleMessageBuilder();
+      formatter.format(shortEntry, shortBuilder);
+      final shortResult = shortBuilder.build();
       final shortLines = shortResult.split('\n');
       final shortMainPipe = _findPipePosition(shortLines[0]);
       final shortDataPipe = _findPipePosition(shortLines[1]);
@@ -70,7 +74,9 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final longResult = formatter.format(longEntry);
+      final longBuilder = ConsoleMessageBuilder();
+      formatter.format(longEntry, longBuilder);
+      final longResult = longBuilder.build();
       final longLines = longResult.split('\n');
       final longMainPipe = _findPipePosition(longLines[0]);
       final longDataPipe = _findPipePosition(longLines[1]);
@@ -80,14 +86,16 @@ void main() {
     });
 
     test('pipe alignment with multiline message', () {
-      final formatter = RainbowMessageFormatter(color: false);
+      final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Line 1\nLine 2\nLine 3',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {'key': 'value'},
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final lines = result.split('\n');
 
       // First line should have the pipe with first message line
@@ -125,13 +133,15 @@ void main() {
     });
 
     test('multiline message first line is on same line as metadata', () {
-      final formatter = RainbowMessageFormatter(color: false);
+      final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'First line\nSecond line',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final lines = result.split('\n');
 
       // Should have exactly 2 lines (no empty line)
@@ -157,7 +167,9 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final lines = result.split('\n');
 
       // Find the main line with the message
@@ -197,7 +209,9 @@ void main() {
         ),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
 
       // Should show cleaned method name without anonymous closures
@@ -215,7 +229,9 @@ void main() {
         ),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
 
       expect(cleanResult, contains('logStatic'));
@@ -232,7 +248,9 @@ void main() {
         ),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
 
       expect(cleanResult, contains('processData'));
@@ -251,7 +269,9 @@ void main() {
         ),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
 
       expect(cleanResult, contains('myMethod'));
@@ -270,7 +290,9 @@ void main() {
         ),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
 
       expect(cleanResult, contains('normalMethod'));
@@ -290,7 +312,9 @@ void main() {
         ),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
 
       // Should show cleaned method name
@@ -309,20 +333,24 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder(useColors: true);
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should contain ANSI escape codes
       expect(result, contains(RegExp(r'\x1B\[')));
     });
 
     test('excludes ANSI color codes when color is false', () {
-      final formatter = RainbowMessageFormatter(color: false);
+      final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder(useColors: false);
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should not contain ANSI escape codes
       expect(result, isNot(contains(RegExp(r'\x1B\['))));
@@ -332,7 +360,7 @@ void main() {
     });
 
     test('color:false produces plain text output', () {
-      final formatter = RainbowMessageFormatter(color: false);
+      final formatter = RainbowMessageFormatter();
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
@@ -341,7 +369,9 @@ void main() {
         loggerName: 'TestLogger',
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder(useColors: false);
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Result should be the same as stripped version (no ANSI codes)
       expect(result, _stripAnsiCodes(result));
@@ -366,7 +396,9 @@ void main() {
         },
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
       final lines = cleanResult.split('\n');
 
@@ -389,7 +421,9 @@ void main() {
         },
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
 
       // Should be single line
@@ -415,7 +449,9 @@ void main() {
         },
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
 
       // Everything should be on one line
@@ -436,7 +472,9 @@ void main() {
         },
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
 
       // Single line with all data
@@ -456,7 +494,9 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final cleanResult = _stripAnsiCodes(result);
 
       // No parentheses when no data
@@ -468,14 +508,16 @@ void main() {
 
   group('RainbowMessageFormatter exception formatting', () {
     test('exceptions are indented with 2 spaces', () {
-      final formatter = RainbowMessageFormatter(color: false);
+      final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Operation failed',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Something went wrong'),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final lines = result.split('\n');
 
       // First line is the main message
@@ -486,7 +528,7 @@ void main() {
     });
 
     test('stack traces are indented with 2 spaces', () {
-      final formatter = RainbowMessageFormatter(color: false);
+      final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Error occurred',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
@@ -495,7 +537,9 @@ void main() {
             '#0      main (file.dart:10:5)\n#1      test (file.dart:20:3)'),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
       final lines = result.split('\n');
 
       // Exception and stack trace lines should be indented
@@ -510,7 +554,6 @@ void main() {
   group('plain layout', () {
     test('plain layout outputs metadata line then message at left margin', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -518,7 +561,9 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should have metadata line with timestamp
       expect(result, contains('10:23:45'));
@@ -532,7 +577,6 @@ void main() {
 
     test('plain layout with data outputs message and data at left margin', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -544,7 +588,9 @@ void main() {
         },
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       expect(result, contains('User action'));
       expect(result, contains('userId=user_123'));
@@ -562,7 +608,6 @@ void main() {
 
     test('plain layout with multiline message', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -570,7 +615,9 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should have metadata line
       expect(result, contains('10:23:45'));
@@ -585,7 +632,6 @@ void main() {
 
     test('plain layout with error and stacktrace', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -595,7 +641,9 @@ void main() {
         stackTrace: StackTrace.fromString('#0      main\n#1      test'),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       expect(result, contains('Error occurred'));
       expect(result, contains('Exception: Test error'));
@@ -607,7 +655,6 @@ void main() {
 
     test('plain layout with only data, no message', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(layout: LayoutStyle.plain),
       );
       final entry = LogRecord(
@@ -619,7 +666,9 @@ void main() {
         },
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       expect(result, contains('key1=value1'));
       expect(result, contains('key2=value2'));
@@ -633,7 +682,6 @@ void main() {
 
     test('per-message plain layout overrides aligned formatter', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(),
       );
       final entry = LogRecord(
@@ -645,7 +693,9 @@ void main() {
         ],
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should use plain layout with metadata line
       expect(result, contains('Test message'));
@@ -668,7 +718,9 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder(useColors: true);
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should have ANSI codes for metadata line
       expect(result, contains('\x1B['));

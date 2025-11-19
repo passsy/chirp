@@ -1,2 +1,2 @@
 // Re-export from message_formatter.dart for backwards compatibility
-export 'message_formatter.dart';
+export 'formatters/message_formatter.dart';

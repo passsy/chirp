@@ -93,7 +93,8 @@ void main() {
         final result = parseStackFrame(testStackTrace, frame);
 
         expect(result, isNotNull);
-        expect(result!.callerMethod, 'MyClass.method.<anonymous closure>');
+        expect(result!.rawCallerMethod, 'MyClass.method.<anonymous closure>');
+        expect(result.callerMethod, 'MyClass.method');
         expect(result.file, 'package:my_app/closures.dart');
         expect(result.line, 75);
         expect(result.column, 20);
@@ -336,7 +337,7 @@ void main() {
     test('callerLocation returns simplified location', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'MyClass.method',
+        rawCallerMethod: 'MyClass.method',
         file: 'package:my_app/services/my_service.dart',
         line: 42,
         column: 10,
@@ -348,7 +349,7 @@ void main() {
     test('callerLocation handles file:// URIs', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'main',
+        rawCallerMethod: 'main',
         file: 'file:///Users/dev/app/lib/main.dart',
         line: 123,
       );
@@ -359,7 +360,7 @@ void main() {
     test('callerName returns file name without extension', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'MyClass.method',
+        rawCallerMethod: 'MyClass.method',
         file: 'package:my_app/services/my_service.dart',
         line: 42,
         column: 10,
@@ -371,7 +372,7 @@ void main() {
     test('callerName handles file:// URIs', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'main',
+        rawCallerMethod: 'main',
         file: 'file:///Users/dev/app/lib/main.dart',
         line: 123,
       );
@@ -382,7 +383,7 @@ void main() {
     test('callerClassName extracts class from simple method', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'UserService.processUser',
+        rawCallerMethod: 'UserService.processUser',
         file: 'package:app/user_service.dart',
         line: 168,
         column: 11,
@@ -394,7 +395,7 @@ void main() {
     test('callerClassName extracts class from nested class', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'OuterClass.InnerClass.method',
+        rawCallerMethod: 'OuterClass.InnerClass.method',
         file: 'package:app/nested.dart',
         line: 50,
         column: 3,
@@ -406,7 +407,7 @@ void main() {
     test('callerClassName extracts class from closure', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'MyClass.method.<anonymous closure>',
+        rawCallerMethod: 'MyClass.method.<anonymous closure>',
         file: 'package:app/closures.dart',
         line: 75,
         column: 20,
@@ -418,7 +419,7 @@ void main() {
     test('callerClassName returns null for top-level function', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'main',
+        rawCallerMethod: 'main',
         file: 'file:///path/to/main.dart',
         line: 10,
       );
@@ -429,7 +430,7 @@ void main() {
     test('callerClassName returns null for doSomething function', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'doSomething',
+        rawCallerMethod: 'doSomething',
         file: 'package:app/utils.dart',
         line: 99,
       );
@@ -440,7 +441,7 @@ void main() {
     test('callerClassName returns null for <unknown>', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: '<unknown>',
+        rawCallerMethod: '<unknown>',
         file: 'my_file.dart',
         line: 42,
       );
@@ -451,7 +452,7 @@ void main() {
     test('toString returns full debug information', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'UserService.processUser',
+        rawCallerMethod: 'UserService.processUser',
         file: 'package:app/user_service.dart',
         line: 168,
         column: 11,
@@ -466,7 +467,7 @@ void main() {
     test('toString handles null column', () {
       final info = StackFrameInfo(
         stackTrace: testStackTrace,
-        callerMethod: 'helper',
+        rawCallerMethod: 'helper',
         file: 'package:app/utils.dart',
         line: 50,
       );

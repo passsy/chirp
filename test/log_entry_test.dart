@@ -80,6 +80,12 @@ void main() {
   });
 
   group('GCP Severity Mapping', () {
+    String formatWithGcp(GcpChirpMessageFormatter formatter, LogRecord entry) {
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      return builder.build();
+    }
+
     test('GcpChirpMessageFormatter maps standard levels correctly', () {
       final formatter = GcpChirpMessageFormatter();
       final now = DateTime.now();
@@ -90,27 +96,27 @@ void main() {
         date: now,
         level: ChirpLogLevel.debug,
       );
-      expect(formatter.format(debugEntry), contains('"severity":"DEBUG"'));
+      expect(formatWithGcp(formatter, debugEntry), contains('"severity":"DEBUG"'));
 
       final infoEntry = LogRecord(
         message: 'Info',
         date: now,
       );
-      expect(formatter.format(infoEntry), contains('"severity":"INFO"'));
+      expect(formatWithGcp(formatter, infoEntry), contains('"severity":"INFO"'));
 
       final warningEntry = LogRecord(
         message: 'Warning',
         date: now,
         level: ChirpLogLevel.warning,
       );
-      expect(formatter.format(warningEntry), contains('"severity":"WARNING"'));
+      expect(formatWithGcp(formatter, warningEntry), contains('"severity":"WARNING"'));
 
       final errorEntry = LogRecord(
         message: 'Error',
         date: now,
         level: ChirpLogLevel.error,
       );
-      expect(formatter.format(errorEntry), contains('"severity":"ERROR"'));
+      expect(formatWithGcp(formatter, errorEntry), contains('"severity":"ERROR"'));
 
       final criticalEntry = LogRecord(
         message: 'Critical',
@@ -118,7 +124,7 @@ void main() {
         level: ChirpLogLevel.critical,
       );
       expect(
-          formatter.format(criticalEntry), contains('"severity":"CRITICAL"'));
+          formatWithGcp(formatter, criticalEntry), contains('"severity":"CRITICAL"'));
     });
 
     test('GcpChirpMessageFormatter maps custom levels by severity', () {
@@ -131,7 +137,7 @@ void main() {
         date: now,
         level: const ChirpLogLevel('trace', 50),
       );
-      expect(formatter.format(traceEntry), contains('"severity":"DEFAULT"'));
+      expect(formatWithGcp(formatter, traceEntry), contains('"severity":"DEFAULT"'));
 
       // Verbose (150) -> DEBUG
       final verboseEntry = LogRecord(
@@ -139,7 +145,7 @@ void main() {
         date: now,
         level: const ChirpLogLevel('verbose', 150),
       );
-      expect(formatter.format(verboseEntry), contains('"severity":"DEBUG"'));
+      expect(formatWithGcp(formatter, verboseEntry), contains('"severity":"DEBUG"'));
 
       // Notice (300) -> NOTICE
       final noticeEntry = LogRecord(
@@ -147,7 +153,7 @@ void main() {
         date: now,
         level: ChirpLogLevel.notice,
       );
-      expect(formatter.format(noticeEntry), contains('"severity":"NOTICE"'));
+      expect(formatWithGcp(formatter, noticeEntry), contains('"severity":"NOTICE"'));
 
       // Alert (700) -> ALERT
       final alertEntry = LogRecord(
@@ -155,7 +161,7 @@ void main() {
         date: now,
         level: const ChirpLogLevel('alert', 700),
       );
-      expect(formatter.format(alertEntry), contains('"severity":"ALERT"'));
+      expect(formatWithGcp(formatter, alertEntry), contains('"severity":"ALERT"'));
 
       // Emergency (800+) -> EMERGENCY
       final emergencyEntry = LogRecord(
@@ -164,7 +170,7 @@ void main() {
         level: const ChirpLogLevel('emergency', 900),
       );
       expect(
-        formatter.format(emergencyEntry),
+        formatWithGcp(formatter, emergencyEntry),
         contains('"severity":"EMERGENCY"'),
       );
     });
@@ -181,7 +187,7 @@ void main() {
         date: now,
         error: Exception('Test error'),
         stackTrace: stackTrace,
-        className: 'TestClass',
+        loggerName: 'TestClass',
         instance: instance,
       );
 
@@ -189,7 +195,7 @@ void main() {
       expect(entry.date, now);
       expect(entry.error.toString(), contains('Test error'));
       expect(entry.stackTrace, stackTrace);
-      expect(entry.className, 'TestClass');
+      expect(entry.loggerName, 'TestClass');
       expect(entry.instance, instance);
     });
 
@@ -200,7 +206,7 @@ void main() {
       final entry = LogRecord(
         message: 'Simple message',
         date: now,
-        className: 'SimpleClass',
+        loggerName: 'SimpleClass',
         instance: instance,
       );
 
@@ -208,7 +214,7 @@ void main() {
       expect(entry.date, now);
       expect(entry.error, isNull);
       expect(entry.stackTrace, isNull);
-      expect(entry.className, 'SimpleClass');
+      expect(entry.loggerName, 'SimpleClass');
       expect(entry.instance, instance);
     });
 
@@ -216,7 +222,7 @@ void main() {
       final entry = LogRecord(
         message: null,
         date: DateTime.now(),
-        className: 'NullMessageClass',
+        loggerName: 'NullMessageClass',
         instance: Object(),
       );
 

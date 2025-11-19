@@ -12,8 +12,8 @@ void main() {
           'userId': 'user_456',
         },
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -32,8 +32,8 @@ void main() {
         name: 'API',
         context: {'requestId': 'REQ-123'},
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -56,8 +56,8 @@ void main() {
       final logger = ChirpLogger(
         name: 'API',
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -85,8 +85,8 @@ void main() {
           'status': 'pending',
         },
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -108,8 +108,8 @@ void main() {
         name: 'API',
         context: {'app': 'myapp'},
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -133,8 +133,8 @@ void main() {
         name: 'API',
         context: {'app': 'myapp'},
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -156,8 +156,8 @@ void main() {
       final logger = ChirpLogger(
         name: 'API',
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -175,8 +175,8 @@ void main() {
         name: 'API',
         context: {'requestId': 'REQ-123', 'userId': 'user_456'},
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -204,8 +204,8 @@ void main() {
           'sessionId': 'sess_789',
         },
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -234,8 +234,8 @@ void main() {
           'sessionId': 'sess_789',
         },
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],

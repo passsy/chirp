@@ -7,7 +7,6 @@ void main() {
   group('RainbowFormatOptions merge behavior', () {
     test('formatter with multiline default shows data on separate lines', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(data: DataPresentation.multiline),
       );
 
@@ -17,7 +16,9 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should have multiple lines
       expect(result.split('\n').length, greaterThan(1));
@@ -28,7 +29,6 @@ void main() {
 
     test('formatter with inline default shows data on same line', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
 
@@ -38,7 +38,9 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should be single line
       expect(result.split('\n').length, 1);
@@ -50,7 +52,6 @@ void main() {
 
     test('per-message inline option overrides multiline formatter default', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(),
       );
 
@@ -63,7 +64,9 @@ void main() {
         ],
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should be single line despite multiline formatter default
       expect(result.split('\n').length, 1);
@@ -73,7 +76,6 @@ void main() {
 
     test('per-message multiline option overrides inline formatter default', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
 
@@ -86,7 +88,9 @@ void main() {
         ],
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should have multiple lines despite inline formatter default
       expect(result.split('\n').length, greaterThan(1));
@@ -97,7 +101,6 @@ void main() {
     test('formatOptions with non-RainbowFormatOptions uses formatter default',
         () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
 
@@ -110,7 +113,9 @@ void main() {
         ],
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should use formatter default (inline)
       expect(result.split('\n').length, 1);
@@ -119,7 +124,6 @@ void main() {
 
     test('null formatOptions uses formatter default', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(data: DataPresentation.multiline),
       );
 
@@ -129,7 +133,9 @@ void main() {
         data: {'userId': 'user_123'},
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should use formatter default (multiline)
       expect(result.split('\n').length, greaterThan(1));
@@ -138,7 +144,6 @@ void main() {
 
     test('empty formatOptions list uses formatter default', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
 
@@ -149,7 +154,9 @@ void main() {
         formatOptions: const [],
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should use formatter default (inline)
       expect(result.split('\n').length, 1);
@@ -158,7 +165,6 @@ void main() {
 
     test('first RainbowFormatOptions in list is used', () {
       final formatter = RainbowMessageFormatter(
-        color: false,
         options: const RainbowFormatOptions(),
       );
 
@@ -173,7 +179,9 @@ void main() {
         ],
       );
 
-      final result = formatter.format(entry);
+      final builder = ConsoleMessageBuilder();
+      formatter.format(entry, builder);
+      final result = builder.build();
 
       // Should use first RainbowFormatOptions (inline)
       expect(result.split('\n').length, 1);

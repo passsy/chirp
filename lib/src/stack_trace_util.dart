@@ -1,7 +1,7 @@
 /// Information extracted from a stack frame
 class StackFrameInfo {
-  /// The caller method (e.g., "UserService.processUser")
-  final String callerMethod;
+  /// The raw caller method (e.g., "UserService.processUser.<anonymous closure>")
+  final String rawCallerMethod;
 
   /// The file path (e.g., "file:///path/to/file.dart" or "package:my_app/file.dart")
   final String file;
@@ -16,24 +16,32 @@ class StackFrameInfo {
 
   StackFrameInfo({
     required this.stackTrace,
-    required this.callerMethod,
+    required this.rawCallerMethod,
     required this.file,
     required this.line,
     this.column,
   });
 
+  /// The caller method with anonymous closures stripped
+  ///
+  /// Examples:
+  /// - "UserService.processUser.<anonymous closure>" -> "UserService.processUser"
+  /// - "main.<anonymous closure>.<anonymous closure>" -> "main"
+  late final String callerMethod =
+      rawCallerMethod.replaceAll('.<anonymous closure>', '');
+
   /// Returns the location string like "my_service:42"
-  String get callerLocation {
+  late final String callerLocation = () {
     final fileName = file.split('/').last;
     final nameWithoutExt = fileName.replaceAll('.dart', '');
     return '$nameWithoutExt:$line';
-  }
+  }();
 
   /// Returns just the file name without extension, like "my_service"
-  String get callerFileName {
+  late final String callerFileName = () {
     final fileName = file.split('/').last;
     return fileName.replaceAll('.dart', '');
-  }
+  }();
 
   /// Extracts the class/type name from the caller method
   ///
@@ -43,7 +51,7 @@ class StackFrameInfo {
   /// - "MyClass.method.\<anonymous closure\>" -> "MyClass"
   /// - "main" -> null (top-level function)
   /// - "\<unknown\>" -> null
-  String? get callerClassName {
+  late final String? callerClassName = () {
     // Handle special cases
     if (callerMethod == '<unknown>' || !callerMethod.contains('.')) {
       return null;
@@ -52,23 +60,15 @@ class StackFrameInfo {
     // Find the last dot before the method name
     // For "UserService.processUser" we want "UserService"
     // For "OuterClass.InnerClass.method" we want "OuterClass.InnerClass"
-    // For "MyClass.method.<anonymous closure>" we want "MyClass"
-
-    // Remove closure suffix if present
-    var methodStr = callerMethod;
-    final closureIndex = methodStr.indexOf('.<anonymous');
-    if (closureIndex != -1) {
-      methodStr = methodStr.substring(0, closureIndex);
-    }
 
     // Find last dot - everything before it is the class name
-    final lastDotIndex = methodStr.lastIndexOf('.');
+    final lastDotIndex = callerMethod.lastIndexOf('.');
     if (lastDotIndex == -1) {
       return null; // Top-level function
     }
 
-    return methodStr.substring(0, lastDotIndex);
-  }
+    return callerMethod.substring(0, lastDotIndex);
+  }();
 
   @override
   String toString() {
@@ -138,7 +138,7 @@ StackFrameInfo? parseStackFrame(StackTrace stackTrace, String frame) {
 
     return StackFrameInfo(
       stackTrace: stackTrace,
-      callerMethod: callerMethod,
+      rawCallerMethod: callerMethod,
       file: file,
       line: line,
       column: column,
@@ -162,7 +162,7 @@ StackFrameInfo? parseStackFrame(StackTrace stackTrace, String frame) {
 
     return StackFrameInfo(
       stackTrace: stackTrace,
-      callerMethod: callerMethod,
+      rawCallerMethod: callerMethod,
       file: file,
       line: line,
       column: column,
@@ -185,7 +185,7 @@ StackFrameInfo? parseStackFrame(StackTrace stackTrace, String frame) {
 
     return StackFrameInfo(
       stackTrace: stackTrace,
-      callerMethod: (methodName != null && methodName.isNotEmpty)
+      rawCallerMethod: (methodName != null && methodName.isNotEmpty)
           ? methodName
           : '<unknown>',
       file: file,
@@ -206,7 +206,7 @@ StackFrameInfo? parseStackFrame(StackTrace stackTrace, String frame) {
     if (lineNumber != null) {
       return StackFrameInfo(
         stackTrace: stackTrace,
-        callerMethod: '<unknown>',
+        rawCallerMethod: '<unknown>',
         file: fileName,
         line: int.parse(lineNumber),
       );

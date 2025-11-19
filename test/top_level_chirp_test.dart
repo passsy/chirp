@@ -12,7 +12,7 @@ void main() {
       final messages = <String>[];
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleChirpMessageWriter(
+          ConsoleAppender(
             formatter: RainbowMessageFormatter(),
             output: messages.add,
           ),
@@ -30,8 +30,8 @@ void main() {
       final messages = <String>[];
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -53,8 +53,8 @@ void main() {
       final messages = <String>[];
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -71,8 +71,8 @@ void main() {
       final messages = <String>[];
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -89,8 +89,8 @@ void main() {
       final messages = <String>[];
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -107,8 +107,8 @@ void main() {
       final messages = <String>[];
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -125,7 +125,7 @@ void main() {
       final messages = <String>[];
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleChirpMessageWriter(
+          ConsoleAppender(
             formatter: RainbowMessageFormatter(),
             output: messages.add,
           ),
@@ -146,8 +146,8 @@ void main() {
       final messages = <String>[];
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleChirpMessageWriter(
-            formatter: JsonChirpMessageFormatter(),
+          ConsoleAppender(
+            formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
         ],
@@ -169,7 +169,7 @@ void main() {
       final messages = <String>[];
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleChirpMessageWriter(
+          ConsoleAppender(
             formatter: RainbowMessageFormatter(),
             output: messages.add,
           ),

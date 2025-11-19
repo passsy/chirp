@@ -6,7 +6,7 @@ void main() {
     test('ConsoleChirpMessageWriter writes to output', () {
       final messages = <String>[];
 
-      final writer = ConsoleChirpMessageWriter(
+      final writer = ConsoleAppender(
         formatter: CompactChirpMessageFormatter(),
         output: messages.add,
       );
@@ -21,14 +21,14 @@ void main() {
 
     test('ConsoleChirpMessageWriter uses print by default', () {
       // Can't easily test print, but we can verify the constructor accepts null
-      final writer = ConsoleChirpMessageWriter();
+      final writer = ConsoleAppender();
       expect(writer, isNotNull);
     });
   });
 
   group('BufferedChirpMessageWriter', () {
     test('buffers log entries', () {
-      final writer = BufferedChirpMessageWriter();
+      final writer = BufferedAppender();
 
       final entry1 = _createEntry('Message 1');
       final entry2 = _createEntry('Message 2');
@@ -46,11 +46,11 @@ void main() {
 
     test('flushes to target writer', () {
       final messages = <String>[];
-      final targetWriter = ConsoleChirpMessageWriter(
+      final targetWriter = ConsoleAppender(
         formatter: CompactChirpMessageFormatter(),
         output: messages.add,
       );
-      final bufferedWriter = BufferedChirpMessageWriter();
+      final bufferedWriter = BufferedAppender();
 
       bufferedWriter.write(_createEntry('Message 1'));
       bufferedWriter.write(_createEntry('Message 2'));
@@ -72,16 +72,16 @@ void main() {
       final messages2 = <String>[];
       final messages3 = <String>[];
 
-      final writer = MultiChirpMessageWriter([
-        ConsoleChirpMessageWriter(
+      final writer = MultiAppender([
+        ConsoleAppender(
           formatter: CompactChirpMessageFormatter(),
           output: messages1.add,
         ),
-        ConsoleChirpMessageWriter(
+        ConsoleAppender(
           formatter: CompactChirpMessageFormatter(),
           output: messages2.add,
         ),
-        ConsoleChirpMessageWriter(
+        ConsoleAppender(
           formatter: CompactChirpMessageFormatter(),
           output: messages3.add,
         ),
@@ -98,7 +98,7 @@ void main() {
     });
 
     test('handles empty writers list', () {
-      final writer = MultiChirpMessageWriter([]);
+      final writer = MultiAppender([]);
       expect(() => writer.write(_createEntry('Test')), returnsNormally);
     });
   });
@@ -109,7 +109,7 @@ LogRecord _createEntry(Object? message) {
   return LogRecord(
     message: message,
     date: DateTime.now(),
-    className: 'TestClass',
+    loggerName: 'TestClass',
     instance: Object(),
   );
 }

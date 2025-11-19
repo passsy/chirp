@@ -1,15 +1,19 @@
+import 'package:chirp/src/console_appender.dart';
+import 'package:chirp/src/core.dart';
 import 'package:chirp/src/format_option.dart';
 import 'package:chirp/src/log_level.dart';
 import 'package:chirp/src/log_record.dart';
-import 'package:chirp/src/message_writer.dart';
 import 'package:clock/clock.dart';
 
-export 'src/format_option.dart';
-export 'src/log_level.dart';
-export 'src/log_record.dart';
-export 'src/message_formatter.dart';
-export 'src/message_writer.dart';
-export 'src/rainbow_message_formatter.dart';
+export 'package:chirp/src/console_appender.dart';
+export 'package:chirp/src/core.dart';
+export 'package:chirp/src/format_option.dart';
+export 'package:chirp/src/log_level.dart';
+export 'package:chirp/src/log_record.dart';
+export 'package:chirp/src/stack_trace_util.dart';
+export 'package:chirp/src/formatters/message_formatter.dart';
+export 'package:chirp/src/formatters/rainbow_message_formatter.dart';
+export 'package:chirp/src/formatters/simple_console_message_formatter.dart';
 
 // ignore: non_constant_identifier_names
 // ChirpLogger get Chirp => ChirpLogger.root;
@@ -90,7 +94,7 @@ export 'src/rainbow_message_formatter.dart';
 /// See also:
 /// - [ChirpLogger] for creating custom logger instances
 /// - [ChirpLogLevel] for understanding severity levels
-/// - [ChirpMessageWriter] for implementing custom log destinations
+/// - [ChirpAppender] for implementing custom log destinations
 // ignore: avoid_classes_with_only_static_members
 class Chirp {
   /// Global root logger used by all static methods and the `.chirp` extension.
@@ -708,7 +712,7 @@ Map<String, Object?>? _mergeData(
 /// See also:
 /// - [Chirp] for convenient static logging methods
 /// - [ChirpLogLevel] for available severity levels
-/// - [ChirpMessageWriter] for implementing custom writers
+/// - [ChirpAppender] for implementing custom writers
 class ChirpLogger {
   /// Optional name for this logger.
   ///
@@ -749,7 +753,7 @@ class ChirpLogger {
   ///
   /// Only root loggers (those without a parent) can have their own writers.
   /// Child loggers always use their parent's writers.
-  final List<ChirpMessageWriter>? _ownWriters;
+  final List<ChirpAppender>? _ownWriters;
 
   /// Get the active writers for this logger.
   ///
@@ -758,12 +762,12 @@ class ChirpLogger {
   /// [ConsoleChirpMessageWriter] if none were configured.
   ///
   /// Writers determine where log messages are sent (console, file, network, etc).
-  List<ChirpMessageWriter> get writers {
+  List<ChirpAppender> get writers {
     final p = parent;
     if (p != null) {
       return p.writers;
     }
-    return _ownWriters ?? [ConsoleChirpMessageWriter()];
+    return _ownWriters ?? [ConsoleAppender()];
   }
 
   /// Contextual data automatically included in all log entries.
@@ -832,7 +836,7 @@ class ChirpLogger {
     this.name,
     this.instance,
     this.parent,
-    List<ChirpMessageWriter>? writers,
+    List<ChirpAppender>? writers,
     Map<String, Object?>? context,
   })  : _ownWriters = parent == null
             ? (writers != null ? List.unmodifiable(writers) : null)
@@ -883,6 +887,7 @@ class ChirpLogger {
     StackTrace? stackTrace,
     Map<String, Object?>? data,
     List<FormatOptions>? formatOptions,
+    int skipFrames = 0,
   }) {
     final caller = StackTrace.current;
 
@@ -892,6 +897,7 @@ class ChirpLogger {
       error: error,
       stackTrace: stackTrace,
       caller: caller,
+      skipFrames: skipFrames,
       date: clock.now(),
       loggerName: name,
       instance: instance,

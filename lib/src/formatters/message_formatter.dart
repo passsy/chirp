@@ -3,87 +3,80 @@ import 'dart:convert';
 import 'package:chirp/chirp.dart';
 import 'package:chirp/src/stack_trace_util.dart';
 
-/// Transforms LogEntry into formatted string
-abstract class ChirpMessageFormatter {
-  ChirpMessageFormatter();
-
-  String format(LogRecord entry);
-}
-
 /// Single-line compact format
-class CompactChirpMessageFormatter extends ChirpMessageFormatter {
+class CompactChirpMessageFormatter extends ConsoleMessageFormatter {
   CompactChirpMessageFormatter() : super();
 
   @override
-  String format(LogRecord entry) {
-    final hour = entry.date.hour.toString().padLeft(2, '0');
-    final minute = entry.date.minute.toString().padLeft(2, '0');
-    final second = entry.date.second.toString().padLeft(2, '0');
-    final ms = entry.date.millisecond.toString().padLeft(3, '0');
+  void format(LogRecord record, ConsoleMessageBuilder builder) {
+    final hour = record.date.hour.toString().padLeft(2, '0');
+    final minute = record.date.minute.toString().padLeft(2, '0');
+    final second = record.date.second.toString().padLeft(2, '0');
+    final ms = record.date.millisecond.toString().padLeft(3, '0');
     final formattedTime = '$hour:$minute:$second.$ms';
 
     // Try to get caller location first
-    final String? callerLocation = entry.caller != null
-        ? getCallerInfo(entry.caller!)?.callerLocation
+    final String? callerLocation = record.caller != null
+        ? getCallerInfo(record.caller!)?.callerLocation
         : null;
 
-    final className = entry.loggerName ??
+    final className = record.loggerName ??
         callerLocation ??
-        (entry.instance != null
-            ? entry.instance!.runtimeType.toString()
-            : entry.className) ??
+        record.instance?.runtimeType.toString() ??
         'Unknown';
-    final hash = (entry.instanceHash ?? 0).toRadixString(16).padLeft(4, '0');
+    final hash = (record.instanceHash ?? 0).toRadixString(16).padLeft(4, '0');
     final shortHash = hash.substring(hash.length >= 4 ? hash.length - 4 : 0);
 
-    final buffer = StringBuffer();
-    buffer.write('$formattedTime $className@$shortHash ${entry.message}');
+    builder.write('$formattedTime $className@$shortHash ${record.message}');
 
-    if (entry.error != null) {
-      buffer.write('\n${entry.error}');
+    if (record.error != null) {
+      builder.writeNextLine(record.error);
     }
 
-    if (entry.stackTrace != null) {
-      buffer.write('\n${entry.stackTrace}');
+    if (record.stackTrace != null) {
+      builder.writeNextLine(record.stackTrace);
     }
-
-    return buffer.toString();
   }
 }
 
 /// JSON format for structured logging
-class JsonChirpMessageFormatter extends ChirpMessageFormatter {
-  JsonChirpMessageFormatter() : super();
+class JsonMessageFormatter extends ConsoleMessageFormatter {
+  JsonMessageFormatter() : super();
 
   @override
-  String format(LogRecord entry) {
-    final className = entry.loggerName ??
-        (entry.instance != null
-            ? entry.instance!.runtimeType.toString()
-            : entry.className) ??
+  void format(LogRecord record, ConsoleMessageBuilder builder) {
+    // Try to get caller location first
+    final String? callerLocation = record.caller != null
+        ? getCallerInfo(record.caller!)?.callerLocation
+        : null;
+
+    final className = record.loggerName ??
+        callerLocation ??
+        record.instance?.runtimeType.toString() ??
         'Unknown';
 
     final map = <String, dynamic>{
-      'timestamp': entry.date.toIso8601String(),
-      'level': entry.level.name,
+      'timestamp': record.date.toIso8601String(),
+      'level': record.level.name,
       'class': className,
-      'hash': (entry.instanceHash ?? 0).toRadixString(16).padLeft(4, '0'),
-      'message': entry.message?.toString(),
+      'hash': (record.instanceHash ?? 0).toRadixString(16).padLeft(4, '0'),
+      'message': record.message?.toString(),
     };
 
-    if (entry.error != null) {
-      map['error'] = entry.error.toString();
+    if (record.error != null) {
+      map['error'] = record.error.toString();
     }
 
-    if (entry.stackTrace != null) {
-      map['stackTrace'] = entry.stackTrace.toString();
+    if (record.stackTrace != null) {
+      map['stackTrace'] = record.stackTrace.toString();
     }
 
-    if (entry.data != null) {
-      map['data'] = entry.data;
+    if (record.data != null) {
+      map['data'] = record.data;
     }
 
-    return jsonEncode(map);
+    final jsonObject = jsonEncode(map);
+    builder.write(jsonObject);
   }
 }
 
@@ -91,7 +84,7 @@ class JsonChirpMessageFormatter extends ChirpMessageFormatter {
 ///
 /// Formats logs according to the structure expected by Google Cloud Logging.
 /// See: https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
-class GcpChirpMessageFormatter extends ChirpMessageFormatter {
+class GcpChirpMessageFormatter extends ConsoleMessageFormatter {
   /// Optional GCP project ID
   final String? projectId;
 
@@ -133,11 +126,9 @@ class GcpChirpMessageFormatter extends ChirpMessageFormatter {
   }
 
   @override
-  String format(LogRecord entry) {
-    final className = entry.loggerName ??
-        (entry.instance != null
-            ? entry.instance!.runtimeType.toString()
-            : entry.className);
+  void format(LogRecord entry, ConsoleMessageBuilder builder) {
+    final className =
+        entry.loggerName ?? entry.instance?.runtimeType.toString();
 
     final map = <String, dynamic>{
       'severity': _gcpSeverity(entry.level),
@@ -184,6 +175,6 @@ class GcpChirpMessageFormatter extends ChirpMessageFormatter {
       map['stackTrace'] = entry.stackTrace.toString();
     }
 
-    return jsonEncode(map);
+    builder.write(jsonEncode(map));
   }
 }
