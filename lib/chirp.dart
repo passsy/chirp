@@ -1,5 +1,8 @@
+import 'dart:collection';
+
 import 'package:chirp/src/console_writer.dart';
 import 'package:chirp/src/format_option.dart';
+import 'package:chirp/src/formatters/rainbow_message_formatter.dart';
 import 'package:chirp/src/log_level.dart';
 import 'package:chirp/src/log_record.dart';
 import 'package:clock/clock.dart';
@@ -13,9 +16,6 @@ export 'package:chirp/src/formatters/simple_console_message_formatter.dart';
 export 'package:chirp/src/log_level.dart';
 export 'package:chirp/src/log_record.dart';
 export 'package:chirp/src/stack_trace_util.dart';
-
-// ignore: non_constant_identifier_names
-// ChirpLogger get Chirp => ChirpLogger.root;
 
 // ignore: avoid_classes_with_only_static_members
 /// Global static logger providing convenient access to logging functionality.
@@ -748,25 +748,130 @@ class ChirpLogger {
   /// having their own name, instance, and context.
   final ChirpLogger? parent;
 
-  /// Writers owned by this logger.
-  ///
-  /// Only root loggers (those without a parent) can have their own writers.
-  /// Child loggers always use their parent's writers.
-  final List<ChirpWriter>? _ownWriters;
+  /// Internal mutable list of writers owned by this logger.
+  final List<ChirpWriter> _writers = [];
 
-  /// Get the active writers for this logger.
+  /// Read-only view of writers owned by this logger.
   ///
-  /// If this is a child logger, delegates to the parent's writers.
-  /// If this is a root logger, returns its own writers or a default
-  /// [ConsoleChirpMessageWriter] if none were configured.
+  /// Use [addWriter] and [removeWriter] to modify the writers list.
+  /// Both root and child loggers can have their own writers. When logging,
+  /// this logger's writers are combined with all parent writers.
   ///
-  /// Writers determine where log messages are sent (console, file, network, etc).
-  List<ChirpWriter> get writers {
+  /// If no writers are configured anywhere in the hierarchy, no output
+  /// will be produced.
+  ///
+  /// Example:
+  /// ```dart
+  /// final logger = ChirpLogger(name: 'API');
+  ///
+  /// // Add writers
+  /// logger.addWriter(ConsoleWriter());
+  /// logger.addConsoleWriter(formatter: JsonMessageFormatter());
+  ///
+  /// // Check current writers
+  /// print(logger.writers.length);
+  ///
+  /// // Remove a specific writer
+  /// logger.removeWriter(myWriter);
+  /// ```
+  List<ChirpWriter> get writers => UnmodifiableListView(_writers);
+
+  /// Adds a writer to this logger.
+  ///
+  /// Writers receive all log records from this logger and its children.
+  /// You can add multiple writers to send logs to different destinations.
+  ///
+  /// Adding the same writer instance twice is a no-op - each writer can only
+  /// be added once to a logger.
+  ///
+  /// Example:
+  /// ```dart
+  /// final logger = ChirpLogger(name: 'API')
+  ///   ..addWriter(ConsoleWriter())
+  ///   ..addWriter(FileWriter('/var/log/api.log'));
+  /// ```
+  ///
+  /// See also:
+  /// - [addConsoleWriter] for a convenient shorthand
+  /// - [removeWriter] to remove a writer
+  /// - [writers] for the read-only list of current writers
+  void addWriter(ChirpWriter writer) {
+    if (_writers.contains(writer)) return;
+    _writers.add(writer);
+  }
+
+  /// Removes a writer from this logger.
+  ///
+  /// Returns `true` if the writer was found and removed, `false` otherwise.
+  /// Only removes writers from this logger, not from parent loggers.
+  ///
+  /// Example:
+  /// ```dart
+  /// final writer = ConsoleWriter();
+  /// logger.addWriter(writer);
+  ///
+  /// // Later...
+  /// final removed = logger.removeWriter(writer);
+  /// print(removed); // true
+  /// ```
+  ///
+  /// See also:
+  /// - [addWriter] to add a writer
+  /// - [writers] for the read-only list of current writers
+  bool removeWriter(ChirpWriter writer) {
+    return _writers.remove(writer);
+  }
+
+  /// Get all effective writers for this logger (own + inherited from parents).
+  ///
+  /// This combines this logger's [_writers] with all parent writers.
+  /// Used internally when logging to dispatch to all relevant writers.
+  List<ChirpWriter> get _effectiveWriters {
     final p = parent;
-    if (p != null) {
-      return p.writers;
-    }
-    return _ownWriters ?? [ConsoleWriter()];
+    if (p == null) return _writers;
+    final parentWriters = p._effectiveWriters;
+    if (_writers.isEmpty) return parentWriters;
+    if (parentWriters.isEmpty) return _writers;
+    return [...parentWriters, ..._writers];
+  }
+
+  /// Convenient shorthand to add a [ConsoleWriter] with optional formatter.
+  ///
+  /// This is the most common writer configuration. If no [formatter] is
+  /// provided, uses [RainbowMessageFormatter] by default.
+  ///
+  /// Parameters:
+  /// - [formatter]: Custom formatter (defaults to [RainbowMessageFormatter])
+  /// - [output]: Custom output function (defaults to [print])
+  ///
+  /// Example:
+  /// ```dart
+  /// final logger = ChirpLogger(name: 'API')
+  ///   ..addConsoleWriter(); // Uses RainbowMessageFormatter
+  ///
+  /// // With custom formatter
+  /// final jsonLogger = ChirpLogger(name: 'JSON')
+  ///   ..addConsoleWriter(formatter: JsonMessageFormatter());
+  ///
+  /// // Capture output for testing
+  /// final messages = <String>[];
+  /// final testLogger = ChirpLogger(name: 'Test')
+  ///   ..addConsoleWriter(output: messages.add);
+  /// ```
+  ///
+  /// See also:
+  /// - [addWriter] for adding custom writers
+  /// - [ConsoleWriter] for more configuration options
+  void addConsoleWriter({
+    ConsoleMessageFormatter? formatter,
+    void Function(String)? output,
+  }) {
+    addWriter(
+      ConsoleWriter(
+        formatter: formatter ?? RainbowMessageFormatter(),
+        output: output,
+      ),
+    );
   }
 
   /// Contextual data automatically included in all log entries.
@@ -800,47 +905,42 @@ class ChirpLogger {
   /// ```
   final Map<String, Object?> context;
 
-  /// Creates a logger instance with optional configuration.
+  /// Creates a logger instance with an optional name.
   ///
   /// Parameters:
-  /// - [name]: Optional name to identify this logger's source
-  /// - [instance]: Optional object instance for instance tracking
-  /// - [parent]: Optional parent logger (for child loggers)
-  /// - [writers]: Optional list of writers (only for root loggers)
-  /// - [context]: Optional contextual data included in all logs
+  /// - [name]: Optional name to identify this logger's source (e.g., 'API', 'Database')
   ///
-  /// **Root Logger** (no parent):
+  /// Use [addWriter] to attach writers after creation:
+  ///
   /// ```dart
-  /// final logger = ChirpLogger(
-  ///   name: 'API',
-  ///   writers: [
-  ///     ConsoleChirpMessageWriter(),
-  ///     FileChirpMessageWriter('/var/log/api.log'),
-  ///   ],
-  ///   context: {'version': '1.0'},
-  /// );
+  /// final logger = ChirpLogger(name: 'API')
+  ///   ..addWriter(ConsoleWriter())
+  ///   ..addWriter(FileWriter('/var/log/api.log'));
+  ///
+  /// // Add contextual data
+  /// logger.context['version'] = '1.0';
+  /// logger.context['service'] = 'api';
   /// ```
   ///
-  /// **Child Logger** (use [child] method instead):
+  /// For child loggers, use the [child] method instead:
   /// ```dart
   /// final childLogger = parentLogger.child(
   ///   name: 'Subsystem',
   ///   context: {'requestId': 'REQ-123'},
   /// );
   /// ```
-  ///
-  /// Note: The [writers] parameter is ignored for child loggers (those with
-  /// a [parent]). Child loggers always delegate to their parent's writers.
-  ChirpLogger({
+  ChirpLogger({this.name})
+      : instance = null,
+        parent = null,
+        context = {};
+
+  /// Internal constructor for creating child loggers and instance loggers.
+  ChirpLogger._internal({
     this.name,
     this.instance,
     this.parent,
-    List<ChirpWriter>? writers,
     Map<String, Object?>? context,
-  })  : _ownWriters = parent == null
-            ? (writers != null ? List.unmodifiable(writers) : null)
-            : null,
-        context = context ?? {};
+  }) : context = context ?? {};
 
   /// Logs a message at the specified severity level.
   ///
@@ -1159,13 +1259,13 @@ class ChirpLogger {
   /// Writes a log record to all configured writers.
   ///
   /// This internal method is called by all logging methods after creating
-  /// a [LogRecord]. It iterates through the logger's [writers] and calls
-  /// each writer's `write()` method with the record.
+  /// a [LogRecord]. It iterates through all effective writers (own + inherited)
+  /// and calls each writer's `write()` method with the record.
   ///
   /// Writers are responsible for formatting and outputting the log record
   /// to their respective destinations (console, file, network, etc.).
   void _logRecord(LogRecord record) {
-    for (final writer in writers) {
+    for (final writer in _effectiveWriters) {
       writer.write(record);
     }
   }
@@ -1207,11 +1307,11 @@ class ChirpLogger {
     Object? instance,
     Map<String, Object?>? context,
   }) {
-    return ChirpLogger(
+    return ChirpLogger._internal(
       name: name ?? this.name,
       instance: instance ?? this.instance,
       parent: this,
-      context: context != null ? {...this.context, ...context} : this.context,
+      context: context != null ? {...this.context, ...context} : {...this.context},
     );
   }
 

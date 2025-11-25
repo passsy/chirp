@@ -10,14 +10,11 @@ void main() {
 
     test('Chirp.log() captures caller information from stack trace', () {
       final messages = <String>[];
-      Chirp.root = ChirpLogger(
-        writers: [
-          ConsoleWriter(
-            formatter: RainbowMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger()
+        ..addConsoleWriter(
+          formatter: RainbowMessageFormatter(),
+          output: messages.add,
+        );
 
       Chirp.log('Test message from top-level');
 
@@ -28,14 +25,11 @@ void main() {
 
     test('Chirp with different log levels', () {
       final messages = <String>[];
-      Chirp.root = ChirpLogger(
-        writers: [
-          ConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger()
+        ..addConsoleWriter(
+          formatter: JsonMessageFormatter(),
+          output: messages.add,
+        );
 
       Chirp.log('Debug test', level: ChirpLogLevel.debug);
       Chirp.log('Info test');
@@ -51,14 +45,11 @@ void main() {
 
     test('Chirp.debug() convenience function', () {
       final messages = <String>[];
-      Chirp.root = ChirpLogger(
-        writers: [
-          ConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger()
+        ..addConsoleWriter(
+          formatter: JsonMessageFormatter(),
+          output: messages.add,
+        );
 
       Chirp.debug('Debug message');
 
@@ -69,14 +60,11 @@ void main() {
 
     test('Chirp.info() convenience function', () {
       final messages = <String>[];
-      Chirp.root = ChirpLogger(
-        writers: [
-          ConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger()
+        ..addConsoleWriter(
+          formatter: JsonMessageFormatter(),
+          output: messages.add,
+        );
 
       Chirp.info('Info message');
 
@@ -87,14 +75,11 @@ void main() {
 
     test('Chirp.warning() convenience function', () {
       final messages = <String>[];
-      Chirp.root = ChirpLogger(
-        writers: [
-          ConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger()
+        ..addConsoleWriter(
+          formatter: JsonMessageFormatter(),
+          output: messages.add,
+        );
 
       Chirp.warning('Warning message');
 
@@ -105,14 +90,11 @@ void main() {
 
     test('Chirp.error() convenience function', () {
       final messages = <String>[];
-      Chirp.root = ChirpLogger(
-        writers: [
-          ConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger()
+        ..addConsoleWriter(
+          formatter: JsonMessageFormatter(),
+          output: messages.add,
+        );
 
       Chirp.error('Error message');
 
@@ -123,14 +105,11 @@ void main() {
 
     test('Chirp with error and stack trace', () {
       final messages = <String>[];
-      Chirp.root = ChirpLogger(
-        writers: [
-          ConsoleWriter(
-            formatter: RainbowMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger()
+        ..addConsoleWriter(
+          formatter: RainbowMessageFormatter(),
+          output: messages.add,
+        );
 
       final error = Exception('Test error');
       final stackTrace = StackTrace.current;
@@ -144,14 +123,11 @@ void main() {
 
     test('Chirp with structured data', () {
       final messages = <String>[];
-      Chirp.root = ChirpLogger(
-        writers: [
-          ConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger()
+        ..addConsoleWriter(
+          formatter: JsonMessageFormatter(),
+          output: messages.add,
+        );
 
       Chirp.log('User action', data: {
         'userId': 123,
@@ -167,14 +143,11 @@ void main() {
 
     test('Chirp captures line numbers', () {
       final messages = <String>[];
-      Chirp.root = ChirpLogger(
-        writers: [
-          ConsoleWriter(
-            formatter: RainbowMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger()
+        ..addConsoleWriter(
+          formatter: RainbowMessageFormatter(),
+          output: messages.add,
+        );
 
       Chirp.log('Message with line number');
 

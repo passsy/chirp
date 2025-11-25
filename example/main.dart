@@ -7,8 +7,9 @@ void main() {
   basicInstanceLoggingExample();
 
   Chirp.warning('=== Example 1: Static Methods - All Log Levels ===');
-  Chirp.root = ChirpLogger(writers: [ConsoleWriter(formatter: CompactChirpMessageFormatter()), ConsoleWriter(formatter: RainbowMessageFormatter()),
-  ]);
+  Chirp.root = ChirpLogger()
+    ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
+    ..addConsoleWriter(formatter: RainbowMessageFormatter());
   allLogLevelsExample();
 
   Chirp.warning('=== Example 2: Named Logger & Structured Data ===');
@@ -120,20 +121,17 @@ void instanceTrackingExample() {
 
 /// Multiple writers send to different destinations with different formats
 void multipleWritersExample() {
-  Chirp.root = ChirpLogger(
-    writers: [
-      // Human-readable format for console
-      ConsoleWriter(
-        formatter: CompactChirpMessageFormatter(),
-        output: (msg) => print('[CONSOLE] $msg'),
-      ),
-      // Machine-readable JSON
-      ConsoleWriter(
-        formatter: JsonMessageFormatter(),
-        output: (msg) => print('[JSON] $msg'),
-      ),
-    ],
-  );
+  Chirp.root = ChirpLogger()
+    // Human-readable format for console
+    ..addConsoleWriter(
+      formatter: CompactChirpMessageFormatter(),
+      output: (msg) => print('[CONSOLE] $msg'),
+    )
+    // Machine-readable JSON
+    ..addConsoleWriter(
+      formatter: JsonMessageFormatter(),
+      output: (msg) => print('[JSON] $msg'),
+    );
 
   Chirp.info('Logged with both formatters!');
 
@@ -144,15 +142,12 @@ void multipleWritersExample() {
 /// Demonstrates different format options for RainbowMessageFormatter
 void formatOptionsExample() {
   // Multiline data display (default)
-  Chirp.root = ChirpLogger(
-    writers: [
-      ConsoleWriter(
-        formatter: RainbowMessageFormatter(
-          options: const RainbowFormatOptions(data: DataPresentation.multiline),
-        ),
+  Chirp.root = ChirpLogger()
+    ..addConsoleWriter(
+      formatter: RainbowMessageFormatter(
+        options: const RainbowFormatOptions(data: DataPresentation.multiline),
       ),
-    ],
-  );
+    );
 
   Chirp.info('User logged in', data: {
     'userId': 'user_123',

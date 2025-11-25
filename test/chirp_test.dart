@@ -15,15 +15,11 @@ void main() {
 
     test('logs with named logger', () {
       final messages = <String>[];
-      final logger = ChirpLogger(
-        name: 'HTTP',
-        writers: [
-          ConsoleWriter(
-            formatter: CompactChirpMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      final logger = ChirpLogger(name: 'HTTP')
+        ..addConsoleWriter(
+          formatter: CompactChirpMessageFormatter(),
+          output: messages.add,
+        );
 
       logger.log('Test message');
 
@@ -36,14 +32,11 @@ void main() {
       final messages = <String>[];
       final originalRoot = Chirp.root;
 
-      Chirp.root = ChirpLogger(
-        writers: [
-          ConsoleWriter(
-            formatter: CompactChirpMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger()
+        ..addConsoleWriter(
+          formatter: CompactChirpMessageFormatter(),
+          output: messages.add,
+        );
 
       Chirp.log('Test message');
 
@@ -56,15 +49,11 @@ void main() {
 
     test('logs with error and stack trace', () {
       final messages = <String>[];
-      final logger = ChirpLogger(
-        name: 'ErrorLogger',
-        writers: [
-          ConsoleWriter(
-            formatter: CompactChirpMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      final logger = ChirpLogger(name: 'ErrorLogger')
+        ..addConsoleWriter(
+          formatter: CompactChirpMessageFormatter(),
+          output: messages.add,
+        );
 
       logger.log(
         'Error occurred',
@@ -87,15 +76,11 @@ void main() {
       final messages = <String>[];
 
       // Replace root with custom logger
-      Chirp.root = ChirpLogger(
-        name: 'CustomRoot',
-        writers: [
-          ConsoleWriter(
-            formatter: CompactChirpMessageFormatter(),
-            output: messages.add,
-          ),
-        ],
-      );
+      Chirp.root = ChirpLogger(name: 'CustomRoot')
+        ..addConsoleWriter(
+          formatter: CompactChirpMessageFormatter(),
+          output: messages.add,
+        );
 
       Chirp.root.log('Test message');
 
