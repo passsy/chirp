@@ -2,7 +2,7 @@ import 'package:chirp/chirp.dart';
 import 'package:chirp/src/readable_colors.g.dart';
 import 'package:chirp/src/xterm_colors.g.dart';
 
-export 'package:chirp/src/formatters/log_span.dart';
+export 'package:chirp/src/span/span_foundation.dart';
 
 /// Function type for transforming an instance into a display name.
 typedef ClassNameTransformer = String? Function(Object instance);
@@ -38,22 +38,45 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
   }
 
   @override
-  void format(LogRecord record, ConsoleMessageBuilder builder) {
+  void format(LogRecord record, ConsoleMessageBuffer buffer) {
     final effectiveOptions = options.merge(
         record.formatOptions?.firstWhereTypeOrNull<RainbowFormatOptions>());
 
-    var span = buildSpan(record, effectiveOptions);
+    final span = RainbowLogSpan(
+      record: record,
+      options: effectiveOptions,
+      classNameResolver: resolveClassName,
+    ).build();
 
-    for (final transformer in spanTransformers) {
-      span = transformer(span, record);
+    if (spanTransformers.isEmpty) {
+      renderSpan(span, buffer);
+      return;
     }
 
-    renderSpan(span, builder);
+    final tree = SpanNode.fromSpan(span);
+    for (final transformer in spanTransformers) {
+      transformer(tree, record);
+    }
+    renderSpan(tree.toSpan(), buffer);
   }
+}
 
-  LogSpan buildSpan(LogRecord record, RainbowFormatOptions options) {
+/// A span that renders a [LogRecord] with rainbow colors.
+class RainbowLogSpan extends LogSpan {
+  final LogRecord record;
+  final RainbowFormatOptions options;
+  final String Function(Object) classNameResolver;
+
+  const RainbowLogSpan({
+    required this.record,
+    required this.options,
+    required this.classNameResolver,
+  });
+
+  @override
+  LogSpan build() {
     final callerInfo = record.callerInfo;
-    final instanceLabel = record.instanceLabel(resolveClassName);
+    final instanceLabel = record.instanceLabel(classNameResolver);
 
     final levelColor = switch (record.level.severity) {
       > 500 => XtermColor.color203,
@@ -67,7 +90,7 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
 
     // Timestamp
     if (options.showTime) {
-      spans.add(Styled(
+      spans.add(AnsiColored(
         foreground: XtermColor.brightBlack,
         child: Timestamp(record.date),
       ));
@@ -78,11 +101,11 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
       final fileName = callerInfo?.callerFileName;
       final location = fileName == null
           ? null
-          : Styled(
+          : AnsiColored(
               foreground: XtermColor.brightBlack,
-              child: Location(fileName: fileName, line: callerInfo?.line),
+              child: DartSourceCodeLocation(fileName: fileName, line: callerInfo?.line),
             );
-      spans.add(Prefixed(prefix: const Space(), child: location));
+      spans.add(Prefixed(prefix: const Whitespace(), child: location));
     }
 
     // Logger name
@@ -90,18 +113,18 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
       final name = record.loggerName;
       final loggerName = name == null
           ? null
-          : Styled(
+          : AnsiColored(
               foreground: hashColor(name, readableColorsHighSaturation),
               child: LoggerName(name),
             );
-      spans.add(Prefixed(prefix: const Space(), child: loggerName));
+      spans.add(Prefixed(prefix: const Whitespace(), child: loggerName));
     }
 
     // Class name
     if (options.showClass) {
       LogSpan? className;
       if (instanceLabel != null) {
-        className = Styled(
+        className = AnsiColored(
           foreground: hashColor(instanceLabel, readableColorsLowSaturation),
           child: ClassName(
             instanceLabel,
@@ -110,12 +133,12 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
         );
       } else if (callerInfo?.callerClassName != null) {
         final cn = callerInfo!.callerClassName!;
-        className = Styled(
+        className = AnsiColored(
           foreground: hashColor(cn, readableColorsLowSaturation),
           child: ClassName(cn),
         );
       }
-      spans.add(Prefixed(prefix: const Space(), child: className));
+      spans.add(Prefixed(prefix: const Whitespace(), child: className));
     }
 
     // Method name
@@ -127,31 +150,31 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
         if (cn != null && name.startsWith('$cn.')) {
           name = name.substring(cn.length + 1);
         }
-        methodName = Styled(
+        methodName = AnsiColored(
           foreground: hashColor(name, _subtleColors),
           child: MethodName(name),
         );
       }
-      spans.add(Prefixed(prefix: const Space(), child: methodName));
+      spans.add(Prefixed(prefix: const Whitespace(), child: methodName));
     }
 
     // Level
     if (options.showLogLevel) {
       spans.addAll([
-        const Space(),
-        Styled(
+        const Whitespace(),
+        AnsiColored(
           foreground: levelColor ?? XtermColor.brightBlack,
-          child: Level(record.level),
+          child: BracketedLogLevel(record.level),
         ),
       ]);
     }
 
     // Message
     spans.addAll([
-      const Space(),
-      Styled(
+      const Whitespace(),
+      AnsiColored(
         foreground: levelColor ?? XtermColor.brightBlack,
-        child: Message(record.message),
+        child: LogMessage(record.message),
       ),
     ]);
 
@@ -162,7 +185,7 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
         DataPresentation.inline => InlineData(data),
         DataPresentation.multiline => MultilineData(data),
       };
-      spans.add(Styled(
+      spans.add(AnsiColored(
         foreground: levelColor ?? XtermColor.brightBlack,
         child: dataSpan,
       ));
@@ -172,7 +195,7 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
     if (record.error != null) {
       spans.addAll([
         const NewLine(),
-        Styled(foreground: levelColor, child: Error(record.error)),
+        AnsiColored(foreground: levelColor, child: ErrorSpan(record.error)),
       ]);
     }
 
@@ -180,15 +203,18 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
     if (record.stackTrace case final stackTrace?) {
       spans.addAll([
         const NewLine(),
-        Styled(
+        AnsiColored(
           foreground: levelColor ?? XtermColor.brightBlack,
           child: StackTraceSpan(stackTrace),
         ),
       ]);
     }
 
-    return Row(spans);
+    return SpanSequence(spans);
   }
+
+  @override
+  String toString() => 'RainbowLogSpan(${record.message})';
 }
 
 class RainbowFormatOptions extends FormatOptions {

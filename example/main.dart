@@ -1,21 +1,13 @@
 // ignore_for_file: avoid_print, avoid_redundant_argument_values
 
 import 'package:chirp/chirp.dart';
-import 'package:collection/collection.dart';
 
 void main() {
-  // Logger for section headers with newline prefix and no level
-  final sectionLogger = ChirpLogger()
+  Chirp.root = ChirpLogger()
+    ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
     ..addConsoleWriter(
       formatter: RainbowMessageFormatter(
-        options: const RainbowFormatOptions(
-          showLogLevel: true,
-          showMethod: false,
-        ),
-        spanTransformers: [
-          _prependNewlineForSectionHeaders,
-          _removeLevel,
-        ],
+        spanTransformers: [_boxWtfMessages],
       ),
     );
 
@@ -23,9 +15,7 @@ void main() {
   basicInstanceLoggingExample();
 
   sectionLogger.warning('=== Example 1: Static Methods - All Log Levels ===');
-  Chirp.root = ChirpLogger()
-    ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
-    ..addConsoleWriter(formatter: RainbowMessageFormatter());
+
   allLogLevelsExample();
 
   sectionLogger.warning('=== Example 2: Named Logger & Structured Data ===');
@@ -285,33 +275,45 @@ class UserService {
   }
 }
 
+
+// Logger for section headers with newline prefix and no level
+final sectionLogger = ChirpLogger()
+  ..addConsoleWriter(
+    formatter: RainbowMessageFormatter(
+      options: const RainbowFormatOptions(
+        showLogLevel: true,
+        showMethod: false,
+      ),
+      spanTransformers: [
+        _prependNewlineForSectionHeaders,
+        _removeLevel,
+      ],
+    ),
+  );
+
 /// Prepends a newline before messages starting with "=== ".
-LogSpan _prependNewlineForSectionHeaders(LogSpan span, LogRecord record) {
+void _prependNewlineForSectionHeaders(SpanNode tree, LogRecord record) {
   final message = record.message?.toString() ?? '';
   if (message.startsWith('=== ')) {
-    return Row([const NewLine(), span]);
+    // Replace the root span with a new SpanSequence that includes a newline prefix
+    tree.replaceSpan(SpanSequence([const NewLine(), tree.span]));
   }
-  return span;
 }
 
-/// Removes the Level span from the output.
-LogSpan _removeLevel(LogSpan span, LogRecord record) {
-  final match = findSpan<Level>(span);
-  if (match == null) return span;
+/// Removes the BracketedLogLevel span from the output.
+void _removeLevel(SpanNode tree, LogRecord record) {
+  tree.findFirst<BracketedLogLevel>()?.remove();
+}
 
-  final parent =
-      match.parents.reversed.firstWhereOrNull((p) => p is MultiChildSpan);
-  if (parent == null) return span;
+/// Wraps WTF level messages in a bordered box.
+void _boxWtfMessages(SpanNode tree, LogRecord record) {
+  if (record.level != ChirpLogLevel.wtf) return;
 
-  final i = match.parents.indexOf(parent);
-  final childToRemove =
-      i + 1 < match.parents.length ? match.parents[i + 1] : match.span;
-  final children = (parent as Row).children;
-  final idx = children.indexOf(childToRemove);
-  if (idx > 0 && children[idx - 1] is Space) {
-    children.removeAt(idx - 1);
-  }
-  children.remove(childToRemove);
-
-  return span;
+  tree.wrap(
+    (child) => Bordered(
+      child: child,
+      style: BoxBorderStyle.rounded,
+      borderColor: XtermColor.color160, // red
+    ),
+  );
 }

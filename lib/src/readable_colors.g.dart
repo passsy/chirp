@@ -11,7 +11,7 @@
 // - Contrast on black >= 3.1
 // - Saturation >= 16% (excludes grays)
 
-import 'package:chirp/src/xterm_colors.g.dart';
+import 'xterm_colors.g.dart';
 
 /// Low saturation colors (17-33%) - subtle, muted tones.
 const List<XtermColor> readableColorsLowSaturation = [

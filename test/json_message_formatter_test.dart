@@ -15,7 +15,7 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuffer();
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -42,7 +42,7 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuffer();
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -71,7 +71,7 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuffer();
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -103,7 +103,7 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuffer();
       formatter.format(entry, builder);
       final result = builder.build();
 

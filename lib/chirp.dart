@@ -16,6 +16,7 @@ export 'package:chirp/src/formatters/simple_console_message_formatter.dart';
 export 'package:chirp/src/log_level.dart';
 export 'package:chirp/src/log_record.dart';
 export 'package:chirp/src/stack_trace_util.dart';
+export 'package:chirp/src/xterm_colors.g.dart';
 
 // ignore: avoid_classes_with_only_static_members
 /// Global static logger providing convenient access to logging functionality.
@@ -1311,7 +1312,8 @@ class ChirpLogger {
       name: name ?? this.name,
       instance: instance ?? this.instance,
       parent: this,
-      context: context != null ? {...this.context, ...context} : {...this.context},
+      context:
+          context != null ? {...this.context, ...context} : {...this.context},
     );
   }
 

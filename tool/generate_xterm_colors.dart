@@ -16,7 +16,8 @@ void main() {
   buffer.writeln();
   buffer.writeln("import 'dart:math' as math;");
   buffer.writeln();
-  buffer.writeln('/// Represents an xterm ANSI color with contrast information.');
+  buffer
+      .writeln('/// Represents an xterm ANSI color with contrast information.');
   buffer.writeln('enum XtermColor {');
 
   // Generate enum values
@@ -32,8 +33,10 @@ void main() {
     buffer.writeln('    g: ${color.g},');
     buffer.writeln('    b: ${color.b},');
     buffer.writeln('    luminance: ${luminance.toStringAsFixed(4)},');
-    buffer.writeln('    contrastOnWhite: ${contrastOnLight.toStringAsFixed(2)},');
-    buffer.writeln('    contrastOnBlack: ${contrastOnDark.toStringAsFixed(2)},');
+    buffer
+        .writeln('    contrastOnWhite: ${contrastOnLight.toStringAsFixed(2)},');
+    buffer
+        .writeln('    contrastOnBlack: ${contrastOnDark.toStringAsFixed(2)},');
     buffer.writeln('  ),');
   }
 
@@ -68,20 +71,25 @@ void main() {
   buffer.writeln('    return _ciede2000(lab1, lab2);');
   buffer.writeln('  }');
   buffer.writeln();
-  buffer.writeln('  static (double L, double a, double b) _rgbToLab(int r, int g, int b) {');
+  buffer.writeln(
+      '  static (double L, double a, double b) _rgbToLab(int r, int g, int b) {');
   buffer.writeln('    // RGB to XYZ');
   buffer.writeln('    double pivotRgb(double n) {');
   buffer.writeln('      final v = n / 255.0;');
-  buffer.writeln('      return v > 0.04045 ? math.pow((v + 0.055) / 1.055, 2.4).toDouble() : v / 12.92;');
+  buffer.writeln(
+      '      return v > 0.04045 ? math.pow((v + 0.055) / 1.055, 2.4).toDouble() : v / 12.92;');
   buffer.writeln('    }');
   buffer.writeln('    final rLinear = pivotRgb(r.toDouble()) * 100;');
   buffer.writeln('    final gLinear = pivotRgb(g.toDouble()) * 100;');
   buffer.writeln('    final bLinear = pivotRgb(b.toDouble()) * 100;');
   buffer.writeln();
   buffer.writeln('    // Observer = 2°, Illuminant = D65');
-  buffer.writeln('    final x = rLinear * 0.4124564 + gLinear * 0.3575761 + bLinear * 0.1804375;');
-  buffer.writeln('    final y = rLinear * 0.2126729 + gLinear * 0.7151522 + bLinear * 0.0721750;');
-  buffer.writeln('    final z = rLinear * 0.0193339 + gLinear * 0.1191920 + bLinear * 0.9503041;');
+  buffer.writeln(
+      '    final x = rLinear * 0.4124564 + gLinear * 0.3575761 + bLinear * 0.1804375;');
+  buffer.writeln(
+      '    final y = rLinear * 0.2126729 + gLinear * 0.7151522 + bLinear * 0.0721750;');
+  buffer.writeln(
+      '    final z = rLinear * 0.0193339 + gLinear * 0.1191920 + bLinear * 0.9503041;');
   buffer.writeln();
   buffer.writeln('    // XYZ to Lab');
   buffer.writeln('    const refX = 95.047;');
@@ -89,7 +97,8 @@ void main() {
   buffer.writeln('    const refZ = 108.883;');
   buffer.writeln();
   buffer.writeln('    double pivotXyz(double n) {');
-  buffer.writeln('      return n > 0.008856 ? math.pow(n, 1.0 / 3.0).toDouble() : (7.787 * n) + (16.0 / 116.0);');
+  buffer.writeln(
+      '      return n > 0.008856 ? math.pow(n, 1.0 / 3.0).toDouble() : (7.787 * n) + (16.0 / 116.0);');
   buffer.writeln('    }');
   buffer.writeln();
   buffer.writeln('    final xPivot = pivotXyz(x / refX);');
@@ -123,8 +132,10 @@ void main() {
   buffer.writeln('    final c2 = math.sqrt(a2 * a2 + b2 * b2);');
   buffer.writeln('    final cBar = (c1 + c2) / 2;');
   buffer.writeln();
-  buffer.writeln('    final cBar7 = cBar * cBar * cBar * cBar * cBar * cBar * cBar;');
-  buffer.writeln('    final g = 0.5 * (1 - math.sqrt(cBar7 / (cBar7 + 6103515625)));');
+  buffer.writeln(
+      '    final cBar7 = cBar * cBar * cBar * cBar * cBar * cBar * cBar;');
+  buffer.writeln(
+      '    final g = 0.5 * (1 - math.sqrt(cBar7 / (cBar7 + 6103515625)));');
   buffer.writeln();
   buffer.writeln('    final a1Prime = a1 * (1 + g);');
   buffer.writeln('    final a2Prime = a2 * (1 + g);');
@@ -155,7 +166,8 @@ void main() {
   buffer.writeln('    }');
   buffer.writeln();
   buffer.writeln('    final deltaHPrime =');
-  buffer.writeln('        2 * math.sqrt(c1Prime * c2Prime) * math.sin(deltahPrime * pi / 360);');
+  buffer.writeln(
+      '        2 * math.sqrt(c1Prime * c2Prime) * math.sin(deltahPrime * pi / 360);');
   buffer.writeln();
   buffer.writeln('    final lBarPrime = (l1 + l2) / 2;');
   buffer.writeln('    final cBarPrime = (c1Prime + c2Prime) / 2;');
@@ -178,15 +190,20 @@ void main() {
   buffer.writeln('        0.20 * math.cos((4 * hBarPrime - 63) * pi / 180);');
   buffer.writeln();
   buffer.writeln('    final deltaTheta =');
-  buffer.writeln('        30 * math.exp(-((hBarPrime - 275) / 25) * ((hBarPrime - 275) / 25));');
+  buffer.writeln(
+      '        30 * math.exp(-((hBarPrime - 275) / 25) * ((hBarPrime - 275) / 25));');
   buffer.writeln();
   buffer.writeln('    final cBarPrime7 =');
-  buffer.writeln('        cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime;');
-  buffer.writeln('    final rc = 2 * math.sqrt(cBarPrime7 / (cBarPrime7 + 6103515625));');
+  buffer.writeln(
+      '        cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime;');
+  buffer.writeln(
+      '    final rc = 2 * math.sqrt(cBarPrime7 / (cBarPrime7 + 6103515625));');
   buffer.writeln();
-  buffer.writeln('    final lBarPrimeMinus50Sq = (lBarPrime - 50) * (lBarPrime - 50);');
+  buffer.writeln(
+      '    final lBarPrimeMinus50Sq = (lBarPrime - 50) * (lBarPrime - 50);');
   buffer.writeln('    final sl =');
-  buffer.writeln('        1 + (0.015 * lBarPrimeMinus50Sq) / math.sqrt(20 + lBarPrimeMinus50Sq);');
+  buffer.writeln(
+      '        1 + (0.015 * lBarPrimeMinus50Sq) / math.sqrt(20 + lBarPrimeMinus50Sq);');
   buffer.writeln('    final sc = 1 + 0.045 * cBarPrime;');
   buffer.writeln('    final sh = 1 + 0.015 * cBarPrime * t;');
   buffer.writeln('    final rt = -math.sin(2 * deltaTheta * pi / 180) * rc;');
@@ -195,7 +212,8 @@ void main() {
   buffer.writeln('    final dC = deltaCPrime / (kC * sc);');
   buffer.writeln('    final dH = deltaHPrime / (kH * sh);');
   buffer.writeln();
-  buffer.writeln('    return math.sqrt(dL * dL + dC * dC + dH * dH + rt * dC * dH);');
+  buffer.writeln(
+      '    return math.sqrt(dL * dL + dC * dC + dH * dH + rt * dC * dH);');
   buffer.writeln('  }');
   buffer.writeln('}');
 

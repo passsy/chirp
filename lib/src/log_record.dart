@@ -2,6 +2,27 @@ import 'package:chirp/src/format_option.dart';
 import 'package:chirp/src/log_level.dart';
 import 'package:chirp/src/stack_trace_util.dart';
 
+/// A single log entry containing the message and associated metadata.
+///
+/// LogRecord is an immutable snapshot of a log event. It captures:
+/// - The log [message] and [level]
+/// - When the log was created ([date])
+/// - Optional [error] and [stackTrace] for error logging
+/// - The [instance] that created the log (for instance tracking)
+/// - The [caller] stack trace (for source location)
+/// - Structured [data] for machine-readable logging
+/// - Per-log [formatOptions] to override formatter defaults
+///
+/// ## Example
+///
+/// ```dart
+/// final record = LogRecord(
+///   message: 'User logged in',
+///   date: DateTime.now(),
+///   level: ChirpLogLevel.info,
+///   data: {'userId': '123', 'method': 'oauth'},
+/// );
+/// ```
 class LogRecord {
   /// The log message
   final Object? message;

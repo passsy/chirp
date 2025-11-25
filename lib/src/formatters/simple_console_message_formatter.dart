@@ -46,7 +46,7 @@ class SimpleConsoleMessageFormatter extends ConsoleMessageFormatter {
   });
 
   @override
-  void format(LogRecord record, ConsoleMessageBuilder builder) {
+  void format(LogRecord record, ConsoleMessageBuffer builder) {
     // Main log line: timestamp [LEVEL] class@hash (loggerName) - message
     _writeMainLine(record, builder);
 
@@ -79,7 +79,7 @@ class SimpleConsoleMessageFormatter extends ConsoleMessageFormatter {
     }
   }
 
-  void _writeMainLine(LogRecord record, ConsoleMessageBuilder builder) {
+  void _writeMainLine(LogRecord record, ConsoleMessageBuffer builder) {
     // Format timestamp: 2024-01-10 10:30:45.123
     final date = record.date;
     final year = date.year.toString().padLeft(4, '0');

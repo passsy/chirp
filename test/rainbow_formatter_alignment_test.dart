@@ -18,7 +18,7 @@ void main() {
         },
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -42,7 +42,7 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -56,7 +56,7 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -75,7 +75,7 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -99,7 +99,7 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -107,7 +107,8 @@ void main() {
         result,
         startsWith('10:23:45.123 device_manager:809 _TestClass@'),
       );
-      expect(result, contains(' _startAutoConnectScanning [info] Test message'));
+      expect(
+          result, contains(' _startAutoConnectScanning [info] Test message'));
       expect(result, isNot(contains('.<anonymous closure>')));
     });
 
@@ -121,7 +122,7 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -141,7 +142,7 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -163,7 +164,7 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -186,7 +187,7 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -211,7 +212,7 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -231,7 +232,7 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: true);
+      final builder = ConsoleMessageBuffer(useColors: true);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -248,7 +249,7 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -265,7 +266,7 @@ void main() {
         loggerName: 'TestLogger',
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -291,7 +292,7 @@ void main() {
         },
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -315,7 +316,7 @@ void main() {
         },
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -336,7 +337,7 @@ void main() {
         },
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -359,7 +360,7 @@ void main() {
         },
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -377,7 +378,7 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -394,7 +395,7 @@ void main() {
         error: Exception('Something went wrong'),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -415,7 +416,7 @@ void main() {
             '#0      main (file.dart:10:5)\n#1      test (file.dart:20:3)'),
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -428,7 +429,6 @@ void main() {
       );
     });
   });
-
 }
 
 class _TestClass {}

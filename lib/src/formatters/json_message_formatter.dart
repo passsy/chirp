@@ -7,7 +7,7 @@ class JsonMessageFormatter extends ConsoleMessageFormatter {
   JsonMessageFormatter() : super();
 
   @override
-  void format(LogRecord record, ConsoleMessageBuilder builder) {
+  void format(LogRecord record, ConsoleMessageBuffer builder) {
     // Try to get caller location first
     final String? callerLocation = record.caller != null
         ? getCallerInfo(record.caller!)?.callerLocation

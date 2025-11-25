@@ -13,7 +13,7 @@ void main() {
       );
 
       final formatter = CompactChirpMessageFormatter();
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuffer();
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -29,7 +29,7 @@ void main() {
       );
 
       final formatter = CompactChirpMessageFormatter();
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuffer();
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -48,7 +48,7 @@ void main() {
       );
 
       final formatter = CompactChirpMessageFormatter();
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuffer();
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -61,7 +61,6 @@ void main() {
       );
     });
   });
-
 }
 
 class _MyClass {}

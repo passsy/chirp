@@ -1,30 +1,41 @@
 import 'package:chirp/chirp.dart';
-import 'package:chirp/src/formatters/yaml_formatter.dart';
 
-/// Single-line compact format
+/// Single-line compact format using spans.
 class CompactChirpMessageFormatter extends ConsoleMessageFormatter {
-  CompactChirpMessageFormatter() : super();
+  final List<SpanTransformer> spanTransformers;
+
+  CompactChirpMessageFormatter({
+    List<SpanTransformer>? spanTransformers,
+  })  : spanTransformers = spanTransformers ?? [],
+        super();
 
   @override
-  void format(LogRecord record, ConsoleMessageBuilder builder) {
-    final hour = record.date.hour.toString().padLeft(2, '0');
-    final minute = record.date.minute.toString().padLeft(2, '0');
-    final second = record.date.second.toString().padLeft(2, '0');
-    final ms = record.date.millisecond.toString().padLeft(3, '0');
-    final formattedTime = '$hour:$minute:$second.$ms';
+  void format(LogRecord record, ConsoleMessageBuffer builder) {
+    final span = buildSpan(record);
 
-    // Try to get caller location first
-    final String? callerLocation = record.caller != null
-        ? getCallerInfo(record.caller!)?.callerLocation
-        : null;
+    if (spanTransformers.isEmpty) {
+      renderSpan(span, builder);
+      return;
+    }
 
+    final tree = SpanNode.fromSpan(span);
+    for (final transformer in spanTransformers) {
+      transformer(tree, record);
+    }
+    renderSpan(tree.toSpan(), builder);
+  }
+
+  LogSpan buildSpan(LogRecord record) {
+    final callerInfo = record.callerInfo;
+
+    // Build class label: loggerName OR location OR className
     final className = record.loggerName ??
-        callerLocation ??
+        callerInfo?.callerLocation ??
         record.instance?.runtimeType.toString() ??
         'Unknown';
 
-    final instanceHash = record.instanceHash;
     final String classLabel;
+    final instanceHash = record.instanceHash;
     if (instanceHash != null) {
       final hash = instanceHash.toRadixString(16).padLeft(4, '0');
       final shortHash = hash.substring(hash.length >= 4 ? hash.length - 4 : 0);
@@ -33,23 +44,36 @@ class CompactChirpMessageFormatter extends ConsoleMessageFormatter {
       classLabel = className;
     }
 
-    builder.write('$formattedTime $classLabel ${record.message}');
+    final spans = <LogSpan>[
+      Timestamp(record.date),
+      const Whitespace(),
+      PlainText(classLabel),
+      const Whitespace(),
+      LogMessage(record.message),
+    ];
 
-    // Write data inline
+    // Inline data
     final data = record.data;
     if (data != null && data.isNotEmpty) {
-      final dataStr = data.entries
-          .map((e) => '${formatYamlKey(e.key)}: ${formatYamlValue(e.value)}')
-          .join(', ');
-      builder.write(' ($dataStr)');
+      spans.add(InlineData(data));
     }
 
+    // Error
     if (record.error != null) {
-      builder.writeNextLine(record.error);
+      spans.addAll([
+        const NewLine(),
+        ErrorSpan(record.error),
+      ]);
     }
 
-    if (record.stackTrace != null) {
-      builder.writeNextLine(record.stackTrace);
+    // Stack trace
+    if (record.stackTrace case final stackTrace?) {
+      spans.addAll([
+        const NewLine(),
+        StackTraceSpan(stackTrace),
+      ]);
     }
+
+    return SpanSequence(spans);
   }
 }

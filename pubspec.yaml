@@ -7,7 +7,6 @@ environment:
   sdk: ^3.0.0
 
 dependencies:
-  ansicolor: ^2.0.3
   clock: ^1.0.0
 
 dev_dependencies:

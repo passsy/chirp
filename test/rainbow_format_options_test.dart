@@ -16,7 +16,7 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -39,7 +39,7 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -63,7 +63,7 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -87,7 +87,7 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -114,7 +114,7 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -135,7 +135,7 @@ void main() {
         data: {'userId': 'user_123'},
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -158,7 +158,7 @@ void main() {
         formatOptions: const [],
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
@@ -184,7 +184,7 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuilder(useColors: false);
+      final builder = ConsoleMessageBuffer(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
