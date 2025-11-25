@@ -7,6 +7,8 @@ void main() {
   basicInstanceLoggingExample();
 
   Chirp.warning('=== Example 1: Static Methods - All Log Levels ===');
+  Chirp.root = ChirpLogger(writers: [ConsoleWriter(formatter: CompactChirpMessageFormatter()), ConsoleWriter(formatter: RainbowMessageFormatter()),
+  ]);
   allLogLevelsExample();
 
   Chirp.warning('=== Example 2: Named Logger & Structured Data ===');
@@ -27,10 +29,7 @@ void main() {
   Chirp.warning('=== Example 7: Stacktraces with Different Log Levels ===');
   stacktraceLevelsExample();
 
-  Chirp.warning('=== Example 8: GCP Cloud Logging Format ===');
-  gcpFormatterExample();
-
-  Chirp.warning('=== Example 9: Multiple Writers (Console + JSON) ===');
+  Chirp.warning('=== Example 8: Multiple Writers (Console + JSON) ===');
   multipleWritersExample();
 
   // Reset to default
@@ -97,6 +96,7 @@ void childLoggerExample() {
   final txLogger = requestLogger.child(context: {
     'transactionId': 'TXN-789',
     'action': 'login',
+    'plainObject': Object(),
     'cool package': 'https://pub.dev/packages/spot',
   });
 
@@ -118,47 +118,17 @@ void instanceTrackingExample() {
   UserService.logStatic();
 }
 
-/// GCP Cloud Logging compatible JSON format
-void gcpFormatterExample() {
-  Chirp.root = ChirpLogger(
-    writers: [
-      ConsoleAppender(
-        formatter: GcpChirpMessageFormatter(
-          projectId: 'my-project',
-          logName: 'application-logs',
-        ),
-      ),
-    ],
-  );
-
-  Chirp.info('GCP format log', data: {
-    'userId': 'user_123',
-    'action': 'login',
-    'cool package': 'https://pub.dev/packages/spot',
-    'pathToFile':
-        'file:///Users/pascalwelsch/Projects/MyProject/test/fake/fake_auth_service.dart:119:7',
-  });
-
-  Chirp.error(
-    'GCP error log',
-    error: Exception('Connection failed'),
-  );
-
-  // Reset
-  Chirp.root = ChirpLogger();
-}
-
 /// Multiple writers send to different destinations with different formats
 void multipleWritersExample() {
   Chirp.root = ChirpLogger(
     writers: [
       // Human-readable format for console
-      ConsoleAppender(
+      ConsoleWriter(
         formatter: CompactChirpMessageFormatter(),
         output: (msg) => print('[CONSOLE] $msg'),
       ),
       // Machine-readable JSON
-      ConsoleAppender(
+      ConsoleWriter(
         formatter: JsonMessageFormatter(),
         output: (msg) => print('[JSON] $msg'),
       ),
@@ -176,7 +146,7 @@ void formatOptionsExample() {
   // Multiline data display (default)
   Chirp.root = ChirpLogger(
     writers: [
-      ConsoleAppender(
+      ConsoleWriter(
         formatter: RainbowMessageFormatter(
           options: const RainbowFormatOptions(data: DataPresentation.multiline),
         ),
@@ -188,6 +158,21 @@ void formatOptionsExample() {
     'userId': 'user_123',
     'email': 'user@example.com',
     'loginMethod': 'oauth',
+    'metadata': {
+      'browser': 'Chrome',
+      'platform': 'macOS',
+      'version': 25,
+    },
+    'roles': {'admin', 'user'},
+    'a record': ("value", "more", "data"),
+    'escapedStrings': [
+      'Sting"With"Quotes',
+      '\\wi\\th\\s\\paces',
+      null,
+      "null",
+      true,
+      'true'
+    ],
   });
 
   // Force inline
@@ -235,7 +220,7 @@ void multilineMessagesExample() {
       'email': 'user@example.com',
       'loginMethod': 'oauth',
     },
-    formatOptions: [const RainbowFormatOptions(layout: LayoutStyle.plain)],
+    formatOptions: [const RainbowFormatOptions()],
   );
 
   // Reset

@@ -1,27 +1,19 @@
-import 'dart:io';
-
 import 'package:ansicolor/ansicolor.dart';
 import 'package:chirp/chirp.dart';
 import 'package:chirp/src/xterm_colors.g.dart';
 
 /// Writes to console using print()
-class ConsoleAppender implements ChirpAppender {
+class ConsoleWriter implements ChirpWriter {
   final ConsoleMessageFormatter formatter;
   final void Function(String)? output;
 
-  ConsoleAppender({ConsoleMessageFormatter? formatter, this.output})
+  ConsoleWriter({ConsoleMessageFormatter? formatter, this.output})
       : formatter = formatter ?? RainbowMessageFormatter();
 
   @override
   void write(LogRecord record) {
-    bool supportColors = true;
-    if (Platform.environment.containsKey('SIMULATOR_DEVICE_NAME')) {
-      // colors are not supported on the iOS Simulator
-      // https://github.com/flutter/flutter/issues/20663
-      supportColors = false;
-    }
-
-    final builder = ConsoleMessageBuilder(useColors: supportColors);
+    const bool consoleSupportsColors = true;
+    final builder = ConsoleMessageBuilder(useColors: consoleSupportsColors);
     formatter.format(record, builder);
     final text = builder.build();
 
@@ -86,37 +78,5 @@ extension ConsoleMessageBuilderExt on ConsoleMessageBuilder {
       write(''.padLeft(spaces));
     }
     write(text);
-  }
-}
-
-/// Buffers log records for later processing
-class BufferedAppender implements ChirpAppender {
-  final List<LogRecord> buffer = [];
-
-  @override
-  void write(LogRecord record) {
-    buffer.add(record);
-  }
-
-  /// Flush buffered records to another appender
-  void flush(ChirpAppender target) {
-    for (final record in buffer) {
-      target.write(record);
-    }
-    buffer.clear();
-  }
-}
-
-/// Writes to multiple appenders
-class MultiAppender implements ChirpAppender {
-  final List<ChirpAppender> appenders;
-
-  MultiAppender(this.appenders);
-
-  @override
-  void write(LogRecord record) {
-    for (final appender in appenders) {
-      appender.write(record);
-    }
   }
 }

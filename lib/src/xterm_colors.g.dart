@@ -2367,46 +2367,55 @@ enum XtermColor {
     final yPivot = pivotXyz(y / refY);
     final zPivot = pivotXyz(z / refZ);
 
-    final L = (116.0 * yPivot) - 16.0;
-    final a = 500.0 * (xPivot - yPivot);
-    final bVal = 200.0 * (yPivot - zPivot);
+    final labL = (116.0 * yPivot) - 16.0;
+    final labA = 500.0 * (xPivot - yPivot);
+    final labB = 200.0 * (yPivot - zPivot);
 
-    return (L, a, bVal);
+    return (labL, labA, labB);
   }
 
-  static double _ciede2000((double, double, double) lab1, (double, double, double) lab2) {
-    final L1 = lab1.$1, a1 = lab1.$2, b1 = lab1.$3;
-    final L2 = lab2.$1, a2 = lab2.$2, b2 = lab2.$3;
+  static double _ciede2000(
+    (double, double, double) lab1,
+    (double, double, double) lab2,
+  ) {
+    final l1 = lab1.$1;
+    final a1 = lab1.$2;
+    final b1 = lab1.$3;
+    final l2 = lab2.$1;
+    final a2 = lab2.$2;
+    final b2 = lab2.$3;
 
-    const kL = 1.0, kC = 1.0, kH = 1.0;
+    const kL = 1.0;
+    const kC = 1.0;
+    const kH = 1.0;
     const pi = 3.141592653589793;
 
-    final C1 = math.sqrt(a1 * a1 + b1 * b1);
-    final C2 = math.sqrt(a2 * a2 + b2 * b2);
-    final Cbar = (C1 + C2) / 2;
+    final c1 = math.sqrt(a1 * a1 + b1 * b1);
+    final c2 = math.sqrt(a2 * a2 + b2 * b2);
+    final cBar = (c1 + c2) / 2;
 
-    final Cbar7 = Cbar * Cbar * Cbar * Cbar * Cbar * Cbar * Cbar;
-    final G = 0.5 * (1 - math.sqrt(Cbar7 / (Cbar7 + 6103515625)));
+    final cBar7 = cBar * cBar * cBar * cBar * cBar * cBar * cBar;
+    final g = 0.5 * (1 - math.sqrt(cBar7 / (cBar7 + 6103515625)));
 
-    final a1Prime = a1 * (1 + G);
-    final a2Prime = a2 * (1 + G);
+    final a1Prime = a1 * (1 + g);
+    final a2Prime = a2 * (1 + g);
 
-    final C1Prime = math.sqrt(a1Prime * a1Prime + b1 * b1);
-    final C2Prime = math.sqrt(a2Prime * a2Prime + b2 * b2);
+    final c1Prime = math.sqrt(a1Prime * a1Prime + b1 * b1);
+    final c2Prime = math.sqrt(a2Prime * a2Prime + b2 * b2);
 
-    double h1Prime = math.atan2(b1, a1Prime) * 180 / pi;
+    var h1Prime = math.atan2(b1, a1Prime) * 180 / pi;
     if (h1Prime < 0) h1Prime += 360;
-    double h2Prime = math.atan2(b2, a2Prime) * 180 / pi;
+    var h2Prime = math.atan2(b2, a2Prime) * 180 / pi;
     if (h2Prime < 0) h2Prime += 360;
 
-    final deltaLPrime = L2 - L1;
-    final deltaCPrime = C2Prime - C1Prime;
+    final deltaLPrime = l2 - l1;
+    final deltaCPrime = c2Prime - c1Prime;
 
     double deltahPrime;
-    if (C1Prime * C2Prime == 0) {
+    if (c1Prime * c2Prime == 0) {
       deltahPrime = 0;
     } else {
-      var diff = h2Prime - h1Prime;
+      final diff = h2Prime - h1Prime;
       if (diff.abs() <= 180) {
         deltahPrime = diff;
       } else if (diff > 180) {
@@ -2416,42 +2425,47 @@ enum XtermColor {
       }
     }
 
-    final deltaHPrime = 2 * math.sqrt(C1Prime * C2Prime) * math.sin(deltahPrime * pi / 360);
+    final deltaHPrime =
+        2 * math.sqrt(c1Prime * c2Prime) * math.sin(deltahPrime * pi / 360);
 
-    final LbarPrime = (L1 + L2) / 2;
-    final CbarPrime = (C1Prime + C2Prime) / 2;
+    final lBarPrime = (l1 + l2) / 2;
+    final cBarPrime = (c1Prime + c2Prime) / 2;
 
-    double hbarPrime;
-    if (C1Prime * C2Prime == 0) {
-      hbarPrime = h1Prime + h2Prime;
+    double hBarPrime;
+    if (c1Prime * c2Prime == 0) {
+      hBarPrime = h1Prime + h2Prime;
     } else if ((h1Prime - h2Prime).abs() <= 180) {
-      hbarPrime = (h1Prime + h2Prime) / 2;
+      hBarPrime = (h1Prime + h2Prime) / 2;
     } else if (h1Prime + h2Prime < 360) {
-      hbarPrime = (h1Prime + h2Prime + 360) / 2;
+      hBarPrime = (h1Prime + h2Prime + 360) / 2;
     } else {
-      hbarPrime = (h1Prime + h2Prime - 360) / 2;
+      hBarPrime = (h1Prime + h2Prime - 360) / 2;
     }
 
-    final T = 1 - 0.17 * math.cos((hbarPrime - 30) * pi / 180) +
-        0.24 * math.cos(2 * hbarPrime * pi / 180) +
-        0.32 * math.cos((3 * hbarPrime + 6) * pi / 180) -
-        0.20 * math.cos((4 * hbarPrime - 63) * pi / 180);
+    final t = 1 -
+        0.17 * math.cos((hBarPrime - 30) * pi / 180) +
+        0.24 * math.cos(2 * hBarPrime * pi / 180) +
+        0.32 * math.cos((3 * hBarPrime + 6) * pi / 180) -
+        0.20 * math.cos((4 * hBarPrime - 63) * pi / 180);
 
-    final deltaTheta = 30 * math.exp(-((hbarPrime - 275) / 25) * ((hbarPrime - 275) / 25));
+    final deltaTheta =
+        30 * math.exp(-((hBarPrime - 275) / 25) * ((hBarPrime - 275) / 25));
 
-    final CbarPrime7 = CbarPrime * CbarPrime * CbarPrime * CbarPrime * CbarPrime * CbarPrime * CbarPrime;
-    final RC = 2 * math.sqrt(CbarPrime7 / (CbarPrime7 + 6103515625));
+    final cBarPrime7 =
+        cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime;
+    final rc = 2 * math.sqrt(cBarPrime7 / (cBarPrime7 + 6103515625));
 
-    final LbarPrimeMinus50Sq = (LbarPrime - 50) * (LbarPrime - 50);
-    final SL = 1 + (0.015 * LbarPrimeMinus50Sq) / math.sqrt(20 + LbarPrimeMinus50Sq);
-    final SC = 1 + 0.045 * CbarPrime;
-    final SH = 1 + 0.015 * CbarPrime * T;
-    final RT = -math.sin(2 * deltaTheta * pi / 180) * RC;
+    final lBarPrimeMinus50Sq = (lBarPrime - 50) * (lBarPrime - 50);
+    final sl =
+        1 + (0.015 * lBarPrimeMinus50Sq) / math.sqrt(20 + lBarPrimeMinus50Sq);
+    final sc = 1 + 0.045 * cBarPrime;
+    final sh = 1 + 0.015 * cBarPrime * t;
+    final rt = -math.sin(2 * deltaTheta * pi / 180) * rc;
 
-    final dL = deltaLPrime / (kL * SL);
-    final dC = deltaCPrime / (kC * SC);
-    final dH = deltaHPrime / (kH * SH);
+    final dL = deltaLPrime / (kL * sl);
+    final dC = deltaCPrime / (kC * sc);
+    final dH = deltaHPrime / (kH * sh);
 
-    return math.sqrt(dL * dL + dC * dC + dH * dH + RT * dC * dH);
+    return math.sqrt(dL * dL + dC * dC + dH * dH + rt * dC * dH);
   }
 }

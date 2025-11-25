@@ -1,6 +1,6 @@
 /// Information extracted from a stack frame
 class StackFrameInfo {
-  /// The raw caller method (e.g., "UserService.processUser.<anonymous closure>")
+  /// The raw caller method (e.g., `UserService.processUser.<anonymous closure>`)
   final String rawCallerMethod;
 
   /// The file path (e.g., "file:///path/to/file.dart" or "package:my_app/file.dart")
@@ -25,8 +25,8 @@ class StackFrameInfo {
   /// The caller method with anonymous closures stripped
   ///
   /// Examples:
-  /// - "UserService.processUser.<anonymous closure>" -> "UserService.processUser"
-  /// - "main.<anonymous closure>.<anonymous closure>" -> "main"
+  /// - `UserService.processUser.<anonymous closure>` -> `UserService.processUser`
+  /// - `main.<anonymous closure>.<anonymous closure>` -> `main`
   late final String callerMethod =
       rawCallerMethod.replaceAll('.<anonymous closure>', '');
 

@@ -152,4 +152,16 @@ class ChirpLogLevel {
 
   @override
   int get hashCode => Object.hash(name, severity);
+
+  /// Compare log levels by severity
+  bool operator <(ChirpLogLevel other) => severity < other.severity;
+
+  /// Compare log levels by severity
+  bool operator <=(ChirpLogLevel other) => severity <= other.severity;
+
+  /// Compare log levels by severity
+  bool operator >(ChirpLogLevel other) => severity > other.severity;
+
+  /// Compare log levels by severity
+  bool operator >=(ChirpLogLevel other) => severity >= other.severity;
 }

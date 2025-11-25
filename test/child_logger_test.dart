@@ -8,7 +8,7 @@ void main() {
       final parent = ChirpLogger(
         name: 'Parent',
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -30,7 +30,7 @@ void main() {
       // Configure root with first writer
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages1.add,
           ),
@@ -47,7 +47,7 @@ void main() {
       // Reassign Chirp.root to a new logger instance
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages2.add,
           ),
@@ -65,7 +65,7 @@ void main() {
       final root = ChirpLogger(
         context: {'app': 'myapp'},
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -89,7 +89,7 @@ void main() {
       final parent = ChirpLogger(
         context: {'status': 'pending', 'app': 'myapp'},
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -109,7 +109,7 @@ void main() {
       final messages = <String>[];
       final parent = ChirpLogger(
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -128,7 +128,7 @@ void main() {
       final parent = ChirpLogger(
         name: 'API',
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -147,7 +147,7 @@ void main() {
       final parent = ChirpLogger(
         name: 'API',
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -166,7 +166,7 @@ void main() {
       final messages = <String>[];
       final parent = ChirpLogger(
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -189,7 +189,7 @@ void main() {
       final parent = ChirpLogger(
         instance: parentInstance,
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -213,7 +213,7 @@ void main() {
       final parent = ChirpLogger(
         instance: parentInstance,
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -238,7 +238,7 @@ void main() {
 
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -258,7 +258,7 @@ void main() {
 
       Chirp.root = ChirpLogger(
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -282,7 +282,7 @@ void main() {
         name: 'Parent',
         context: {'parentKey': 'parentValue'},
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -302,7 +302,7 @@ void main() {
       final root = ChirpLogger(
         context: {'level0': 'root'},
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -329,7 +329,7 @@ void main() {
       final parent = ChirpLogger(
         context: {'shared': 'original'},
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),

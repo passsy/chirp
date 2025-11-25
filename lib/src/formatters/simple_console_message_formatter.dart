@@ -1,5 +1,4 @@
 import 'package:chirp/chirp.dart';
-import 'package:chirp/src/stack_trace_util.dart';
 
 /// Simple, comprehensive text formatter that displays all LogRecord fields
 ///

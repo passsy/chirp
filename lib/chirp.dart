@@ -1,19 +1,18 @@
-import 'package:chirp/src/console_appender.dart';
-import 'package:chirp/src/core.dart';
+import 'package:chirp/src/console_writer.dart';
 import 'package:chirp/src/format_option.dart';
 import 'package:chirp/src/log_level.dart';
 import 'package:chirp/src/log_record.dart';
 import 'package:clock/clock.dart';
 
-export 'package:chirp/src/console_appender.dart';
-export 'package:chirp/src/core.dart';
+export 'package:chirp/src/console_writer.dart';
 export 'package:chirp/src/format_option.dart';
+export 'package:chirp/src/formatters/compact_message_formatter.dart';
+export 'package:chirp/src/formatters/json_message_formatter.dart';
+export 'package:chirp/src/formatters/rainbow_message_formatter.dart';
+export 'package:chirp/src/formatters/simple_console_message_formatter.dart';
 export 'package:chirp/src/log_level.dart';
 export 'package:chirp/src/log_record.dart';
 export 'package:chirp/src/stack_trace_util.dart';
-export 'package:chirp/src/formatters/message_formatter.dart';
-export 'package:chirp/src/formatters/rainbow_message_formatter.dart';
-export 'package:chirp/src/formatters/simple_console_message_formatter.dart';
 
 // ignore: non_constant_identifier_names
 // ChirpLogger get Chirp => ChirpLogger.root;
@@ -94,7 +93,7 @@ export 'package:chirp/src/formatters/simple_console_message_formatter.dart';
 /// See also:
 /// - [ChirpLogger] for creating custom logger instances
 /// - [ChirpLogLevel] for understanding severity levels
-/// - [ChirpAppender] for implementing custom log destinations
+/// - [ChirpWriter] for implementing custom log destinations
 // ignore: avoid_classes_with_only_static_members
 class Chirp {
   /// Global root logger used by all static methods and the `.chirp` extension.
@@ -712,7 +711,7 @@ Map<String, Object?>? _mergeData(
 /// See also:
 /// - [Chirp] for convenient static logging methods
 /// - [ChirpLogLevel] for available severity levels
-/// - [ChirpAppender] for implementing custom writers
+/// - [ChirpWriter] for implementing custom writers
 class ChirpLogger {
   /// Optional name for this logger.
   ///
@@ -753,7 +752,7 @@ class ChirpLogger {
   ///
   /// Only root loggers (those without a parent) can have their own writers.
   /// Child loggers always use their parent's writers.
-  final List<ChirpAppender>? _ownWriters;
+  final List<ChirpWriter>? _ownWriters;
 
   /// Get the active writers for this logger.
   ///
@@ -762,12 +761,12 @@ class ChirpLogger {
   /// [ConsoleChirpMessageWriter] if none were configured.
   ///
   /// Writers determine where log messages are sent (console, file, network, etc).
-  List<ChirpAppender> get writers {
+  List<ChirpWriter> get writers {
     final p = parent;
     if (p != null) {
       return p.writers;
     }
-    return _ownWriters ?? [ConsoleAppender()];
+    return _ownWriters ?? [ConsoleWriter()];
   }
 
   /// Contextual data automatically included in all log entries.
@@ -836,7 +835,7 @@ class ChirpLogger {
     this.name,
     this.instance,
     this.parent,
-    List<ChirpAppender>? writers,
+    List<ChirpWriter>? writers,
     Map<String, Object?>? context,
   })  : _ownWriters = parent == null
             ? (writers != null ? List.unmodifiable(writers) : null)
@@ -1339,4 +1338,80 @@ extension ChirpObjectExt<T extends Object> on T {
   /// Logger instances are cached per object using [Expando], so repeated
   /// access to `.chirp` returns the same logger instance.
   ChirpLogger get chirp => ChirpLogger.forInstance(this);
+}
+
+/// Abstract interface for log output destinations.
+///
+/// A [ChirpWriter] receives [LogRecord] instances and writes them to a
+/// destination such as the console, a file, a network endpoint, or a
+/// monitoring service.
+///
+/// ## Built-in Writers
+///
+/// Chirp provides several built-in writers:
+///
+/// - [ConsoleWriter]: Writes formatted logs to stdout using `print()`
+/// - [BufferedAppender]: Buffers logs for later processing or batch sending
+/// - [MultiAppender]: Delegates to multiple writers simultaneously
+///
+/// ## Implementing Custom Writers
+///
+/// Create custom writers by implementing this interface:
+///
+/// ```dart
+/// class FileWriter implements ChirpWriter {
+///   final File logFile;
+///
+///   FileWriter(String path) : logFile = File(path);
+///
+///   @override
+///   void write(LogRecord record) {
+///     final line = '${record.date.toIso8601String()} '
+///         '[${record.level.name}] ${record.message}\n';
+///     logFile.writeAsStringSync(line, mode: FileMode.append);
+///   }
+/// }
+/// ```
+///
+/// ## Using Writers with ChirpLogger
+///
+/// Configure writers when creating a [ChirpLogger]:
+///
+/// ```dart
+/// Chirp.root = ChirpLogger(
+///   writers: [
+///     ConsoleAppender(formatter: RainbowMessageFormatter()),
+///     FileWriter('/var/log/app.log'),
+///     SentryWriter(dsn: 'https://...'),
+///   ],
+/// );
+/// ```
+///
+/// ## Writer Considerations
+///
+/// When implementing a writer, consider:
+///
+/// - **Performance**: Writers are called synchronously. For slow operations
+///   (network, disk), consider buffering or async processing.
+/// - **Error handling**: Writers should handle their own errors gracefully
+///   to avoid disrupting the application.
+/// - **Thread safety**: If your writer maintains state, ensure thread safety
+///   for concurrent access.
+/// - **Resource cleanup**: Implement cleanup logic (close files, flush buffers)
+///   when the application shuts down.
+///
+/// See also:
+/// - [ConsoleWriter] for console output with formatting
+/// - [LogRecord] for the data structure passed to writers
+/// - [ChirpLogger] for configuring writers on loggers
+abstract class ChirpWriter {
+  /// Writes a log record to this writer's destination.
+  ///
+  /// Implementations should process the [record] and output it to their
+  /// respective destination (console, file, network, etc.).
+  ///
+  /// This method is called synchronously for each log event. Long-running
+  /// operations should be handled asynchronously to avoid blocking the
+  /// application.
+  void write(LogRecord record);
 }

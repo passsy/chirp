@@ -16,15 +16,16 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuilder(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
-      // Should have multiple lines
-      expect(result.split('\n').length, greaterThan(1));
-      // Data should be on separate lines with │
-      expect(result, contains('│ userId=user_123'));
-      expect(result, contains('│ action=login'));
+      expect(
+        result,
+        '10:23:45.000 [info] Test message\n'
+        'userId: "user_123"\n'
+        'action: "login"',
+      );
     });
 
     test('formatter with inline default shows data on same line', () {
@@ -38,16 +39,14 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuilder(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
-      // Should be single line
-      expect(result.split('\n').length, 1);
-      // Data should be inline in parentheses
-      expect(result, contains('('));
-      expect(result, contains('userId=user_123'));
-      expect(result, contains('action=login'));
+      expect(
+        result,
+        '10:23:45.000 [info] Test message (userId: "user_123", action: "login")',
+      );
     });
 
     test('per-message inline option overrides multiline formatter default', () {
@@ -64,14 +63,14 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuilder(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
-      // Should be single line despite multiline formatter default
-      expect(result.split('\n').length, 1);
-      expect(result, contains('('));
-      expect(result, contains('userId=user_123'));
+      expect(
+        result,
+        '10:23:45.000 [info] Test message (userId: "user_123", action: "login")',
+      );
     });
 
     test('per-message multiline option overrides inline formatter default', () {
@@ -88,14 +87,16 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuilder(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
-      // Should have multiple lines despite inline formatter default
-      expect(result.split('\n').length, greaterThan(1));
-      expect(result, contains('│ userId=user_123'));
-      expect(result, contains('│ action=login'));
+      expect(
+        result,
+        '10:23:45.000 [info] Test message\n'
+        'userId: "user_123"\n'
+        'action: "login"',
+      );
     });
 
     test('formatOptions with non-RainbowFormatOptions uses formatter default',
@@ -113,13 +114,14 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuilder(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
-      // Should use formatter default (inline)
-      expect(result.split('\n').length, 1);
-      expect(result, contains('(userId=user_123)'));
+      expect(
+        result,
+        '10:23:45.000 [info] Test message (userId: "user_123")',
+      );
     });
 
     test('null formatOptions uses formatter default', () {
@@ -133,13 +135,15 @@ void main() {
         data: {'userId': 'user_123'},
       );
 
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuilder(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
-      // Should use formatter default (multiline)
-      expect(result.split('\n').length, greaterThan(1));
-      expect(result, contains('│ userId=user_123'));
+      expect(
+        result,
+        '10:23:45.000 [info] Test message\n'
+        'userId: "user_123"',
+      );
     });
 
     test('empty formatOptions list uses formatter default', () {
@@ -154,13 +158,14 @@ void main() {
         formatOptions: const [],
       );
 
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuilder(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
-      // Should use formatter default (inline)
-      expect(result.split('\n').length, 1);
-      expect(result, contains('(userId=user_123)'));
+      expect(
+        result,
+        '10:23:45.000 [info] Test message (userId: "user_123")',
+      );
     });
 
     test('first RainbowFormatOptions in list is used', () {
@@ -179,13 +184,14 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuilder();
+      final builder = ConsoleMessageBuilder(useColors: false);
       formatter.format(entry, builder);
       final result = builder.build();
 
-      // Should use first RainbowFormatOptions (inline)
-      expect(result.split('\n').length, 1);
-      expect(result, contains('(userId=user_123)'));
+      expect(
+        result,
+        '10:23:45.000 [info] Test message (userId: "user_123")',
+      );
     });
   });
 }

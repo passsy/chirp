@@ -12,7 +12,7 @@ void main() {
           'userId': 'user_456',
         },
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -32,7 +32,7 @@ void main() {
         name: 'API',
         context: {'requestId': 'REQ-123'},
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -56,7 +56,7 @@ void main() {
       final logger = ChirpLogger(
         name: 'API',
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -85,7 +85,7 @@ void main() {
           'status': 'pending',
         },
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -108,7 +108,7 @@ void main() {
         name: 'API',
         context: {'app': 'myapp'},
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -133,7 +133,7 @@ void main() {
         name: 'API',
         context: {'app': 'myapp'},
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -156,7 +156,7 @@ void main() {
       final logger = ChirpLogger(
         name: 'API',
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -175,7 +175,7 @@ void main() {
         name: 'API',
         context: {'requestId': 'REQ-123', 'userId': 'user_456'},
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -204,7 +204,7 @@ void main() {
           'sessionId': 'sess_789',
         },
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),
@@ -234,7 +234,7 @@ void main() {
           'sessionId': 'sess_789',
         },
         writers: [
-          ConsoleAppender(
+          ConsoleWriter(
             formatter: JsonMessageFormatter(),
             output: messages.add,
           ),

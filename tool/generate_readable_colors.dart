@@ -1,7 +1,8 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
 import 'dart:math';
-import '../lib/src/xterm_colors.g.dart';
+
+import 'package:chirp/src/xterm_colors.g.dart';
 
 const double minContrastDark = 3.1;
 const double minContrastLight = 2.12;
@@ -74,7 +75,7 @@ class ColorInfo {
     if (isGrey) return '◼️';
     if (isRedish) return '🔴';
     if (isYellowish) return '🟡';
-    if (isTooLight) return '🌞';
+    if (isTooLight) return '⚪️';
     if (isTooDark) return '🌑';
     return ' ';
   }
