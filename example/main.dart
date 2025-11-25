@@ -313,7 +313,7 @@ void _boxWtfMessages(SpanNode tree, LogRecord record) {
     (child) => Bordered(
       child: child,
       style: BoxBorderStyle.rounded,
-      borderColor: XtermColor.color160, // red
+      borderColor: XtermColor.red3_160, // red
     ),
   );
 }

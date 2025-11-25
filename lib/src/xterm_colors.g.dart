@@ -5,7 +5,9 @@ import 'dart:math' as math;
 
 /// Represents an xterm ANSI color with contrast information.
 enum XtermColor {
-  black(
+
+  /// Black (#000000)
+  black_0(
     code: 0,
     r: 0,
     g: 0,
@@ -14,7 +16,9 @@ enum XtermColor {
     contrastOnWhite: 21.00,
     contrastOnBlack: 1.00,
   ),
-  red(
+
+  /// Maroon (#800000)
+  red_1(
     code: 1,
     r: 128,
     g: 0,
@@ -23,7 +27,9 @@ enum XtermColor {
     contrastOnWhite: 10.95,
     contrastOnBlack: 1.92,
   ),
-  green(
+
+  /// Green (#008000)
+  green_2(
     code: 2,
     r: 0,
     g: 128,
@@ -32,7 +38,9 @@ enum XtermColor {
     contrastOnWhite: 5.14,
     contrastOnBlack: 4.09,
   ),
-  yellow(
+
+  /// Olive (#808000)
+  yellow_3(
     code: 3,
     r: 128,
     g: 128,
@@ -41,7 +49,9 @@ enum XtermColor {
     contrastOnWhite: 4.20,
     contrastOnBlack: 5.01,
   ),
-  blue(
+
+  /// Navy (#000080)
+  blue_4(
     code: 4,
     r: 0,
     g: 0,
@@ -50,7 +60,9 @@ enum XtermColor {
     contrastOnWhite: 16.01,
     contrastOnBlack: 1.31,
   ),
-  magenta(
+
+  /// Purple (#800080)
+  magenta_5(
     code: 5,
     r: 128,
     g: 0,
@@ -59,7 +71,9 @@ enum XtermColor {
     contrastOnWhite: 9.42,
     contrastOnBlack: 2.23,
   ),
-  cyan(
+
+  /// Teal (#008080)
+  cyan_6(
     code: 6,
     r: 0,
     g: 128,
@@ -68,7 +82,9 @@ enum XtermColor {
     contrastOnWhite: 4.77,
     contrastOnBlack: 4.40,
   ),
-  white(
+
+  /// Silver (#c0c0c0)
+  white_7(
     code: 7,
     r: 192,
     g: 192,
@@ -77,7 +93,9 @@ enum XtermColor {
     contrastOnWhite: 1.82,
     contrastOnBlack: 11.54,
   ),
-  brightBlack(
+
+  /// Grey (#808080)
+  brightBlack_8(
     code: 8,
     r: 128,
     g: 128,
@@ -86,7 +104,9 @@ enum XtermColor {
     contrastOnWhite: 3.95,
     contrastOnBlack: 5.32,
   ),
-  brightRed(
+
+  /// Red (#ff0000)
+  brightRed_9(
     code: 9,
     r: 255,
     g: 0,
@@ -95,7 +115,9 @@ enum XtermColor {
     contrastOnWhite: 4.00,
     contrastOnBlack: 5.25,
   ),
-  brightGreen(
+
+  /// Lime (#00ff00)
+  brightGreen_10(
     code: 10,
     r: 0,
     g: 255,
@@ -104,7 +126,9 @@ enum XtermColor {
     contrastOnWhite: 1.37,
     contrastOnBlack: 15.30,
   ),
-  brightYellow(
+
+  /// Yellow (#ffff00)
+  brightYellow_11(
     code: 11,
     r: 255,
     g: 255,
@@ -113,7 +137,9 @@ enum XtermColor {
     contrastOnWhite: 1.07,
     contrastOnBlack: 19.56,
   ),
-  brightBlue(
+
+  /// Blue (#0000ff)
+  brightBlue_12(
     code: 12,
     r: 0,
     g: 0,
@@ -122,7 +148,9 @@ enum XtermColor {
     contrastOnWhite: 8.59,
     contrastOnBlack: 2.44,
   ),
-  brightMagenta(
+
+  /// Fuchsia (#ff00ff)
+  brightMagenta_13(
     code: 13,
     r: 255,
     g: 0,
@@ -131,7 +159,9 @@ enum XtermColor {
     contrastOnWhite: 3.14,
     contrastOnBlack: 6.70,
   ),
-  brightCyan(
+
+  /// Aqua (#00ffff)
+  brightCyan_14(
     code: 14,
     r: 0,
     g: 255,
@@ -140,7 +170,9 @@ enum XtermColor {
     contrastOnWhite: 1.25,
     contrastOnBlack: 16.75,
   ),
-  brightWhite(
+
+  /// White (#ffffff)
+  brightWhite_15(
     code: 15,
     r: 255,
     g: 255,
@@ -149,7 +181,9 @@ enum XtermColor {
     contrastOnWhite: 1.00,
     contrastOnBlack: 21.00,
   ),
-  color16(
+
+  /// Grey0 (#000000)
+  grey0_16(
     code: 16,
     r: 0,
     g: 0,
@@ -158,7 +192,9 @@ enum XtermColor {
     contrastOnWhite: 21.00,
     contrastOnBlack: 1.00,
   ),
-  color17(
+
+  /// NavyBlue (#00005f)
+  navyBlue_17(
     code: 17,
     r: 0,
     g: 0,
@@ -167,7 +203,9 @@ enum XtermColor {
     contrastOnWhite: 18.02,
     contrastOnBlack: 1.17,
   ),
-  color18(
+
+  /// DarkBlue (#000087)
+  darkBlue_18(
     code: 18,
     r: 0,
     g: 0,
@@ -176,7 +214,9 @@ enum XtermColor {
     contrastOnWhite: 15.56,
     contrastOnBlack: 1.35,
   ),
-  color19(
+
+  /// Blue3 (#0000af)
+  blue3_19(
     code: 19,
     r: 0,
     g: 0,
@@ -185,7 +225,9 @@ enum XtermColor {
     contrastOnWhite: 12.97,
     contrastOnBlack: 1.62,
   ),
-  color20(
+
+  /// Blue3 (#0000d7)
+  blue3_20(
     code: 20,
     r: 0,
     g: 0,
@@ -194,7 +236,9 @@ enum XtermColor {
     contrastOnWhite: 10.60,
     contrastOnBlack: 1.98,
   ),
-  color21(
+
+  /// Blue1 (#0000ff)
+  blue1_21(
     code: 21,
     r: 0,
     g: 0,
@@ -203,7 +247,9 @@ enum XtermColor {
     contrastOnWhite: 8.59,
     contrastOnBlack: 2.44,
   ),
-  color22(
+
+  /// DarkGreen (#005f00)
+  darkGreen_22(
     code: 22,
     r: 0,
     g: 95,
@@ -212,7 +258,9 @@ enum XtermColor {
     contrastOnWhite: 7.96,
     contrastOnBlack: 2.64,
   ),
-  color23(
+
+  /// DeepSkyBlue4 (#005f5f)
+  deepSkyBlue4_23(
     code: 23,
     r: 0,
     g: 95,
@@ -221,7 +269,9 @@ enum XtermColor {
     contrastOnWhite: 7.49,
     contrastOnBlack: 2.80,
   ),
-  color24(
+
+  /// DeepSkyBlue4 (#005f87)
+  deepSkyBlue4_24(
     code: 24,
     r: 0,
     g: 95,
@@ -230,7 +280,9 @@ enum XtermColor {
     contrastOnWhite: 7.03,
     contrastOnBlack: 2.99,
   ),
-  color25(
+
+  /// DeepSkyBlue4 (#005faf)
+  deepSkyBlue4_25(
     code: 25,
     r: 0,
     g: 95,
@@ -239,7 +291,9 @@ enum XtermColor {
     contrastOnWhite: 6.45,
     contrastOnBlack: 3.26,
   ),
-  color26(
+
+  /// DodgerBlue3 (#005fd7)
+  dodgerBlue3_26(
     code: 26,
     r: 0,
     g: 95,
@@ -248,7 +302,9 @@ enum XtermColor {
     contrastOnWhite: 5.80,
     contrastOnBlack: 3.62,
   ),
-  color27(
+
+  /// DodgerBlue2 (#005fff)
+  dodgerBlue2_27(
     code: 27,
     r: 0,
     g: 95,
@@ -257,7 +313,9 @@ enum XtermColor {
     contrastOnWhite: 5.15,
     contrastOnBlack: 4.08,
   ),
-  color28(
+
+  /// Green4 (#008700)
+  green4_28(
     code: 28,
     r: 0,
     g: 135,
@@ -266,7 +324,9 @@ enum XtermColor {
     contrastOnWhite: 4.70,
     contrastOnBlack: 4.47,
   ),
-  color29(
+
+  /// SpringGreen4 (#00875f)
+  springGreen4_29(
     code: 29,
     r: 0,
     g: 135,
@@ -275,7 +335,9 @@ enum XtermColor {
     contrastOnWhite: 4.53,
     contrastOnBlack: 4.63,
   ),
-  color30(
+
+  /// Turquoise4 (#008787)
+  turquoise4_30(
     code: 30,
     r: 0,
     g: 135,
@@ -284,7 +346,9 @@ enum XtermColor {
     contrastOnWhite: 4.36,
     contrastOnBlack: 4.82,
   ),
-  color31(
+
+  /// DeepSkyBlue3 (#0087af)
+  deepSkyBlue3_31(
     code: 31,
     r: 0,
     g: 135,
@@ -293,7 +357,9 @@ enum XtermColor {
     contrastOnWhite: 4.13,
     contrastOnBlack: 5.08,
   ),
-  color32(
+
+  /// DeepSkyBlue3 (#0087d7)
+  deepSkyBlue3_32(
     code: 32,
     r: 0,
     g: 135,
@@ -302,7 +368,9 @@ enum XtermColor {
     contrastOnWhite: 3.86,
     contrastOnBlack: 5.45,
   ),
-  color33(
+
+  /// DodgerBlue1 (#0087ff)
+  dodgerBlue1_33(
     code: 33,
     r: 0,
     g: 135,
@@ -311,7 +379,9 @@ enum XtermColor {
     contrastOnWhite: 3.55,
     contrastOnBlack: 5.91,
   ),
-  color34(
+
+  /// Green3 (#00af00)
+  green3_34(
     code: 34,
     r: 0,
     g: 175,
@@ -320,7 +390,9 @@ enum XtermColor {
     contrastOnWhite: 2.94,
     contrastOnBlack: 7.13,
   ),
-  color35(
+
+  /// SpringGreen3 (#00af5f)
+  springGreen3_35(
     code: 35,
     r: 0,
     g: 175,
@@ -329,7 +401,9 @@ enum XtermColor {
     contrastOnWhite: 2.88,
     contrastOnBlack: 7.30,
   ),
-  color36(
+
+  /// DarkCyan (#00af87)
+  darkCyan_36(
     code: 36,
     r: 0,
     g: 175,
@@ -338,7 +412,9 @@ enum XtermColor {
     contrastOnWhite: 2.81,
     contrastOnBlack: 7.48,
   ),
-  color37(
+
+  /// LightSeaGreen (#00afaf)
+  lightSeaGreen_37(
     code: 37,
     r: 0,
     g: 175,
@@ -347,7 +423,9 @@ enum XtermColor {
     contrastOnWhite: 2.71,
     contrastOnBlack: 7.75,
   ),
-  color38(
+
+  /// DeepSkyBlue2 (#00afd7)
+  deepSkyBlue2_38(
     code: 38,
     r: 0,
     g: 175,
@@ -356,7 +434,9 @@ enum XtermColor {
     contrastOnWhite: 2.59,
     contrastOnBlack: 8.11,
   ),
-  color39(
+
+  /// DeepSkyBlue1 (#00afff)
+  deepSkyBlue1_39(
     code: 39,
     r: 0,
     g: 175,
@@ -365,7 +445,9 @@ enum XtermColor {
     contrastOnWhite: 2.45,
     contrastOnBlack: 8.58,
   ),
-  color40(
+
+  /// Green3 (#00d700)
+  green3_40(
     code: 40,
     r: 0,
     g: 215,
@@ -374,7 +456,9 @@ enum XtermColor {
     contrastOnWhite: 1.96,
     contrastOnBlack: 10.72,
   ),
-  color41(
+
+  /// SpringGreen3 (#00d75f)
+  springGreen3_41(
     code: 41,
     r: 0,
     g: 215,
@@ -383,7 +467,9 @@ enum XtermColor {
     contrastOnWhite: 1.93,
     contrastOnBlack: 10.89,
   ),
-  color42(
+
+  /// SpringGreen2 (#00d787)
+  springGreen2_42(
     code: 42,
     r: 0,
     g: 215,
@@ -392,7 +478,9 @@ enum XtermColor {
     contrastOnWhite: 1.90,
     contrastOnBlack: 11.07,
   ),
-  color43(
+
+  /// Cyan3 (#00d7af)
+  cyan3_43(
     code: 43,
     r: 0,
     g: 215,
@@ -401,7 +489,9 @@ enum XtermColor {
     contrastOnWhite: 1.85,
     contrastOnBlack: 11.34,
   ),
-  color44(
+
+  /// DarkTurquoise (#00d7d7)
+  darkTurquoise_44(
     code: 44,
     r: 0,
     g: 215,
@@ -410,7 +500,9 @@ enum XtermColor {
     contrastOnWhite: 1.79,
     contrastOnBlack: 11.70,
   ),
-  color45(
+
+  /// Turquoise2 (#00d7ff)
+  turquoise2_45(
     code: 45,
     r: 0,
     g: 215,
@@ -419,7 +511,9 @@ enum XtermColor {
     contrastOnWhite: 1.73,
     contrastOnBlack: 12.16,
   ),
-  color46(
+
+  /// Green1 (#00ff00)
+  green1_46(
     code: 46,
     r: 0,
     g: 255,
@@ -428,7 +522,9 @@ enum XtermColor {
     contrastOnWhite: 1.37,
     contrastOnBlack: 15.30,
   ),
-  color47(
+
+  /// SpringGreen2 (#00ff5f)
+  springGreen2_47(
     code: 47,
     r: 0,
     g: 255,
@@ -437,7 +533,9 @@ enum XtermColor {
     contrastOnWhite: 1.36,
     contrastOnBlack: 15.47,
   ),
-  color48(
+
+  /// SpringGreen1 (#00ff87)
+  springGreen1_48(
     code: 48,
     r: 0,
     g: 255,
@@ -446,7 +544,9 @@ enum XtermColor {
     contrastOnWhite: 1.34,
     contrastOnBlack: 15.65,
   ),
-  color49(
+
+  /// MediumSpringGreen (#00ffaf)
+  mediumSpringGreen_49(
     code: 49,
     r: 0,
     g: 255,
@@ -455,7 +555,9 @@ enum XtermColor {
     contrastOnWhite: 1.32,
     contrastOnBlack: 15.92,
   ),
-  color50(
+
+  /// Cyan2 (#00ffd7)
+  cyan2_50(
     code: 50,
     r: 0,
     g: 255,
@@ -464,7 +566,9 @@ enum XtermColor {
     contrastOnWhite: 1.29,
     contrastOnBlack: 16.29,
   ),
-  color51(
+
+  /// Cyan1 (#00ffff)
+  cyan1_51(
     code: 51,
     r: 0,
     g: 255,
@@ -473,7 +577,9 @@ enum XtermColor {
     contrastOnWhite: 1.25,
     contrastOnBlack: 16.75,
   ),
-  color52(
+
+  /// DarkRed (#5f0000)
+  darkRed_52(
     code: 52,
     r: 95,
     g: 0,
@@ -482,7 +588,9 @@ enum XtermColor {
     contrastOnWhite: 14.13,
     contrastOnBlack: 1.49,
   ),
-  color53(
+
+  /// DeepPink4 (#5f005f)
+  deepPink4_53(
     code: 53,
     r: 95,
     g: 0,
@@ -491,7 +599,9 @@ enum XtermColor {
     contrastOnWhite: 12.71,
     contrastOnBlack: 1.65,
   ),
-  color54(
+
+  /// Purple4 (#5f0087)
+  purple4_54(
     code: 54,
     r: 95,
     g: 0,
@@ -500,7 +610,9 @@ enum XtermColor {
     contrastOnWhite: 11.44,
     contrastOnBlack: 1.84,
   ),
-  color55(
+
+  /// Purple4 (#5f00af)
+  purple4_55(
     code: 55,
     r: 95,
     g: 0,
@@ -509,7 +621,9 @@ enum XtermColor {
     contrastOnWhite: 9.97,
     contrastOnBlack: 2.11,
   ),
-  color56(
+
+  /// Purple3 (#5f00d7)
+  purple3_56(
     code: 56,
     r: 95,
     g: 0,
@@ -518,7 +632,9 @@ enum XtermColor {
     contrastOnWhite: 8.51,
     contrastOnBlack: 2.47,
   ),
-  color57(
+
+  /// BlueViolet (#5f00ff)
+  blueViolet_57(
     code: 57,
     r: 95,
     g: 0,
@@ -527,7 +643,9 @@ enum XtermColor {
     contrastOnWhite: 7.17,
     contrastOnBlack: 2.93,
   ),
-  color58(
+
+  /// Orange4 (#5f5f00)
+  orange4_58(
     code: 58,
     r: 95,
     g: 95,
@@ -536,7 +654,9 @@ enum XtermColor {
     contrastOnWhite: 6.72,
     contrastOnBlack: 3.12,
   ),
-  color59(
+
+  /// Grey37 (#5f5f5f)
+  grey37_59(
     code: 59,
     r: 95,
     g: 95,
@@ -545,7 +665,9 @@ enum XtermColor {
     contrastOnWhite: 6.39,
     contrastOnBlack: 3.29,
   ),
-  color60(
+
+  /// MediumPurple4 (#5f5f87)
+  mediumPurple4_60(
     code: 60,
     r: 95,
     g: 95,
@@ -554,7 +676,9 @@ enum XtermColor {
     contrastOnWhite: 6.05,
     contrastOnBlack: 3.47,
   ),
-  color61(
+
+  /// SlateBlue3 (#5f5faf)
+  slateBlue3_61(
     code: 61,
     r: 95,
     g: 95,
@@ -563,7 +687,9 @@ enum XtermColor {
     contrastOnWhite: 5.61,
     contrastOnBlack: 3.74,
   ),
-  color62(
+
+  /// SlateBlue3 (#5f5fd7)
+  slateBlue3_62(
     code: 62,
     r: 95,
     g: 95,
@@ -572,7 +698,9 @@ enum XtermColor {
     contrastOnWhite: 5.12,
     contrastOnBlack: 4.10,
   ),
-  color63(
+
+  /// RoyalBlue1 (#5f5fff)
+  royalBlue1_63(
     code: 63,
     r: 95,
     g: 95,
@@ -581,7 +709,9 @@ enum XtermColor {
     contrastOnWhite: 4.60,
     contrastOnBlack: 4.57,
   ),
-  color64(
+
+  /// Chartreuse4 (#5f8700)
+  chartreuse4_64(
     code: 64,
     r: 95,
     g: 135,
@@ -590,7 +720,9 @@ enum XtermColor {
     contrastOnWhite: 4.24,
     contrastOnBlack: 4.95,
   ),
-  color65(
+
+  /// DarkSeaGreen4 (#5f875f)
+  darkSeaGreen4_65(
     code: 65,
     r: 95,
     g: 135,
@@ -599,7 +731,9 @@ enum XtermColor {
     contrastOnWhite: 4.10,
     contrastOnBlack: 5.12,
   ),
-  color66(
+
+  /// PaleTurquoise4 (#5f8787)
+  paleTurquoise4_66(
     code: 66,
     r: 95,
     g: 135,
@@ -608,7 +742,9 @@ enum XtermColor {
     contrastOnWhite: 3.96,
     contrastOnBlack: 5.30,
   ),
-  color67(
+
+  /// SteelBlue (#5f87af)
+  steelBlue_67(
     code: 67,
     r: 95,
     g: 135,
@@ -617,7 +753,9 @@ enum XtermColor {
     contrastOnWhite: 3.77,
     contrastOnBlack: 5.57,
   ),
-  color68(
+
+  /// SteelBlue3 (#5f87d7)
+  steelBlue3_68(
     code: 68,
     r: 95,
     g: 135,
@@ -626,7 +764,9 @@ enum XtermColor {
     contrastOnWhite: 3.54,
     contrastOnBlack: 5.93,
   ),
-  color69(
+
+  /// CornflowerBlue (#5f87ff)
+  cornflowerBlue_69(
     code: 69,
     r: 95,
     g: 135,
@@ -635,7 +775,9 @@ enum XtermColor {
     contrastOnWhite: 3.28,
     contrastOnBlack: 6.40,
   ),
-  color70(
+
+  /// Chartreuse3 (#5faf00)
+  chartreuse3_70(
     code: 70,
     r: 95,
     g: 175,
@@ -644,7 +786,9 @@ enum XtermColor {
     contrastOnWhite: 2.76,
     contrastOnBlack: 7.62,
   ),
-  color71(
+
+  /// DarkSeaGreen4 (#5faf5f)
+  darkSeaGreen4_71(
     code: 71,
     r: 95,
     g: 175,
@@ -653,7 +797,9 @@ enum XtermColor {
     contrastOnWhite: 2.70,
     contrastOnBlack: 7.78,
   ),
-  color72(
+
+  /// CadetBlue (#5faf87)
+  cadetBlue_72(
     code: 72,
     r: 95,
     g: 175,
@@ -662,7 +808,9 @@ enum XtermColor {
     contrastOnWhite: 2.64,
     contrastOnBlack: 7.97,
   ),
-  color73(
+
+  /// CadetBlue (#5fafaf)
+  cadetBlue_73(
     code: 73,
     r: 95,
     g: 175,
@@ -671,7 +819,9 @@ enum XtermColor {
     contrastOnWhite: 2.55,
     contrastOnBlack: 8.24,
   ),
-  color74(
+
+  /// SkyBlue3 (#5fafd7)
+  skyBlue3_74(
     code: 74,
     r: 95,
     g: 175,
@@ -680,7 +830,9 @@ enum XtermColor {
     contrastOnWhite: 2.44,
     contrastOnBlack: 8.60,
   ),
-  color75(
+
+  /// SteelBlue1 (#5fafff)
+  steelBlue1_75(
     code: 75,
     r: 95,
     g: 175,
@@ -689,7 +841,9 @@ enum XtermColor {
     contrastOnWhite: 2.32,
     contrastOnBlack: 9.06,
   ),
-  color76(
+
+  /// Chartreuse3 (#5fd700)
+  chartreuse3_76(
     code: 76,
     r: 95,
     g: 215,
@@ -698,7 +852,9 @@ enum XtermColor {
     contrastOnWhite: 1.87,
     contrastOnBlack: 11.21,
   ),
-  color77(
+
+  /// PaleGreen3 (#5fd75f)
+  paleGreen3_77(
     code: 77,
     r: 95,
     g: 215,
@@ -707,7 +863,9 @@ enum XtermColor {
     contrastOnWhite: 1.85,
     contrastOnBlack: 11.37,
   ),
-  color78(
+
+  /// SeaGreen3 (#5fd787)
+  seaGreen3_78(
     code: 78,
     r: 95,
     g: 215,
@@ -716,7 +874,9 @@ enum XtermColor {
     contrastOnWhite: 1.82,
     contrastOnBlack: 11.56,
   ),
-  color79(
+
+  /// Aquamarine3 (#5fd7af)
+  aquamarine3_79(
     code: 79,
     r: 95,
     g: 215,
@@ -725,7 +885,9 @@ enum XtermColor {
     contrastOnWhite: 1.78,
     contrastOnBlack: 11.83,
   ),
-  color80(
+
+  /// MediumTurquoise (#5fd7d7)
+  mediumTurquoise_80(
     code: 80,
     r: 95,
     g: 215,
@@ -734,7 +896,9 @@ enum XtermColor {
     contrastOnWhite: 1.72,
     contrastOnBlack: 12.19,
   ),
-  color81(
+
+  /// SteelBlue1 (#5fd7ff)
+  steelBlue1_81(
     code: 81,
     r: 95,
     g: 215,
@@ -743,7 +907,9 @@ enum XtermColor {
     contrastOnWhite: 1.66,
     contrastOnBlack: 12.65,
   ),
-  color82(
+
+  /// Chartreuse2 (#5fff00)
+  chartreuse2_82(
     code: 82,
     r: 95,
     g: 255,
@@ -752,7 +918,9 @@ enum XtermColor {
     contrastOnWhite: 1.33,
     contrastOnBlack: 15.79,
   ),
-  color83(
+
+  /// SeaGreen2 (#5fff5f)
+  seaGreen2_83(
     code: 83,
     r: 95,
     g: 255,
@@ -761,7 +929,9 @@ enum XtermColor {
     contrastOnWhite: 1.32,
     contrastOnBlack: 15.96,
   ),
-  color84(
+
+  /// SeaGreen1 (#5fff87)
+  seaGreen1_84(
     code: 84,
     r: 95,
     g: 255,
@@ -770,7 +940,9 @@ enum XtermColor {
     contrastOnWhite: 1.30,
     contrastOnBlack: 16.14,
   ),
-  color85(
+
+  /// SeaGreen1 (#5fffaf)
+  seaGreen1_85(
     code: 85,
     r: 95,
     g: 255,
@@ -779,7 +951,9 @@ enum XtermColor {
     contrastOnWhite: 1.28,
     contrastOnBlack: 16.41,
   ),
-  color86(
+
+  /// Aquamarine1 (#5fffd7)
+  aquamarine1_86(
     code: 86,
     r: 95,
     g: 255,
@@ -788,7 +962,9 @@ enum XtermColor {
     contrastOnWhite: 1.25,
     contrastOnBlack: 16.77,
   ),
-  color87(
+
+  /// DarkSlateGray2 (#5fffff)
+  darkSlateGray2_87(
     code: 87,
     r: 95,
     g: 255,
@@ -797,7 +973,9 @@ enum XtermColor {
     contrastOnWhite: 1.22,
     contrastOnBlack: 17.23,
   ),
-  color88(
+
+  /// DarkRed (#870000)
+  darkRed_88(
     code: 88,
     r: 135,
     g: 0,
@@ -806,7 +984,9 @@ enum XtermColor {
     contrastOnWhite: 10.34,
     contrastOnBlack: 2.03,
   ),
-  color89(
+
+  /// DeepPink4 (#87005f)
+  deepPink4_89(
     code: 89,
     r: 135,
     g: 0,
@@ -815,7 +995,9 @@ enum XtermColor {
     contrastOnWhite: 9.57,
     contrastOnBlack: 2.20,
   ),
-  color90(
+
+  /// DarkMagenta (#870087)
+  darkMagenta_90(
     code: 90,
     r: 135,
     g: 0,
@@ -824,7 +1006,9 @@ enum XtermColor {
     contrastOnWhite: 8.82,
     contrastOnBlack: 2.38,
   ),
-  color91(
+
+  /// DarkMagenta (#8700af)
+  darkMagenta_91(
     code: 91,
     r: 135,
     g: 0,
@@ -833,7 +1017,9 @@ enum XtermColor {
     contrastOnWhite: 7.93,
     contrastOnBlack: 2.65,
   ),
-  color92(
+
+  /// DarkViolet (#8700d7)
+  darkViolet_92(
     code: 92,
     r: 135,
     g: 0,
@@ -842,7 +1028,9 @@ enum XtermColor {
     contrastOnWhite: 6.97,
     contrastOnBlack: 3.01,
   ),
-  color93(
+
+  /// Purple (#8700ff)
+  purple_93(
     code: 93,
     r: 135,
     g: 0,
@@ -851,7 +1039,9 @@ enum XtermColor {
     contrastOnWhite: 6.04,
     contrastOnBlack: 3.47,
   ),
-  color94(
+
+  /// Orange4 (#875f00)
+  orange4_94(
     code: 94,
     r: 135,
     g: 95,
@@ -860,7 +1050,9 @@ enum XtermColor {
     contrastOnWhite: 5.73,
     contrastOnBlack: 3.67,
   ),
-  color95(
+
+  /// LightPink4 (#875f5f)
+  lightPink4_95(
     code: 95,
     r: 135,
     g: 95,
@@ -869,7 +1061,9 @@ enum XtermColor {
     contrastOnWhite: 5.48,
     contrastOnBlack: 3.83,
   ),
-  color96(
+
+  /// Plum4 (#875f87)
+  plum4_96(
     code: 96,
     r: 135,
     g: 95,
@@ -878,7 +1072,9 @@ enum XtermColor {
     contrastOnWhite: 5.23,
     contrastOnBlack: 4.02,
   ),
-  color97(
+
+  /// MediumPurple3 (#875faf)
+  mediumPurple3_97(
     code: 97,
     r: 135,
     g: 95,
@@ -887,7 +1083,9 @@ enum XtermColor {
     contrastOnWhite: 4.90,
     contrastOnBlack: 4.29,
   ),
-  color98(
+
+  /// MediumPurple3 (#875fd7)
+  mediumPurple3_98(
     code: 98,
     r: 135,
     g: 95,
@@ -896,7 +1094,9 @@ enum XtermColor {
     contrastOnWhite: 4.52,
     contrastOnBlack: 4.65,
   ),
-  color99(
+
+  /// SlateBlue1 (#875fff)
+  slateBlue1_99(
     code: 99,
     r: 135,
     g: 95,
@@ -905,7 +1105,9 @@ enum XtermColor {
     contrastOnWhite: 4.11,
     contrastOnBlack: 5.11,
   ),
-  color100(
+
+  /// Yellow4 (#878700)
+  yellow4_100(
     code: 100,
     r: 135,
     g: 135,
@@ -914,7 +1116,9 @@ enum XtermColor {
     contrastOnWhite: 3.82,
     contrastOnBlack: 5.50,
   ),
-  color101(
+
+  /// Wheat4 (#87875f)
+  wheat4_101(
     code: 101,
     r: 135,
     g: 135,
@@ -923,7 +1127,9 @@ enum XtermColor {
     contrastOnWhite: 3.71,
     contrastOnBlack: 5.66,
   ),
-  color102(
+
+  /// Grey53 (#878787)
+  grey53_102(
     code: 102,
     r: 135,
     g: 135,
@@ -932,7 +1138,9 @@ enum XtermColor {
     contrastOnWhite: 3.59,
     contrastOnBlack: 5.85,
   ),
-  color103(
+
+  /// LightSlateGrey (#8787af)
+  lightSlateGrey_103(
     code: 103,
     r: 135,
     g: 135,
@@ -941,7 +1149,9 @@ enum XtermColor {
     contrastOnWhite: 3.43,
     contrastOnBlack: 6.11,
   ),
-  color104(
+
+  /// MediumPurple (#8787d7)
+  mediumPurple_104(
     code: 104,
     r: 135,
     g: 135,
@@ -950,7 +1160,9 @@ enum XtermColor {
     contrastOnWhite: 3.24,
     contrastOnBlack: 6.48,
   ),
-  color105(
+
+  /// LightSlateBlue (#8787ff)
+  lightSlateBlue_105(
     code: 105,
     r: 135,
     g: 135,
@@ -959,7 +1171,9 @@ enum XtermColor {
     contrastOnWhite: 3.03,
     contrastOnBlack: 6.94,
   ),
-  color106(
+
+  /// Yellow4 (#87af00)
+  yellow4_106(
     code: 106,
     r: 135,
     g: 175,
@@ -968,7 +1182,9 @@ enum XtermColor {
     contrastOnWhite: 2.57,
     contrastOnBlack: 8.16,
   ),
-  color107(
+
+  /// DarkOliveGreen3 (#87af5f)
+  darkOliveGreen3_107(
     code: 107,
     r: 135,
     g: 175,
@@ -977,7 +1193,9 @@ enum XtermColor {
     contrastOnWhite: 2.52,
     contrastOnBlack: 8.33,
   ),
-  color108(
+
+  /// DarkSeaGreen (#87af87)
+  darkSeaGreen_108(
     code: 108,
     r: 135,
     g: 175,
@@ -986,7 +1204,9 @@ enum XtermColor {
     contrastOnWhite: 2.47,
     contrastOnBlack: 8.51,
   ),
-  color109(
+
+  /// LightSkyBlue3 (#87afaf)
+  lightSkyBlue3_109(
     code: 109,
     r: 135,
     g: 175,
@@ -995,7 +1215,9 @@ enum XtermColor {
     contrastOnWhite: 2.39,
     contrastOnBlack: 8.78,
   ),
-  color110(
+
+  /// LightSkyBlue3 (#87afd7)
+  lightSkyBlue3_110(
     code: 110,
     r: 135,
     g: 175,
@@ -1004,7 +1226,9 @@ enum XtermColor {
     contrastOnWhite: 2.30,
     contrastOnBlack: 9.14,
   ),
-  color111(
+
+  /// SkyBlue2 (#87afff)
+  skyBlue2_111(
     code: 111,
     r: 135,
     g: 175,
@@ -1013,7 +1237,9 @@ enum XtermColor {
     contrastOnWhite: 2.19,
     contrastOnBlack: 9.61,
   ),
-  color112(
+
+  /// Chartreuse2 (#87d700)
+  chartreuse2_112(
     code: 112,
     r: 135,
     g: 215,
@@ -1022,7 +1248,9 @@ enum XtermColor {
     contrastOnWhite: 1.79,
     contrastOnBlack: 11.75,
   ),
-  color113(
+
+  /// DarkOliveGreen3 (#87d75f)
+  darkOliveGreen3_113(
     code: 113,
     r: 135,
     g: 215,
@@ -1031,7 +1259,9 @@ enum XtermColor {
     contrastOnWhite: 1.76,
     contrastOnBlack: 11.92,
   ),
-  color114(
+
+  /// PaleGreen3 (#87d787)
+  paleGreen3_114(
     code: 114,
     r: 135,
     g: 215,
@@ -1040,7 +1270,9 @@ enum XtermColor {
     contrastOnWhite: 1.74,
     contrastOnBlack: 12.10,
   ),
-  color115(
+
+  /// DarkSeaGreen3 (#87d7af)
+  darkSeaGreen3_115(
     code: 115,
     r: 135,
     g: 215,
@@ -1049,7 +1281,9 @@ enum XtermColor {
     contrastOnWhite: 1.70,
     contrastOnBlack: 12.37,
   ),
-  color116(
+
+  /// DarkSlateGray3 (#87d7d7)
+  darkSlateGray3_116(
     code: 116,
     r: 135,
     g: 215,
@@ -1058,7 +1292,9 @@ enum XtermColor {
     contrastOnWhite: 1.65,
     contrastOnBlack: 12.73,
   ),
-  color117(
+
+  /// SkyBlue1 (#87d7ff)
+  skyBlue1_117(
     code: 117,
     r: 135,
     g: 215,
@@ -1067,7 +1303,9 @@ enum XtermColor {
     contrastOnWhite: 1.59,
     contrastOnBlack: 13.19,
   ),
-  color118(
+
+  /// Chartreuse1 (#87ff00)
+  chartreuse1_118(
     code: 118,
     r: 135,
     g: 255,
@@ -1076,7 +1314,9 @@ enum XtermColor {
     contrastOnWhite: 1.29,
     contrastOnBlack: 16.33,
   ),
-  color119(
+
+  /// LightGreen (#87ff5f)
+  lightGreen_119(
     code: 119,
     r: 135,
     g: 255,
@@ -1085,7 +1325,9 @@ enum XtermColor {
     contrastOnWhite: 1.27,
     contrastOnBlack: 16.50,
   ),
-  color120(
+
+  /// LightGreen (#87ff87)
+  lightGreen_120(
     code: 120,
     r: 135,
     g: 255,
@@ -1094,7 +1336,9 @@ enum XtermColor {
     contrastOnWhite: 1.26,
     contrastOnBlack: 16.68,
   ),
-  color121(
+
+  /// PaleGreen1 (#87ffaf)
+  paleGreen1_121(
     code: 121,
     r: 135,
     g: 255,
@@ -1103,7 +1347,9 @@ enum XtermColor {
     contrastOnWhite: 1.24,
     contrastOnBlack: 16.95,
   ),
-  color122(
+
+  /// Aquamarine1 (#87ffd7)
+  aquamarine1_122(
     code: 122,
     r: 135,
     g: 255,
@@ -1112,7 +1358,9 @@ enum XtermColor {
     contrastOnWhite: 1.21,
     contrastOnBlack: 17.32,
   ),
-  color123(
+
+  /// DarkSlateGray1 (#87ffff)
+  darkSlateGray1_123(
     code: 123,
     r: 135,
     g: 255,
@@ -1121,7 +1369,9 @@ enum XtermColor {
     contrastOnWhite: 1.18,
     contrastOnBlack: 17.78,
   ),
-  color124(
+
+  /// Red3 (#af0000)
+  red3_124(
     code: 124,
     r: 175,
     g: 0,
@@ -1130,7 +1380,9 @@ enum XtermColor {
     contrastOnWhite: 7.44,
     contrastOnBlack: 2.82,
   ),
-  color125(
+
+  /// DeepPink4 (#af005f)
+  deepPink4_125(
     code: 125,
     r: 175,
     g: 0,
@@ -1139,7 +1391,9 @@ enum XtermColor {
     contrastOnWhite: 7.03,
     contrastOnBlack: 2.99,
   ),
-  color126(
+
+  /// MediumVioletRed (#af0087)
+  mediumVioletRed_126(
     code: 126,
     r: 175,
     g: 0,
@@ -1148,7 +1402,9 @@ enum XtermColor {
     contrastOnWhite: 6.62,
     contrastOnBlack: 3.17,
   ),
-  color127(
+
+  /// Magenta3 (#af00af)
+  magenta3_127(
     code: 127,
     r: 175,
     g: 0,
@@ -1157,7 +1413,9 @@ enum XtermColor {
     contrastOnWhite: 6.10,
     contrastOnBlack: 3.44,
   ),
-  color128(
+
+  /// DarkViolet (#af00d7)
+  darkViolet_128(
     code: 128,
     r: 175,
     g: 0,
@@ -1166,7 +1424,9 @@ enum XtermColor {
     contrastOnWhite: 5.52,
     contrastOnBlack: 3.80,
   ),
-  color129(
+
+  /// Purple (#af00ff)
+  purple_129(
     code: 129,
     r: 175,
     g: 0,
@@ -1175,7 +1435,9 @@ enum XtermColor {
     contrastOnWhite: 4.92,
     contrastOnBlack: 4.27,
   ),
-  color130(
+
+  /// DarkOrange3 (#af5f00)
+  darkOrange3_130(
     code: 130,
     r: 175,
     g: 95,
@@ -1184,7 +1446,9 @@ enum XtermColor {
     contrastOnWhite: 4.71,
     contrastOnBlack: 4.46,
   ),
-  color131(
+
+  /// IndianRed (#af5f5f)
+  indianRed_131(
     code: 131,
     r: 175,
     g: 95,
@@ -1193,7 +1457,9 @@ enum XtermColor {
     contrastOnWhite: 4.54,
     contrastOnBlack: 4.62,
   ),
-  color132(
+
+  /// HotPink3 (#af5f87)
+  hotPink3_132(
     code: 132,
     r: 175,
     g: 95,
@@ -1202,7 +1468,9 @@ enum XtermColor {
     contrastOnWhite: 4.37,
     contrastOnBlack: 4.81,
   ),
-  color133(
+
+  /// MediumOrchid3 (#af5faf)
+  mediumOrchid3_133(
     code: 133,
     r: 175,
     g: 95,
@@ -1211,7 +1479,9 @@ enum XtermColor {
     contrastOnWhite: 4.13,
     contrastOnBlack: 5.08,
   ),
-  color134(
+
+  /// MediumOrchid (#af5fd7)
+  mediumOrchid_134(
     code: 134,
     r: 175,
     g: 95,
@@ -1220,7 +1490,9 @@ enum XtermColor {
     contrastOnWhite: 3.86,
     contrastOnBlack: 5.44,
   ),
-  color135(
+
+  /// MediumPurple2 (#af5fff)
+  mediumPurple2_135(
     code: 135,
     r: 175,
     g: 95,
@@ -1229,7 +1501,9 @@ enum XtermColor {
     contrastOnWhite: 3.56,
     contrastOnBlack: 5.90,
   ),
-  color136(
+
+  /// DarkGoldenrod (#af8700)
+  darkGoldenrod_136(
     code: 136,
     r: 175,
     g: 135,
@@ -1238,7 +1512,9 @@ enum XtermColor {
     contrastOnWhite: 3.34,
     contrastOnBlack: 6.29,
   ),
-  color137(
+
+  /// LightSalmon3 (#af875f)
+  lightSalmon3_137(
     code: 137,
     r: 175,
     g: 135,
@@ -1247,7 +1523,9 @@ enum XtermColor {
     contrastOnWhite: 3.25,
     contrastOnBlack: 6.45,
   ),
-  color138(
+
+  /// RosyBrown (#af8787)
+  rosyBrown_138(
     code: 138,
     r: 175,
     g: 135,
@@ -1256,7 +1534,9 @@ enum XtermColor {
     contrastOnWhite: 3.16,
     contrastOnBlack: 6.64,
   ),
-  color139(
+
+  /// Grey63 (#af87af)
+  grey63_139(
     code: 139,
     r: 175,
     g: 135,
@@ -1265,7 +1545,9 @@ enum XtermColor {
     contrastOnWhite: 3.04,
     contrastOnBlack: 6.91,
   ),
-  color140(
+
+  /// MediumPurple2 (#af87d7)
+  mediumPurple2_140(
     code: 140,
     r: 175,
     g: 135,
@@ -1274,7 +1556,9 @@ enum XtermColor {
     contrastOnWhite: 2.89,
     contrastOnBlack: 7.27,
   ),
-  color141(
+
+  /// MediumPurple1 (#af87ff)
+  mediumPurple1_141(
     code: 141,
     r: 175,
     g: 135,
@@ -1283,7 +1567,9 @@ enum XtermColor {
     contrastOnWhite: 2.72,
     contrastOnBlack: 7.73,
   ),
-  color142(
+
+  /// Gold3 (#afaf00)
+  gold3_142(
     code: 142,
     r: 175,
     g: 175,
@@ -1292,7 +1578,9 @@ enum XtermColor {
     contrastOnWhite: 2.35,
     contrastOnBlack: 8.95,
   ),
-  color143(
+
+  /// DarkKhaki (#afaf5f)
+  darkKhaki_143(
     code: 143,
     r: 175,
     g: 175,
@@ -1301,7 +1589,9 @@ enum XtermColor {
     contrastOnWhite: 2.30,
     contrastOnBlack: 9.12,
   ),
-  color144(
+
+  /// NavajoWhite3 (#afaf87)
+  navajoWhite3_144(
     code: 144,
     r: 175,
     g: 175,
@@ -1310,7 +1600,9 @@ enum XtermColor {
     contrastOnWhite: 2.26,
     contrastOnBlack: 9.30,
   ),
-  color145(
+
+  /// Grey69 (#afafaf)
+  grey69_145(
     code: 145,
     r: 175,
     g: 175,
@@ -1319,7 +1611,9 @@ enum XtermColor {
     contrastOnWhite: 2.19,
     contrastOnBlack: 9.57,
   ),
-  color146(
+
+  /// LightSteelBlue3 (#afafd7)
+  lightSteelBlue3_146(
     code: 146,
     r: 175,
     g: 175,
@@ -1328,7 +1622,9 @@ enum XtermColor {
     contrastOnWhite: 2.11,
     contrastOnBlack: 9.94,
   ),
-  color147(
+
+  /// LightSteelBlue (#afafff)
+  lightSteelBlue_147(
     code: 147,
     r: 175,
     g: 175,
@@ -1337,7 +1633,9 @@ enum XtermColor {
     contrastOnWhite: 2.02,
     contrastOnBlack: 10.40,
   ),
-  color148(
+
+  /// Yellow3 (#afd700)
+  yellow3_148(
     code: 148,
     r: 175,
     g: 215,
@@ -1346,7 +1644,9 @@ enum XtermColor {
     contrastOnWhite: 1.67,
     contrastOnBlack: 12.54,
   ),
-  color149(
+
+  /// DarkOliveGreen3 (#afd75f)
+  darkOliveGreen3_149(
     code: 149,
     r: 175,
     g: 215,
@@ -1355,7 +1655,9 @@ enum XtermColor {
     contrastOnWhite: 1.65,
     contrastOnBlack: 12.71,
   ),
-  color150(
+
+  /// DarkSeaGreen3 (#afd787)
+  darkSeaGreen3_150(
     code: 150,
     r: 175,
     g: 215,
@@ -1364,7 +1666,9 @@ enum XtermColor {
     contrastOnWhite: 1.63,
     contrastOnBlack: 12.89,
   ),
-  color151(
+
+  /// DarkSeaGreen2 (#afd7af)
+  darkSeaGreen2_151(
     code: 151,
     r: 175,
     g: 215,
@@ -1373,7 +1677,9 @@ enum XtermColor {
     contrastOnWhite: 1.60,
     contrastOnBlack: 13.16,
   ),
-  color152(
+
+  /// LightCyan3 (#afd7d7)
+  lightCyan3_152(
     code: 152,
     r: 175,
     g: 215,
@@ -1382,7 +1688,9 @@ enum XtermColor {
     contrastOnWhite: 1.55,
     contrastOnBlack: 13.52,
   ),
-  color153(
+
+  /// LightSkyBlue1 (#afd7ff)
+  lightSkyBlue1_153(
     code: 153,
     r: 175,
     g: 215,
@@ -1391,7 +1699,9 @@ enum XtermColor {
     contrastOnWhite: 1.50,
     contrastOnBlack: 13.99,
   ),
-  color154(
+
+  /// GreenYellow (#afff00)
+  greenYellow_154(
     code: 154,
     r: 175,
     g: 255,
@@ -1400,7 +1710,9 @@ enum XtermColor {
     contrastOnWhite: 1.23,
     contrastOnBlack: 17.13,
   ),
-  color155(
+
+  /// DarkOliveGreen2 (#afff5f)
+  darkOliveGreen2_155(
     code: 155,
     r: 175,
     g: 255,
@@ -1409,7 +1721,9 @@ enum XtermColor {
     contrastOnWhite: 1.21,
     contrastOnBlack: 17.29,
   ),
-  color156(
+
+  /// PaleGreen1 (#afff87)
+  paleGreen1_156(
     code: 156,
     r: 175,
     g: 255,
@@ -1418,7 +1732,9 @@ enum XtermColor {
     contrastOnWhite: 1.20,
     contrastOnBlack: 17.48,
   ),
-  color157(
+
+  /// DarkSeaGreen2 (#afffaf)
+  darkSeaGreen2_157(
     code: 157,
     r: 175,
     g: 255,
@@ -1427,7 +1743,9 @@ enum XtermColor {
     contrastOnWhite: 1.18,
     contrastOnBlack: 17.75,
   ),
-  color158(
+
+  /// DarkSeaGreen1 (#afffd7)
+  darkSeaGreen1_158(
     code: 158,
     r: 175,
     g: 255,
@@ -1436,7 +1754,9 @@ enum XtermColor {
     contrastOnWhite: 1.16,
     contrastOnBlack: 18.11,
   ),
-  color159(
+
+  /// PaleTurquoise1 (#afffff)
+  paleTurquoise1_159(
     code: 159,
     r: 175,
     g: 255,
@@ -1445,7 +1765,9 @@ enum XtermColor {
     contrastOnWhite: 1.13,
     contrastOnBlack: 18.57,
   ),
-  color160(
+
+  /// Red3 (#d70000)
+  red3_160(
     code: 160,
     r: 215,
     g: 0,
@@ -1454,7 +1776,9 @@ enum XtermColor {
     contrastOnWhite: 5.40,
     contrastOnBlack: 3.89,
   ),
-  color161(
+
+  /// DeepPink3 (#d7005f)
+  deepPink3_161(
     code: 161,
     r: 215,
     g: 0,
@@ -1463,7 +1787,9 @@ enum XtermColor {
     contrastOnWhite: 5.18,
     contrastOnBlack: 4.05,
   ),
-  color162(
+
+  /// DeepPink3 (#d70087)
+  deepPink3_162(
     code: 162,
     r: 215,
     g: 0,
@@ -1472,7 +1798,9 @@ enum XtermColor {
     contrastOnWhite: 4.95,
     contrastOnBlack: 4.24,
   ),
-  color163(
+
+  /// Magenta3 (#d700af)
+  magenta3_163(
     code: 163,
     r: 215,
     g: 0,
@@ -1481,7 +1809,9 @@ enum XtermColor {
     contrastOnWhite: 4.66,
     contrastOnBlack: 4.51,
   ),
-  color164(
+
+  /// Magenta3 (#d700d7)
+  magenta3_164(
     code: 164,
     r: 215,
     g: 0,
@@ -1490,7 +1820,9 @@ enum XtermColor {
     contrastOnWhite: 4.31,
     contrastOnBlack: 4.87,
   ),
-  color165(
+
+  /// Magenta2 (#d700ff)
+  magenta2_165(
     code: 165,
     r: 215,
     g: 0,
@@ -1499,7 +1831,9 @@ enum XtermColor {
     contrastOnWhite: 3.94,
     contrastOnBlack: 5.33,
   ),
-  color166(
+
+  /// DarkOrange3 (#d75f00)
+  darkOrange3_166(
     code: 166,
     r: 215,
     g: 95,
@@ -1508,7 +1842,9 @@ enum XtermColor {
     contrastOnWhite: 3.80,
     contrastOnBlack: 5.53,
   ),
-  color167(
+
+  /// IndianRed (#d75f5f)
+  indianRed_167(
     code: 167,
     r: 215,
     g: 95,
@@ -1517,7 +1853,9 @@ enum XtermColor {
     contrastOnWhite: 3.69,
     contrastOnBlack: 5.69,
   ),
-  color168(
+
+  /// HotPink3 (#d75f87)
+  hotPink3_168(
     code: 168,
     r: 215,
     g: 95,
@@ -1526,7 +1864,9 @@ enum XtermColor {
     contrastOnWhite: 3.57,
     contrastOnBlack: 5.88,
   ),
-  color169(
+
+  /// HotPink2 (#d75faf)
+  hotPink2_169(
     code: 169,
     r: 215,
     g: 95,
@@ -1535,7 +1875,9 @@ enum XtermColor {
     contrastOnWhite: 3.42,
     contrastOnBlack: 6.15,
   ),
-  color170(
+
+  /// Orchid (#d75fd7)
+  orchid_170(
     code: 170,
     r: 215,
     g: 95,
@@ -1544,7 +1886,9 @@ enum XtermColor {
     contrastOnWhite: 3.23,
     contrastOnBlack: 6.51,
   ),
-  color171(
+
+  /// MediumOrchid1 (#d75fff)
+  mediumOrchid1_171(
     code: 171,
     r: 215,
     g: 95,
@@ -1553,7 +1897,9 @@ enum XtermColor {
     contrastOnWhite: 3.01,
     contrastOnBlack: 6.97,
   ),
-  color172(
+
+  /// Orange3 (#d78700)
+  orange3_172(
     code: 172,
     r: 215,
     g: 135,
@@ -1562,7 +1908,9 @@ enum XtermColor {
     contrastOnWhite: 2.86,
     contrastOnBlack: 7.36,
   ),
-  color173(
+
+  /// LightSalmon3 (#d7875f)
+  lightSalmon3_173(
     code: 173,
     r: 215,
     g: 135,
@@ -1571,7 +1919,9 @@ enum XtermColor {
     contrastOnWhite: 2.79,
     contrastOnBlack: 7.52,
   ),
-  color174(
+
+  /// LightPink3 (#d78787)
+  lightPink3_174(
     code: 174,
     r: 215,
     g: 135,
@@ -1580,7 +1930,9 @@ enum XtermColor {
     contrastOnWhite: 2.73,
     contrastOnBlack: 7.70,
   ),
-  color175(
+
+  /// Pink3 (#d787af)
+  pink3_175(
     code: 175,
     r: 215,
     g: 135,
@@ -1589,7 +1941,9 @@ enum XtermColor {
     contrastOnWhite: 2.63,
     contrastOnBlack: 7.97,
   ),
-  color176(
+
+  /// Plum3 (#d787d7)
+  plum3_176(
     code: 176,
     r: 215,
     g: 135,
@@ -1598,7 +1952,9 @@ enum XtermColor {
     contrastOnWhite: 2.52,
     contrastOnBlack: 8.34,
   ),
-  color177(
+
+  /// Violet (#d787ff)
+  violet_177(
     code: 177,
     r: 215,
     g: 135,
@@ -1607,7 +1963,9 @@ enum XtermColor {
     contrastOnWhite: 2.39,
     contrastOnBlack: 8.80,
   ),
-  color178(
+
+  /// Gold3 (#d7af00)
+  gold3_178(
     code: 178,
     r: 215,
     g: 175,
@@ -1616,7 +1974,9 @@ enum XtermColor {
     contrastOnWhite: 2.10,
     contrastOnBlack: 10.02,
   ),
-  color179(
+
+  /// LightGoldenrod3 (#d7af5f)
+  lightGoldenrod3_179(
     code: 179,
     r: 215,
     g: 175,
@@ -1625,7 +1985,9 @@ enum XtermColor {
     contrastOnWhite: 2.06,
     contrastOnBlack: 10.19,
   ),
-  color180(
+
+  /// Tan (#d7af87)
+  tan_180(
     code: 180,
     r: 215,
     g: 175,
@@ -1634,7 +1996,9 @@ enum XtermColor {
     contrastOnWhite: 2.02,
     contrastOnBlack: 10.37,
   ),
-  color181(
+
+  /// MistyRose3 (#d7afaf)
+  mistyRose3_181(
     code: 181,
     r: 215,
     g: 175,
@@ -1643,7 +2007,9 @@ enum XtermColor {
     contrastOnWhite: 1.97,
     contrastOnBlack: 10.64,
   ),
-  color182(
+
+  /// Thistle3 (#d7afd7)
+  thistle3_182(
     code: 182,
     r: 215,
     g: 175,
@@ -1652,7 +2018,9 @@ enum XtermColor {
     contrastOnWhite: 1.91,
     contrastOnBlack: 11.00,
   ),
-  color183(
+
+  /// Plum2 (#d7afff)
+  plum2_183(
     code: 183,
     r: 215,
     g: 175,
@@ -1661,7 +2029,9 @@ enum XtermColor {
     contrastOnWhite: 1.83,
     contrastOnBlack: 11.47,
   ),
-  color184(
+
+  /// Yellow3 (#d7d700)
+  yellow3_184(
     code: 184,
     r: 215,
     g: 215,
@@ -1670,7 +2040,9 @@ enum XtermColor {
     contrastOnWhite: 1.54,
     contrastOnBlack: 13.61,
   ),
-  color185(
+
+  /// Khaki3 (#d7d75f)
+  khaki3_185(
     code: 185,
     r: 215,
     g: 215,
@@ -1679,7 +2051,9 @@ enum XtermColor {
     contrastOnWhite: 1.52,
     contrastOnBlack: 13.77,
   ),
-  color186(
+
+  /// LightGoldenrod2 (#d7d787)
+  lightGoldenrod2_186(
     code: 186,
     r: 215,
     g: 215,
@@ -1688,7 +2062,9 @@ enum XtermColor {
     contrastOnWhite: 1.50,
     contrastOnBlack: 13.96,
   ),
-  color187(
+
+  /// LightYellow3 (#d7d7af)
+  lightYellow3_187(
     code: 187,
     r: 215,
     g: 215,
@@ -1697,7 +2073,9 @@ enum XtermColor {
     contrastOnWhite: 1.48,
     contrastOnBlack: 14.23,
   ),
-  color188(
+
+  /// Grey84 (#d7d7d7)
+  grey84_188(
     code: 188,
     r: 215,
     g: 215,
@@ -1706,7 +2084,9 @@ enum XtermColor {
     contrastOnWhite: 1.44,
     contrastOnBlack: 14.59,
   ),
-  color189(
+
+  /// LightSteelBlue1 (#d7d7ff)
+  lightSteelBlue1_189(
     code: 189,
     r: 215,
     g: 215,
@@ -1715,7 +2095,9 @@ enum XtermColor {
     contrastOnWhite: 1.40,
     contrastOnBlack: 15.05,
   ),
-  color190(
+
+  /// Yellow2 (#d7ff00)
+  yellow2_190(
     code: 190,
     r: 215,
     g: 255,
@@ -1724,7 +2106,9 @@ enum XtermColor {
     contrastOnWhite: 1.15,
     contrastOnBlack: 18.19,
   ),
-  color191(
+
+  /// DarkOliveGreen1 (#d7ff5f)
+  darkOliveGreen1_191(
     code: 191,
     r: 215,
     g: 255,
@@ -1733,7 +2117,9 @@ enum XtermColor {
     contrastOnWhite: 1.14,
     contrastOnBlack: 18.36,
   ),
-  color192(
+
+  /// DarkOliveGreen1 (#d7ff87)
+  darkOliveGreen1_192(
     code: 192,
     r: 215,
     g: 255,
@@ -1742,7 +2128,9 @@ enum XtermColor {
     contrastOnWhite: 1.13,
     contrastOnBlack: 18.54,
   ),
-  color193(
+
+  /// DarkSeaGreen1 (#d7ffaf)
+  darkSeaGreen1_193(
     code: 193,
     r: 215,
     g: 255,
@@ -1751,7 +2139,9 @@ enum XtermColor {
     contrastOnWhite: 1.12,
     contrastOnBlack: 18.81,
   ),
-  color194(
+
+  /// Honeydew2 (#d7ffd7)
+  honeydew2_194(
     code: 194,
     r: 215,
     g: 255,
@@ -1760,7 +2150,9 @@ enum XtermColor {
     contrastOnWhite: 1.10,
     contrastOnBlack: 19.17,
   ),
-  color195(
+
+  /// LightCyan1 (#d7ffff)
+  lightCyan1_195(
     code: 195,
     r: 215,
     g: 255,
@@ -1769,7 +2161,9 @@ enum XtermColor {
     contrastOnWhite: 1.07,
     contrastOnBlack: 19.64,
   ),
-  color196(
+
+  /// Red1 (#ff0000)
+  red1_196(
     code: 196,
     r: 255,
     g: 0,
@@ -1778,7 +2172,9 @@ enum XtermColor {
     contrastOnWhite: 4.00,
     contrastOnBlack: 5.25,
   ),
-  color197(
+
+  /// DeepPink2 (#ff005f)
+  deepPink2_197(
     code: 197,
     r: 255,
     g: 0,
@@ -1787,7 +2183,9 @@ enum XtermColor {
     contrastOnWhite: 3.88,
     contrastOnBlack: 5.42,
   ),
-  color198(
+
+  /// DeepPink1 (#ff0087)
+  deepPink1_198(
     code: 198,
     r: 255,
     g: 0,
@@ -1796,7 +2194,9 @@ enum XtermColor {
     contrastOnWhite: 3.75,
     contrastOnBlack: 5.60,
   ),
-  color199(
+
+  /// DeepPink1 (#ff00af)
+  deepPink1_199(
     code: 199,
     r: 255,
     g: 0,
@@ -1805,7 +2205,9 @@ enum XtermColor {
     contrastOnWhite: 3.58,
     contrastOnBlack: 5.87,
   ),
-  color200(
+
+  /// Magenta2 (#ff00d7)
+  magenta2_200(
     code: 200,
     r: 255,
     g: 0,
@@ -1814,7 +2216,9 @@ enum XtermColor {
     contrastOnWhite: 3.37,
     contrastOnBlack: 6.23,
   ),
-  color201(
+
+  /// Magenta1 (#ff00ff)
+  magenta1_201(
     code: 201,
     r: 255,
     g: 0,
@@ -1823,7 +2227,9 @@ enum XtermColor {
     contrastOnWhite: 3.14,
     contrastOnBlack: 6.70,
   ),
-  color202(
+
+  /// OrangeRed1 (#ff5f00)
+  orangeRed1_202(
     code: 202,
     r: 255,
     g: 95,
@@ -1832,7 +2238,9 @@ enum XtermColor {
     contrastOnWhite: 3.05,
     contrastOnBlack: 6.89,
   ),
-  color203(
+
+  /// IndianRed1 (#ff5f5f)
+  indianRed1_203(
     code: 203,
     r: 255,
     g: 95,
@@ -1841,7 +2249,9 @@ enum XtermColor {
     contrastOnWhite: 2.98,
     contrastOnBlack: 7.05,
   ),
-  color204(
+
+  /// IndianRed1 (#ff5f87)
+  indianRed1_204(
     code: 204,
     r: 255,
     g: 95,
@@ -1850,7 +2260,9 @@ enum XtermColor {
     contrastOnWhite: 2.90,
     contrastOnBlack: 7.24,
   ),
-  color205(
+
+  /// HotPink (#ff5faf)
+  hotPink_205(
     code: 205,
     r: 255,
     g: 95,
@@ -1859,7 +2271,9 @@ enum XtermColor {
     contrastOnWhite: 2.80,
     contrastOnBlack: 7.51,
   ),
-  color206(
+
+  /// HotPink (#ff5fd7)
+  hotPink_206(
     code: 206,
     r: 255,
     g: 95,
@@ -1868,7 +2282,9 @@ enum XtermColor {
     contrastOnWhite: 2.67,
     contrastOnBlack: 7.87,
   ),
-  color207(
+
+  /// MediumOrchid1 (#ff5fff)
+  mediumOrchid1_207(
     code: 207,
     r: 255,
     g: 95,
@@ -1877,7 +2293,9 @@ enum XtermColor {
     contrastOnWhite: 2.52,
     contrastOnBlack: 8.33,
   ),
-  color208(
+
+  /// DarkOrange (#ff8700)
+  darkOrange_208(
     code: 208,
     r: 255,
     g: 135,
@@ -1886,7 +2304,9 @@ enum XtermColor {
     contrastOnWhite: 2.41,
     contrastOnBlack: 8.72,
   ),
-  color209(
+
+  /// Salmon1 (#ff875f)
+  salmon1_209(
     code: 209,
     r: 255,
     g: 135,
@@ -1895,7 +2315,9 @@ enum XtermColor {
     contrastOnWhite: 2.36,
     contrastOnBlack: 8.88,
   ),
-  color210(
+
+  /// LightCoral (#ff8787)
+  lightCoral_210(
     code: 210,
     r: 255,
     g: 135,
@@ -1904,7 +2326,9 @@ enum XtermColor {
     contrastOnWhite: 2.32,
     contrastOnBlack: 9.07,
   ),
-  color211(
+
+  /// PaleVioletRed1 (#ff87af)
+  paleVioletRed1_211(
     code: 211,
     r: 255,
     g: 135,
@@ -1913,7 +2337,9 @@ enum XtermColor {
     contrastOnWhite: 2.25,
     contrastOnBlack: 9.34,
   ),
-  color212(
+
+  /// Orchid2 (#ff87d7)
+  orchid2_212(
     code: 212,
     r: 255,
     g: 135,
@@ -1922,7 +2348,9 @@ enum XtermColor {
     contrastOnWhite: 2.17,
     contrastOnBlack: 9.70,
   ),
-  color213(
+
+  /// Orchid1 (#ff87ff)
+  orchid1_213(
     code: 213,
     r: 255,
     g: 135,
@@ -1931,7 +2359,9 @@ enum XtermColor {
     contrastOnWhite: 2.07,
     contrastOnBlack: 10.16,
   ),
-  color214(
+
+  /// Orange1 (#ffaf00)
+  orange1_214(
     code: 214,
     r: 255,
     g: 175,
@@ -1940,7 +2370,9 @@ enum XtermColor {
     contrastOnWhite: 1.84,
     contrastOnBlack: 11.38,
   ),
-  color215(
+
+  /// SandyBrown (#ffaf5f)
+  sandyBrown_215(
     code: 215,
     r: 255,
     g: 175,
@@ -1949,7 +2381,9 @@ enum XtermColor {
     contrastOnWhite: 1.82,
     contrastOnBlack: 11.55,
   ),
-  color216(
+
+  /// LightSalmon1 (#ffaf87)
+  lightSalmon1_216(
     code: 216,
     r: 255,
     g: 175,
@@ -1958,7 +2392,9 @@ enum XtermColor {
     contrastOnWhite: 1.79,
     contrastOnBlack: 11.73,
   ),
-  color217(
+
+  /// LightPink1 (#ffafaf)
+  lightPink1_217(
     code: 217,
     r: 255,
     g: 175,
@@ -1967,7 +2403,9 @@ enum XtermColor {
     contrastOnWhite: 1.75,
     contrastOnBlack: 12.00,
   ),
-  color218(
+
+  /// Pink1 (#ffafd7)
+  pink1_218(
     code: 218,
     r: 255,
     g: 175,
@@ -1976,7 +2414,9 @@ enum XtermColor {
     contrastOnWhite: 1.70,
     contrastOnBlack: 12.37,
   ),
-  color219(
+
+  /// Plum1 (#ffafff)
+  plum1_219(
     code: 219,
     r: 255,
     g: 175,
@@ -1985,7 +2425,9 @@ enum XtermColor {
     contrastOnWhite: 1.64,
     contrastOnBlack: 12.83,
   ),
-  color220(
+
+  /// Gold1 (#ffd700)
+  gold1_220(
     code: 220,
     r: 255,
     g: 215,
@@ -1994,7 +2436,9 @@ enum XtermColor {
     contrastOnWhite: 1.40,
     contrastOnBlack: 14.97,
   ),
-  color221(
+
+  /// LightGoldenrod2 (#ffd75f)
+  lightGoldenrod2_221(
     code: 221,
     r: 255,
     g: 215,
@@ -2003,7 +2447,9 @@ enum XtermColor {
     contrastOnWhite: 1.39,
     contrastOnBlack: 15.14,
   ),
-  color222(
+
+  /// LightGoldenrod2 (#ffd787)
+  lightGoldenrod2_222(
     code: 222,
     r: 255,
     g: 215,
@@ -2012,7 +2458,9 @@ enum XtermColor {
     contrastOnWhite: 1.37,
     contrastOnBlack: 15.32,
   ),
-  color223(
+
+  /// NavajoWhite1 (#ffd7af)
+  navajoWhite1_223(
     code: 223,
     r: 255,
     g: 215,
@@ -2021,7 +2469,9 @@ enum XtermColor {
     contrastOnWhite: 1.35,
     contrastOnBlack: 15.59,
   ),
-  color224(
+
+  /// MistyRose1 (#ffd7d7)
+  mistyRose1_224(
     code: 224,
     r: 255,
     g: 215,
@@ -2030,7 +2480,9 @@ enum XtermColor {
     contrastOnWhite: 1.32,
     contrastOnBlack: 15.95,
   ),
-  color225(
+
+  /// Thistle1 (#ffd7ff)
+  thistle1_225(
     code: 225,
     r: 255,
     g: 215,
@@ -2039,7 +2491,9 @@ enum XtermColor {
     contrastOnWhite: 1.28,
     contrastOnBlack: 16.42,
   ),
-  color226(
+
+  /// Yellow1 (#ffff00)
+  yellow1_226(
     code: 226,
     r: 255,
     g: 255,
@@ -2048,7 +2502,9 @@ enum XtermColor {
     contrastOnWhite: 1.07,
     contrastOnBlack: 19.56,
   ),
-  color227(
+
+  /// LightGoldenrod1 (#ffff5f)
+  lightGoldenrod1_227(
     code: 227,
     r: 255,
     g: 255,
@@ -2057,7 +2513,9 @@ enum XtermColor {
     contrastOnWhite: 1.06,
     contrastOnBlack: 19.72,
   ),
-  color228(
+
+  /// Khaki1 (#ffff87)
+  khaki1_228(
     code: 228,
     r: 255,
     g: 255,
@@ -2066,7 +2524,9 @@ enum XtermColor {
     contrastOnWhite: 1.05,
     contrastOnBlack: 19.91,
   ),
-  color229(
+
+  /// Wheat1 (#ffffaf)
+  wheat1_229(
     code: 229,
     r: 255,
     g: 255,
@@ -2075,7 +2535,9 @@ enum XtermColor {
     contrastOnWhite: 1.04,
     contrastOnBlack: 20.18,
   ),
-  color230(
+
+  /// Cornsilk1 (#ffffd7)
+  cornsilk1_230(
     code: 230,
     r: 255,
     g: 255,
@@ -2084,7 +2546,9 @@ enum XtermColor {
     contrastOnWhite: 1.02,
     contrastOnBlack: 20.54,
   ),
-  color231(
+
+  /// Grey100 (#ffffff)
+  grey100_231(
     code: 231,
     r: 255,
     g: 255,
@@ -2093,7 +2557,9 @@ enum XtermColor {
     contrastOnWhite: 1.00,
     contrastOnBlack: 21.00,
   ),
-  gray0(
+
+  /// Grey3 (#080808)
+  grey3_232(
     code: 232,
     r: 8,
     g: 8,
@@ -2102,7 +2568,9 @@ enum XtermColor {
     contrastOnWhite: 20.03,
     contrastOnBlack: 1.05,
   ),
-  gray1(
+
+  /// Grey7 (#121212)
+  grey7_233(
     code: 233,
     r: 18,
     g: 18,
@@ -2111,7 +2579,9 @@ enum XtermColor {
     contrastOnWhite: 18.73,
     contrastOnBlack: 1.12,
   ),
-  gray2(
+
+  /// Grey11 (#1c1c1c)
+  grey11_234(
     code: 234,
     r: 28,
     g: 28,
@@ -2120,7 +2590,9 @@ enum XtermColor {
     contrastOnWhite: 17.04,
     contrastOnBlack: 1.23,
   ),
-  gray3(
+
+  /// Grey15 (#262626)
+  grey15_235(
     code: 235,
     r: 38,
     g: 38,
@@ -2129,7 +2601,9 @@ enum XtermColor {
     contrastOnWhite: 15.13,
     contrastOnBlack: 1.39,
   ),
-  gray4(
+
+  /// Grey19 (#303030)
+  grey19_236(
     code: 236,
     r: 48,
     g: 48,
@@ -2138,7 +2612,9 @@ enum XtermColor {
     contrastOnWhite: 13.20,
     contrastOnBlack: 1.59,
   ),
-  gray5(
+
+  /// Grey23 (#3a3a3a)
+  grey23_237(
     code: 237,
     r: 58,
     g: 58,
@@ -2147,7 +2623,9 @@ enum XtermColor {
     contrastOnWhite: 11.37,
     contrastOnBlack: 1.85,
   ),
-  gray6(
+
+  /// Grey27 (#444444)
+  grey27_238(
     code: 238,
     r: 68,
     g: 68,
@@ -2156,7 +2634,9 @@ enum XtermColor {
     contrastOnWhite: 9.74,
     contrastOnBlack: 2.16,
   ),
-  gray7(
+
+  /// Grey30 (#4e4e4e)
+  grey30_239(
     code: 239,
     r: 78,
     g: 78,
@@ -2165,7 +2645,9 @@ enum XtermColor {
     contrastOnWhite: 8.32,
     contrastOnBlack: 2.52,
   ),
-  gray8(
+
+  /// Grey35 (#585858)
+  grey35_240(
     code: 240,
     r: 88,
     g: 88,
@@ -2174,7 +2656,9 @@ enum XtermColor {
     contrastOnWhite: 7.11,
     contrastOnBlack: 2.95,
   ),
-  gray9(
+
+  /// Grey39 (#626262)
+  grey39_241(
     code: 241,
     r: 98,
     g: 98,
@@ -2183,7 +2667,9 @@ enum XtermColor {
     contrastOnWhite: 6.10,
     contrastOnBlack: 3.44,
   ),
-  gray10(
+
+  /// Grey42 (#6c6c6c)
+  grey42_242(
     code: 242,
     r: 108,
     g: 108,
@@ -2192,7 +2678,9 @@ enum XtermColor {
     contrastOnWhite: 5.25,
     contrastOnBlack: 4.00,
   ),
-  gray11(
+
+  /// Grey46 (#767676)
+  grey46_243(
     code: 243,
     r: 118,
     g: 118,
@@ -2201,7 +2689,9 @@ enum XtermColor {
     contrastOnWhite: 4.54,
     contrastOnBlack: 4.62,
   ),
-  gray12(
+
+  /// Grey50 (#808080)
+  grey50_244(
     code: 244,
     r: 128,
     g: 128,
@@ -2210,7 +2700,9 @@ enum XtermColor {
     contrastOnWhite: 3.95,
     contrastOnBlack: 5.32,
   ),
-  gray13(
+
+  /// Grey54 (#8a8a8a)
+  grey54_245(
     code: 245,
     r: 138,
     g: 138,
@@ -2219,7 +2711,9 @@ enum XtermColor {
     contrastOnWhite: 3.45,
     contrastOnBlack: 6.08,
   ),
-  gray14(
+
+  /// Grey58 (#949494)
+  grey58_246(
     code: 246,
     r: 148,
     g: 148,
@@ -2228,7 +2722,9 @@ enum XtermColor {
     contrastOnWhite: 3.03,
     contrastOnBlack: 6.92,
   ),
-  gray15(
+
+  /// Grey62 (#9e9e9e)
+  grey62_247(
     code: 247,
     r: 158,
     g: 158,
@@ -2237,7 +2733,9 @@ enum XtermColor {
     contrastOnWhite: 2.68,
     contrastOnBlack: 7.84,
   ),
-  gray16(
+
+  /// Grey66 (#a8a8a8)
+  grey66_248(
     code: 248,
     r: 168,
     g: 168,
@@ -2246,7 +2744,9 @@ enum XtermColor {
     contrastOnWhite: 2.38,
     contrastOnBlack: 8.83,
   ),
-  gray17(
+
+  /// Grey70 (#b2b2b2)
+  grey70_249(
     code: 249,
     r: 178,
     g: 178,
@@ -2255,7 +2755,9 @@ enum XtermColor {
     contrastOnWhite: 2.12,
     contrastOnBlack: 9.90,
   ),
-  gray18(
+
+  /// Grey74 (#bcbcbc)
+  grey74_250(
     code: 250,
     r: 188,
     g: 188,
@@ -2264,7 +2766,9 @@ enum XtermColor {
     contrastOnWhite: 1.90,
     contrastOnBlack: 11.06,
   ),
-  gray19(
+
+  /// Grey78 (#c6c6c6)
+  grey78_251(
     code: 251,
     r: 198,
     g: 198,
@@ -2273,7 +2777,9 @@ enum XtermColor {
     contrastOnWhite: 1.71,
     contrastOnBlack: 12.29,
   ),
-  gray20(
+
+  /// Grey82 (#d0d0d0)
+  grey82_252(
     code: 252,
     r: 208,
     g: 208,
@@ -2282,7 +2788,9 @@ enum XtermColor {
     contrastOnWhite: 1.54,
     contrastOnBlack: 13.62,
   ),
-  gray21(
+
+  /// Grey85 (#dadada)
+  grey85_253(
     code: 253,
     r: 218,
     g: 218,
@@ -2291,7 +2799,9 @@ enum XtermColor {
     contrastOnWhite: 1.40,
     contrastOnBlack: 15.02,
   ),
-  gray22(
+
+  /// Grey89 (#e4e4e4)
+  grey89_254(
     code: 254,
     r: 228,
     g: 228,
@@ -2300,7 +2810,9 @@ enum XtermColor {
     contrastOnWhite: 1.27,
     contrastOnBlack: 16.52,
   ),
-  gray23(
+
+  /// Grey93 (#eeeeee)
+  grey93_255(
     code: 255,
     r: 238,
     g: 238,
@@ -2309,7 +2821,7 @@ enum XtermColor {
     contrastOnWhite: 1.16,
     contrastOnBlack: 18.10,
   ),
-  ;
+;
 
   final int code;
   final int r;
@@ -2343,11 +2855,8 @@ enum XtermColor {
     // RGB to XYZ
     double pivotRgb(double n) {
       final v = n / 255.0;
-      return v > 0.04045
-          ? math.pow((v + 0.055) / 1.055, 2.4).toDouble()
-          : v / 12.92;
+      return v > 0.04045 ? math.pow((v + 0.055) / 1.055, 2.4).toDouble() : v / 12.92;
     }
-
     final rLinear = pivotRgb(r.toDouble()) * 100;
     final gLinear = pivotRgb(g.toDouble()) * 100;
     final bLinear = pivotRgb(b.toDouble()) * 100;
@@ -2363,9 +2872,7 @@ enum XtermColor {
     const refZ = 108.883;
 
     double pivotXyz(double n) {
-      return n > 0.008856
-          ? math.pow(n, 1.0 / 3.0).toDouble()
-          : (7.787 * n) + (16.0 / 116.0);
+      return n > 0.008856 ? math.pow(n, 1.0 / 3.0).toDouble() : (7.787 * n) + (16.0 / 116.0);
     }
 
     final xPivot = pivotXyz(x / refX);
@@ -2456,13 +2963,8 @@ enum XtermColor {
     final deltaTheta =
         30 * math.exp(-((hBarPrime - 275) / 25) * ((hBarPrime - 275) / 25));
 
-    final cBarPrime7 = cBarPrime *
-        cBarPrime *
-        cBarPrime *
-        cBarPrime *
-        cBarPrime *
-        cBarPrime *
-        cBarPrime;
+    final cBarPrime7 =
+        cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime;
     final rc = 2 * math.sqrt(cBarPrime7 / (cBarPrime7 + 6103515625));
 
     final lBarPrimeMinus50Sq = (lBarPrime - 50) * (lBarPrime - 50);

@@ -1,5 +1,4 @@
 import 'package:chirp/chirp.dart';
-import 'package:chirp/src/xterm_colors.g.dart';
 
 /// Writes to console using print()
 class ConsoleWriter implements ChirpWriter {

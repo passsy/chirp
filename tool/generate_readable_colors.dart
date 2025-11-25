@@ -56,13 +56,13 @@ class ColorInfo {
       : hue = rgbToHsl(color.r, color.g, color.b).$1,
         saturation = rgbToHsl(color.r, color.g, color.b).$2,
         lightness = rgbToHsl(color.r, color.g, color.b).$3,
-        distanceToRed = XtermColor.distance(color, XtermColor.red),
-        distanceToYellow = XtermColor.distance(color, XtermColor.yellow),
-        distanceToWhite = XtermColor.distance(color, XtermColor.brightWhite),
-        distanceToBlack = XtermColor.distance(color, XtermColor.black),
+        distanceToRed = XtermColor.distance(color, XtermColor.red_1),
+        distanceToYellow = XtermColor.distance(color, XtermColor.yellow_3),
+        distanceToWhite = XtermColor.distance(color, XtermColor.brightWhite_15),
+        distanceToBlack = XtermColor.distance(color, XtermColor.black_0),
         isGrey = rgbToHsl(color.r, color.g, color.b).$2 < 0.16,
-        isRedish = XtermColor.distance(color, XtermColor.red) <= 30,
-        isYellowish = XtermColor.distance(color, XtermColor.yellow) <= 30,
+        isRedish = XtermColor.distance(color, XtermColor.red_1) <= 30,
+        isYellowish = XtermColor.distance(color, XtermColor.yellow_3) <= 30,
         isTooLight = color.contrastOnWhite < minContrastLight,
         isTooDark = color.contrastOnBlack < minContrastDark,
         saturationGroup =
@@ -169,13 +169,13 @@ void main() {
       '// and do not interfere with red (errors) or yellow (warnings).');
   buffer.writeln('//');
   buffer.writeln('// Filtering criteria:');
-  buffer.writeln('// - Distance to red (XtermColor.red) > 30');
-  buffer.writeln('// - Distance to yellow (XtermColor.yellow) > 30');
+  buffer.writeln('// - Distance to red (XtermColor.red_1) > 30');
+  buffer.writeln('// - Distance to yellow (XtermColor.yellow_3) > 30');
   buffer.writeln('// - Contrast on white >= $minContrastLight');
   buffer.writeln('// - Contrast on black >= $minContrastDark');
   buffer.writeln('// - Saturation >= 16% (excludes grays)');
   buffer.writeln();
-  buffer.writeln("import 'xterm_colors.g.dart';");
+  buffer.writeln("import 'package:chirp/src/xterm_colors.g.dart';");
   buffer.writeln();
 
   // Write each saturation group as a separate list

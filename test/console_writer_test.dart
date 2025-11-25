@@ -1,5 +1,6 @@
+// ignore_for_file: prefer_const_declarations
+
 import 'package:chirp/chirp.dart';
-import 'package:chirp/src/xterm_colors.g.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -221,7 +222,7 @@ void main() {
   group('ConsoleMessageBuffer.visibleLength', () {
     test('returns visible length of buffer contents', () {
       final buffer = ConsoleMessageBuffer(useColors: true);
-      buffer.pushColor(foreground: XtermColor.color196);
+      buffer.pushColor(foreground: XtermColor.red1_196);
       buffer.write('hello');
       buffer.popColor();
 

@@ -1,7 +1,6 @@
 // ignore_for_file: avoid_redundant_argument_values
 
 import 'package:chirp/chirp.dart';
-import 'package:chirp/src/xterm_colors.g.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -10,11 +9,11 @@ void main() {
       // Parent: red, Child: blue
       // "Hello " should be red, "World" should be blue
       const span = AnsiColored(
-        foreground: XtermColor.color196, // red
+        foreground: XtermColor.red1_196, // red
         child: SpanSequence([
            PlainText('Hello '),
           AnsiColored(
-            foreground: XtermColor.color21, // blue
+            foreground: XtermColor.blue1_21, // blue
             child:  PlainText('World'),
           ),
           PlainText('!'),
@@ -143,10 +142,10 @@ void main() {
         final tree = SpanNode.fromSpan(const PlainText('hello'));
 
         tree.wrap(
-            (child) => AnsiColored(foreground: XtermColor.color196, child: child));
+            (child) => AnsiColored(foreground: XtermColor.red1_196, child: child));
 
         expect(tree.span, isA<AnsiColored>());
-        expect((tree.span as AnsiColored).foreground, XtermColor.color196);
+        expect((tree.span as AnsiColored).foreground, XtermColor.red1_196);
         expect(tree.children.length, 1);
         expect(tree.children.first.span, isA<PlainText>());
         expect((tree.children.first.span as PlainText).value, 'hello');
@@ -161,7 +160,7 @@ void main() {
 
         final target = tree.children[1];
         target.wrap(
-            (child) => AnsiColored(foreground: XtermColor.color21, child: child));
+            (child) => AnsiColored(foreground: XtermColor.blue1_21, child: child));
 
         final result = tree.toSpan();
         final buffer = ConsoleMessageBuffer();
@@ -178,7 +177,7 @@ void main() {
 
         final child = tree.children.first;
         child.wrap(
-            (c) => AnsiColored(foreground: XtermColor.color196, child: c));
+            (c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
 
         expect(tree.children.first.parent, tree);
         expect(tree.children.first.children.first.parent, tree.children.first);
@@ -188,7 +187,7 @@ void main() {
     group('unwrap', () {
       test('unwraps a Colored span to its child', () {
         final tree = SpanNode.fromSpan(const AnsiColored(
-          foreground: XtermColor.color196,
+          foreground: XtermColor.red1_196,
           child: PlainText('hello'),
         ));
 
@@ -201,7 +200,7 @@ void main() {
       test('unwraps a node inside a tree', () {
         final tree = SpanNode.fromSpan(const SpanSequence([
           PlainText('before'),
-          AnsiColored(foreground: XtermColor.color196, child: PlainText('target')),
+          AnsiColored(foreground: XtermColor.red1_196, child: PlainText('target')),
           PlainText('after'),
         ]));
 
@@ -229,7 +228,7 @@ void main() {
 
       test('unwrap preserves parent reference', () {
         final tree = SpanNode.fromSpan(const SpanSequence([
-          AnsiColored(foreground: XtermColor.color196, child: PlainText('child')),
+          AnsiColored(foreground: XtermColor.red1_196, child: PlainText('child')),
         ]));
 
         final styledNode = tree.children.first;
@@ -242,7 +241,7 @@ void main() {
     test('wrap then unwrap restores original', () {
       final tree = SpanNode.fromSpan(const PlainText('hello'));
 
-      tree.wrap((child) => AnsiColored(foreground: XtermColor.color196, child: child));
+      tree.wrap((child) => AnsiColored(foreground: XtermColor.red1_196, child: child));
       expect(tree.span, isA<AnsiColored>());
 
       tree.unwrap();
@@ -688,7 +687,7 @@ void main() {
       test('returns ancestors from parent to root', () {
         final tree = SpanNode.fromSpan(const SpanSequence([
           AnsiColored(
-            foreground: XtermColor.color196,
+            foreground: XtermColor.red1_196,
             child: PlainText('deep'),
           ),
         ]));
@@ -726,7 +725,7 @@ void main() {
       test('returns root from deeply nested node', () {
         final tree = SpanNode.fromSpan(const SpanSequence([
           AnsiColored(
-            foreground: XtermColor.color196,
+            foreground: XtermColor.red1_196,
             child: SpanSequence([
               PlainText('deep'),
             ]),
