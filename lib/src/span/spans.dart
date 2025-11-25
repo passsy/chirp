@@ -1,6 +1,5 @@
 import 'package:chirp/chirp.dart';
 import 'package:chirp/src/formatters/yaml_formatter.dart';
-import 'package:chirp/src/xterm_colors.g.dart';
 
 // =============================================================================
 // Primitive RenderSpans

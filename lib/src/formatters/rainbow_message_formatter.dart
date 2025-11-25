@@ -1,6 +1,5 @@
 import 'package:chirp/chirp.dart';
 import 'package:chirp/src/readable_colors.g.dart';
-import 'package:chirp/src/xterm_colors.g.dart';
 
 export 'package:chirp/src/span/span_foundation.dart';
 
@@ -13,21 +12,18 @@ const _subtleColors = [
 ];
 
 /// Default colored formatter using the span-based templating system.
-class RainbowMessageFormatter extends ConsoleMessageFormatter {
+class RainbowMessageFormatter extends SpanBasedFormatter {
   final int metaWidth;
   final List<ClassNameTransformer> classNameTransformers;
   final RainbowFormatOptions options;
-  final List<SpanTransformer> spanTransformers;
 
   RainbowMessageFormatter({
     List<ClassNameTransformer>? classNameTransformers,
     this.metaWidth = 80,
     RainbowFormatOptions? options,
-    List<SpanTransformer>? spanTransformers,
+    super.spanTransformers,
   })  : options = options ?? const RainbowFormatOptions(),
-        classNameTransformers = classNameTransformers ?? [],
-        spanTransformers = spanTransformers ?? [],
-        super();
+        classNameTransformers = classNameTransformers ?? [];
 
   String resolveClassName(Object instance) {
     for (final transformer in classNameTransformers) {
@@ -38,26 +34,15 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
   }
 
   @override
-  void format(LogRecord record, ConsoleMessageBuffer buffer) {
+  LogSpan buildSpan(LogRecord record) {
     final effectiveOptions = options.merge(
         record.formatOptions?.firstWhereTypeOrNull<RainbowFormatOptions>());
 
-    final span = RainbowLogSpan(
+    return RainbowLogSpan(
       record: record,
       options: effectiveOptions,
       classNameResolver: resolveClassName,
     ).build();
-
-    if (spanTransformers.isEmpty) {
-      renderSpan(span, buffer);
-      return;
-    }
-
-    final tree = SpanNode.fromSpan(span);
-    for (final transformer in spanTransformers) {
-      transformer(tree, record);
-    }
-    renderSpan(tree.toSpan(), buffer);
   }
 }
 
@@ -79,10 +64,10 @@ class RainbowLogSpan extends LogSpan {
     final instanceLabel = record.instanceLabel(classNameResolver);
 
     final levelColor = switch (record.level.severity) {
-      > 500 => XtermColor.color203,
-      500 => XtermColor.color167,
-      > 400 => XtermColor.color173,
-      400 => XtermColor.color179,
+      > 500 => XtermColor.indianRed1_203,
+      500 => XtermColor.indianRed_167,
+      > 400 => XtermColor.lightSalmon3_173,
+      400 => XtermColor.lightGoldenrod3_179,
       _ => null,
     };
 
@@ -91,7 +76,7 @@ class RainbowLogSpan extends LogSpan {
     // Timestamp
     if (options.showTime) {
       spans.add(AnsiColored(
-        foreground: XtermColor.brightBlack,
+        foreground: XtermColor.brightBlack_8,
         child: Timestamp(record.date),
       ));
     }
@@ -102,7 +87,7 @@ class RainbowLogSpan extends LogSpan {
       final location = fileName == null
           ? null
           : AnsiColored(
-              foreground: XtermColor.brightBlack,
+              foreground: XtermColor.brightBlack_8,
               child: DartSourceCodeLocation(fileName: fileName, line: callerInfo?.line),
             );
       spans.add(Prefixed(prefix: const Whitespace(), child: location));
@@ -163,7 +148,7 @@ class RainbowLogSpan extends LogSpan {
       spans.addAll([
         const Whitespace(),
         AnsiColored(
-          foreground: levelColor ?? XtermColor.brightBlack,
+          foreground: levelColor ?? XtermColor.brightBlack_8,
           child: BracketedLogLevel(record.level),
         ),
       ]);
@@ -173,7 +158,7 @@ class RainbowLogSpan extends LogSpan {
     spans.addAll([
       const Whitespace(),
       AnsiColored(
-        foreground: levelColor ?? XtermColor.brightBlack,
+        foreground: levelColor ?? XtermColor.brightBlack_8,
         child: LogMessage(record.message),
       ),
     ]);
@@ -186,7 +171,7 @@ class RainbowLogSpan extends LogSpan {
         DataPresentation.multiline => MultilineData(data),
       };
       spans.add(AnsiColored(
-        foreground: levelColor ?? XtermColor.brightBlack,
+        foreground: levelColor ?? XtermColor.brightBlack_8,
         child: dataSpan,
       ));
     }
@@ -204,7 +189,7 @@ class RainbowLogSpan extends LogSpan {
       spans.addAll([
         const NewLine(),
         AnsiColored(
-          foreground: levelColor ?? XtermColor.brightBlack,
+          foreground: levelColor ?? XtermColor.brightBlack_8,
           child: StackTraceSpan(stackTrace),
         ),
       ]);

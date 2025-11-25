@@ -1,30 +1,12 @@
 import 'package:chirp/chirp.dart';
 
 /// Single-line compact format using spans.
-class CompactChirpMessageFormatter extends ConsoleMessageFormatter {
-  final List<SpanTransformer> spanTransformers;
-
+class CompactChirpMessageFormatter extends SpanBasedFormatter {
   CompactChirpMessageFormatter({
-    List<SpanTransformer>? spanTransformers,
-  })  : spanTransformers = spanTransformers ?? [],
-        super();
+    super.spanTransformers,
+  });
 
   @override
-  void format(LogRecord record, ConsoleMessageBuffer builder) {
-    final span = buildSpan(record);
-
-    if (spanTransformers.isEmpty) {
-      renderSpan(span, builder);
-      return;
-    }
-
-    final tree = SpanNode.fromSpan(span);
-    for (final transformer in spanTransformers) {
-      transformer(tree, record);
-    }
-    renderSpan(tree.toSpan(), builder);
-  }
-
   LogSpan buildSpan(LogRecord record) {
     final callerInfo = record.callerInfo;
 

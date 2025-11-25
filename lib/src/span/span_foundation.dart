@@ -1,5 +1,6 @@
 import 'package:chirp/chirp.dart';
 
+export 'package:chirp/src/span/span_based_formatter.dart';
 export 'package:chirp/src/span/spans.dart';
 
 /// Base class for all log spans.
@@ -86,19 +87,6 @@ typedef SpanTransformer = void Function(
   LogRecord record,
 );
 
-// =============================================================================
-// Extension for span lists
-// =============================================================================
-
-extension LogSpanListExt on List<LogSpan> {
-  Iterable<T> whereSpanType<T extends LogSpan>() => whereType<T>();
-
-  List<LogSpan> removeSpanType<T extends LogSpan>() =>
-      where((s) => s is! T).toList();
-
-  List<LogSpan> mapSpanType<T extends LogSpan>(LogSpan Function(T) mapper) =>
-      map((s) => s is T ? mapper(s) : s).toList();
-}
 
 // =============================================================================
 // Span tree utilities
