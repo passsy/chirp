@@ -17,15 +17,16 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
   final int metaWidth;
   final List<ClassNameTransformer> classNameTransformers;
   final RainbowFormatOptions options;
-  final SpanTransformer? spanTransformer;
+  final List<SpanTransformer> spanTransformers;
 
   RainbowMessageFormatter({
     List<ClassNameTransformer>? classNameTransformers,
     this.metaWidth = 80,
     RainbowFormatOptions? options,
-    this.spanTransformer,
+    List<SpanTransformer>? spanTransformers,
   })  : options = options ?? const RainbowFormatOptions(),
         classNameTransformers = classNameTransformers ?? [],
+        spanTransformers = spanTransformers ?? [],
         super();
 
   String resolveClassName(Object instance) {
@@ -43,11 +44,11 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
 
     var span = buildSpan(record, effectiveOptions);
 
-    if (spanTransformer != null) {
-      span = spanTransformer!(span, record);
+    for (final transformer in spanTransformers) {
+      span = transformer(span, record);
     }
 
-    span.build(builder);
+    renderSpan(span, builder);
   }
 
   LogSpan buildSpan(LogRecord record, RainbowFormatOptions options) {
@@ -63,11 +64,6 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
     };
 
     final spans = <LogSpan>[];
-
-    // Add a newline before warnings/errors
-    if (record.level.severity >= 400) {
-      spans.add(const NewLine());
-    }
 
     // Timestamp
     if (options.showTime) {
@@ -181,12 +177,12 @@ class RainbowMessageFormatter extends ConsoleMessageFormatter {
     }
 
     // Stack trace
-    if (record.stackTrace != null) {
+    if (record.stackTrace case final stackTrace?) {
       spans.addAll([
         const NewLine(),
         Styled(
           foreground: levelColor ?? XtermColor.brightBlack,
-          child: StackTraceSpan(record.stackTrace),
+          child: StackTraceSpan(stackTrace),
         ),
       ]);
     }

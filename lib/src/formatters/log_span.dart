@@ -4,9 +4,8 @@ import 'package:chirp/src/xterm_colors.g.dart';
 
 /// Base class for all log spans.
 ///
-/// Spans are composable building blocks for log output. Each span knows how
-/// to render itself to a [ConsoleMessageBuilder]. Third-party developers can
-/// create custom spans by extending this class.
+/// Spans are composable building blocks for log output. Third-party developers
+/// should extend this class to create custom spans.
 ///
 /// ## Example: Custom span
 ///
@@ -18,35 +17,130 @@ import 'package:chirp/src/xterm_colors.g.dart';
 ///   const EmojiSpan(this.emoji, {required this.child});
 ///
 ///   @override
-///   void build(ConsoleMessageBuilder builder) {
-///     builder.write('$emoji ');
-///     child.build(builder);
-///   }
+///   LogSpan build() => Row([Text('$emoji '), child]);
 /// }
 /// ```
 abstract class LogSpan {
   const LogSpan();
 
-  /// Builds this span by writing to the builder.
-  void build(ConsoleMessageBuilder builder);
+  /// Builds this span into another span (or itself for RenderSpans).
+  LogSpan build();
 }
 
+/// A span that renders directly to a [ConsoleMessageBuilder].
+///
+/// Most spans should extend [LogSpan] and return composed spans from [build].
+/// Only extend [RenderSpan] for primitive spans that write text directly.
+abstract class RenderSpan extends LogSpan {
+  const RenderSpan();
+
+  @override
+  LogSpan build() => this;
+
+  /// Renders this span to the builder.
+  void render(ConsoleMessageBuilder builder);
+}
+
+/// Renders a [LogSpan] tree to a [ConsoleMessageBuilder].
+///
+/// Repeatedly calls [LogSpan.build] until reaching a [RenderSpan],
+/// then calls [RenderSpan.render].
+void renderSpan(LogSpan span, ConsoleMessageBuilder builder) {
+  var current = span;
+  while (current is! RenderSpan) {
+    current = current.build();
+  }
+  current.render(builder);
+}
+
+// =============================================================================
+// Span interfaces for traversal
+// =============================================================================
+
+/// Interface for spans that have a single child.
+///
+/// Implement this to allow generic span traversal and transformation.
+abstract interface class SingleChildSpan implements LogSpan{
+  /// The child span (may be null for optional children like [Prefixed]).
+  LogSpan? get child;
+}
+
+/// Interface for spans that have multiple children.
+///
+/// Implement this to allow generic span traversal and transformation.
+abstract interface class MultiChildSpan implements LogSpan {
+  /// The child spans.
+  List<LogSpan> get children;
+}
+
+// =============================================================================
+// Primitive RenderSpans
+// =============================================================================
+
 /// Plain text span.
-class Text extends LogSpan {
+class Text extends RenderSpan {
   final String value;
 
   const Text(this.value);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
+  void render(ConsoleMessageBuilder builder) {
     builder.write(value);
   }
+
+  @override
+  String toString() => 'Text("$value")';
+}
+
+/// A single space.
+class Space extends RenderSpan {
+  const Space();
+
+  @override
+  void render(ConsoleMessageBuilder builder) {
+    builder.write(' ');
+  }
+
+  @override
+  String toString() => 'Space()';
+}
+
+/// A line break.
+class NewLine extends RenderSpan {
+  const NewLine();
+
+  @override
+  void render(ConsoleMessageBuilder builder) {
+    builder.write('\n');
+  }
+
+  @override
+  String toString() => 'NewLine()';
+}
+
+/// A row of spans rendered sequentially.
+class Row extends RenderSpan implements MultiChildSpan {
+  @override
+  final List<LogSpan> children;
+
+  const Row(this.children);
+
+  @override
+  void render(ConsoleMessageBuilder builder) {
+    for (final child in children) {
+      renderSpan(child, builder);
+    }
+  }
+
+  @override
+  String toString() => 'Row($children)';
 }
 
 /// Applies foreground and/or background color to a child span.
 ///
 /// Renders the child to plain text, then writes it with the specified colors.
-class Styled extends LogSpan {
+class Styled extends RenderSpan implements SingleChildSpan {
+  @override
   final LogSpan child;
   final XtermColor? foreground;
   final XtermColor? background;
@@ -58,67 +152,40 @@ class Styled extends LogSpan {
   });
 
   @override
-  void build(ConsoleMessageBuilder builder) {
-    // Render child to plain text
+  void render(ConsoleMessageBuilder builder) {
     final temp = ConsoleMessageBuilder();
-    child.build(temp);
+    renderSpan(child, temp);
     final text = temp.build();
-
-    // Write with our colors
     builder.write(text, foreground: foreground, background: background);
   }
-}
-
-/// A row of spans rendered sequentially.
-class Row extends LogSpan {
-  final List<LogSpan> children;
-
-  const Row(this.children);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
-    for (final child in children) {
-      child.build(builder);
-    }
-  }
+  String toString() => 'Styled(fg: $foreground, bg: $background, child: $child)';
 }
 
-/// A single space.
-class Space extends LogSpan {
-  const Space();
-
-  @override
-  void build(ConsoleMessageBuilder builder) {
-    builder.write(' ');
-  }
-}
-
-/// A line break.
-class NewLine extends LogSpan {
-  const NewLine();
-
-  @override
-  void build(ConsoleMessageBuilder builder) {
-    builder.write('\n');
-  }
-}
+// =============================================================================
+// Composite LogSpans
+// =============================================================================
 
 /// Renders a prefix before an optional child.
 ///
-/// If [child] is null, nothing is rendered.
-/// If [child] is non-null, renders [prefix] then [child].
-class Prefixed extends LogSpan {
+/// If [child] is null, builds to an empty [Row].
+/// If [child] is non-null, builds to [Row] with [prefix] then [child].
+class Prefixed extends LogSpan implements SingleChildSpan {
   final LogSpan prefix;
+  @override
   final LogSpan? child;
 
   const Prefixed({required this.prefix, this.child});
 
   @override
-  void build(ConsoleMessageBuilder builder) {
-    if (child == null) return;
-    prefix.build(builder);
-    child!.build(builder);
+  LogSpan build() {
+    if (child == null) return const Row([]);
+    return Row([prefix, child!]);
   }
+
+  @override
+  String toString() => 'Prefixed(prefix: $prefix, child: $child)';
 }
 
 // =============================================================================
@@ -132,13 +199,16 @@ class Timestamp extends LogSpan {
   const Timestamp(this.date);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
+  LogSpan build() {
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
     final second = date.second.toString().padLeft(2, '0');
     final ms = date.millisecond.toString().padLeft(3, '0');
-    builder.write('$hour:$minute:$second.$ms');
+    return Text('$hour:$minute:$second.$ms');
   }
+
+  @override
+  String toString() => 'Timestamp($date)';
 }
 
 /// Source code location (file and line).
@@ -149,14 +219,16 @@ class Location extends LogSpan {
   const Location({this.fileName, this.line});
 
   @override
-  void build(ConsoleMessageBuilder builder) {
-    if (fileName == null) return;
+  LogSpan build() {
+    if (fileName == null) return const Text('');
     if (line != null) {
-      builder.write('$fileName:$line');
-    } else {
-      builder.write(fileName);
+      return Text('$fileName:$line');
     }
+    return Text(fileName!);
   }
+
+  @override
+  String toString() => 'Location($fileName:$line)';
 }
 
 /// Logger name for named loggers.
@@ -166,9 +238,10 @@ class LoggerName extends LogSpan {
   const LoggerName(this.name);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
-    builder.write(name);
-  }
+  LogSpan build() => Text(name);
+
+  @override
+  String toString() => 'LoggerName("$name")';
 }
 
 /// Class or instance name.
@@ -179,13 +252,15 @@ class ClassName extends LogSpan {
   const ClassName(this.name, {this.instanceHash});
 
   @override
-  void build(ConsoleMessageBuilder builder) {
+  LogSpan build() {
     if (instanceHash != null) {
-      builder.write('$name@$instanceHash');
-    } else {
-      builder.write(name);
+      return Text('$name@$instanceHash');
     }
+    return Text(name);
   }
+
+  @override
+  String toString() => 'ClassName("$name", hash: $instanceHash)';
 }
 
 /// Method name where the log was called.
@@ -195,9 +270,10 @@ class MethodName extends LogSpan {
   const MethodName(this.name);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
-    builder.write(name);
-  }
+  LogSpan build() => Text(name);
+
+  @override
+  String toString() => 'MethodName("$name")';
 }
 
 /// Log severity level.
@@ -207,9 +283,10 @@ class Level extends LogSpan {
   const Level(this.level);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
-    builder.write('[${level.name}]');
-  }
+  LogSpan build() => Text('[${level.name}]');
+
+  @override
+  String toString() => 'Level(${level.name})';
 }
 
 /// The primary log message.
@@ -219,9 +296,10 @@ class Message extends LogSpan {
   const Message(this.message);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
-    builder.write(message?.toString() ?? '');
-  }
+  LogSpan build() => Text(message?.toString() ?? '');
+
+  @override
+  String toString() => 'Message("$message")';
 }
 
 /// Structured key-value data rendered inline: ` (key: value, key: value)`.
@@ -231,14 +309,17 @@ class InlineData extends LogSpan {
   const InlineData(this.data);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
+  LogSpan build() {
     final d = data;
-    if (d == null || d.isEmpty) return;
+    if (d == null || d.isEmpty) return const Text('');
     final str = d.entries
         .map((e) => '${formatYamlKey(e.key)}: ${formatYamlValue(e.value)}')
         .join(', ');
-    builder.write(' ($str)');
+    return Text(' ($str)');
   }
+
+  @override
+  String toString() => 'InlineData($data)';
 }
 
 /// Structured key-value data rendered as multiline YAML.
@@ -248,14 +329,15 @@ class MultilineData extends LogSpan {
   const MultilineData(this.data);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
+  LogSpan build() {
     final d = data;
-    if (d == null || d.isEmpty) return;
+    if (d == null || d.isEmpty) return const Text('');
     final lines = formatAsYaml(d, 0);
-    for (final line in lines) {
-      builder.write('\n$line');
-    }
+    return Text('\n${lines.join('\n')}');
   }
+
+  @override
+  String toString() => 'MultilineData($data)';
 }
 
 /// Error object.
@@ -265,23 +347,26 @@ class Error extends LogSpan {
   const Error(this.error);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
-    if (error == null) return;
-    builder.write(error.toString());
+  LogSpan build() {
+    if (error == null) return const Text('');
+    return Text(error.toString());
   }
+
+  @override
+  String toString() => 'Error($error)';
 }
 
 /// Stack trace.
 class StackTraceSpan extends LogSpan {
-  final StackTrace? stackTrace;
+  final StackTrace stackTrace;
 
   const StackTraceSpan(this.stackTrace);
 
   @override
-  void build(ConsoleMessageBuilder builder) {
-    if (stackTrace == null) return;
-    builder.write(stackTrace.toString());
-  }
+  LogSpan build() => Text(stackTrace.toString());
+
+  @override
+  String toString() => 'StackTraceSpan(...)';
 }
 
 // =============================================================================
@@ -371,7 +456,8 @@ class BoxBorderChars {
 }
 
 /// A span that draws an ASCII box around its content.
-class Box extends LogSpan {
+class Box extends RenderSpan implements SingleChildSpan {
+  @override
   final LogSpan child;
   final BoxBorderStyle style;
   final XtermColor? borderColor;
@@ -385,9 +471,9 @@ class Box extends LogSpan {
   });
 
   @override
-  void build(ConsoleMessageBuilder builder) {
+  void render(ConsoleMessageBuilder builder) {
     final temp = ConsoleMessageBuilder();
-    child.build(temp);
+    renderSpan(child, temp);
     final content = temp.build();
 
     final lines = content.isEmpty ? <String>[] : content.split('\n');
@@ -420,6 +506,9 @@ class Box extends LogSpan {
       foreground: borderColor,
     );
   }
+
+  @override
+  String toString() => 'Box(style: $style, child: $child)';
 }
 
 // =============================================================================
@@ -433,16 +522,10 @@ typedef SpanTransformer = LogSpan Function(
 );
 
 // =============================================================================
-// Extension for rendering span lists
+// Extension for span lists
 // =============================================================================
 
 extension LogSpanListExt on List<LogSpan> {
-  void renderTo(ConsoleMessageBuilder builder) {
-    for (final span in this) {
-      span.build(builder);
-    }
-  }
-
   Iterable<T> whereSpanType<T extends LogSpan>() => whereType<T>();
 
   List<LogSpan> removeSpanType<T extends LogSpan>() =>
@@ -450,4 +533,64 @@ extension LogSpanListExt on List<LogSpan> {
 
   List<LogSpan> mapSpanType<T extends LogSpan>(LogSpan Function(T) mapper) =>
       map((s) => s is T ? mapper(s) : s).toList();
+}
+
+// =============================================================================
+// Span tree utilities
+// =============================================================================
+
+/// Result of finding a span in the tree.
+class SpanMatch<T extends LogSpan> {
+  /// The found span.
+  final T span;
+
+  /// Parent spans from root to immediate parent (does not include [span]).
+  final List<LogSpan> parents;
+
+  const SpanMatch(this.span, this.parents);
+
+  @override
+  String toString() => 'SpanMatch($span, parents: $parents)';
+}
+
+/// Finds the first span of type [T] in the tree and returns it with its parents.
+///
+/// Returns `null` if no span of type [T] is found.
+/// The [parents] list contains the path from root to the found span (exclusive).
+SpanMatch<T>? findSpan<T extends LogSpan>(LogSpan span) {
+  return _findSpan<T>(span, []);
+}
+
+SpanMatch<T>? _findSpan<T extends LogSpan>(LogSpan span, List<LogSpan> parents) {
+  // Found the target
+  if (span is T) {
+    return SpanMatch(span, parents);
+  }
+
+  final newParents = [...parents, span];
+
+  // Handle MultiChildSpan (Row)
+  if (span is MultiChildSpan) {
+    for (final child in (span as MultiChildSpan).children) {
+      final result = _findSpan<T>(child, newParents);
+      if (result != null) return result;
+    }
+  }
+
+  // Handle SingleChildSpan (Styled, Box, Prefixed)
+  if (span is SingleChildSpan) {
+    final child = (span as SingleChildSpan).child;
+    if (child != null) {
+      final result = _findSpan<T>(child, newParents);
+      if (result != null) return result;
+    }
+  }
+
+  // Handle Prefixed.prefix
+  if (span is Prefixed) {
+    final result = _findSpan<T>(span.prefix, newParents);
+    if (result != null) return result;
+  }
+
+  return null;
 }

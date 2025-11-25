@@ -1,36 +1,56 @@
 // ignore_for_file: avoid_print, avoid_redundant_argument_values
 
 import 'package:chirp/chirp.dart';
+import 'package:collection/collection.dart';
 
 void main() {
-  Chirp.warning('=== Example 0: Basic Instance Logging ===');
+  // Logger for section headers with newline prefix and no level
+  final sectionLogger = ChirpLogger()
+    ..addConsoleWriter(
+      formatter: RainbowMessageFormatter(
+        options: const RainbowFormatOptions(
+          showLogLevel: true,
+          showMethod: false,
+        ),
+        spanTransformers: [
+          _prependNewlineForSectionHeaders,
+          _removeLevel,
+        ],
+      ),
+    );
+
+  sectionLogger.warning('=== Example 0: Basic Instance Logging ===');
   basicInstanceLoggingExample();
 
-  Chirp.warning('=== Example 1: Static Methods - All Log Levels ===');
+  sectionLogger.warning('=== Example 1: Static Methods - All Log Levels ===');
   Chirp.root = ChirpLogger()
     ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
     ..addConsoleWriter(formatter: RainbowMessageFormatter());
   allLogLevelsExample();
 
-  Chirp.warning('=== Example 2: Named Logger & Structured Data ===');
+  sectionLogger.warning('=== Example 2: Named Logger & Structured Data ===');
   namedLoggerExample();
 
-  Chirp.warning('=== Example 3: Child Loggers (Per-Request Context) ===');
+  sectionLogger
+      .warning('=== Example 3: Child Loggers (Per-Request Context) ===');
   childLoggerExample();
 
-  Chirp.warning('=== Example 4: Instance Tracking with .chirp Extension ===');
+  sectionLogger
+      .warning('=== Example 4: Instance Tracking with .chirp Extension ===');
   instanceTrackingExample();
 
-  Chirp.warning('=== Example 5: Format Options (Inline vs Multiline Data) ===');
+  sectionLogger
+      .warning('=== Example 5: Format Options (Inline vs Multiline Data) ===');
   formatOptionsExample();
 
-  Chirp.warning('=== Example 6: Multiline Messages ===');
+  sectionLogger.warning('=== Example 6: Multiline Messages ===');
   multilineMessagesExample();
 
-  Chirp.warning('=== Example 7: Stacktraces with Different Log Levels ===');
+  sectionLogger
+      .warning('=== Example 7: Stacktraces with Different Log Levels ===');
   stacktraceLevelsExample();
 
-  Chirp.warning('=== Example 8: Multiple Writers (Console + JSON) ===');
+  sectionLogger.warning('=== Example 8: Multiple Writers (Console + JSON) ===');
   multipleWritersExample();
 
   // Reset to default
@@ -263,4 +283,35 @@ class UserService {
   static void logStatic() {
     Chirp.info('From static method');
   }
+}
+
+/// Prepends a newline before messages starting with "=== ".
+LogSpan _prependNewlineForSectionHeaders(LogSpan span, LogRecord record) {
+  final message = record.message?.toString() ?? '';
+  if (message.startsWith('=== ')) {
+    return Row([const NewLine(), span]);
+  }
+  return span;
+}
+
+/// Removes the Level span from the output.
+LogSpan _removeLevel(LogSpan span, LogRecord record) {
+  final match = findSpan<Level>(span);
+  if (match == null) return span;
+
+  final parent =
+      match.parents.reversed.firstWhereOrNull((p) => p is MultiChildSpan);
+  if (parent == null) return span;
+
+  final i = match.parents.indexOf(parent);
+  final childToRemove =
+      i + 1 < match.parents.length ? match.parents[i + 1] : match.span;
+  final children = (parent as Row).children;
+  final idx = children.indexOf(childToRemove);
+  if (idx > 0 && children[idx - 1] is Space) {
+    children.removeAt(idx - 1);
+  }
+  children.remove(childToRemove);
+
+  return span;
 }
