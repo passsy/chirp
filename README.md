@@ -147,16 +147,8 @@ Create child loggers that inherit their parent's writers configuration but add t
 
 ```dart
 // Configure root logger once
-Chirp.root = ChirpLogger(
-  writers: [
-    ConsoleChirpMessageWriter(
-      formatter: GcpChirpMessageFormatter(
-        projectId: 'my-project',
-        logName: 'app-logs',
-      ),
-    ),
-  ],
-);
+Chirp.root = ChirpLogger()
+  ..addConsoleWriter(formatter: RainbowMessageFormatter());
 
 // Create child logger with context
 final requestLogger = Chirp.root.child(context: {
@@ -265,106 +257,36 @@ const fatal = ChirpLogLevel('fatal', 700);
 Chirp.log('Custom message', level: verbose);
 ```
 
-### Google Cloud Platform (GCP) Integration
-
-Chirp includes a GCP-compatible formatter that outputs logs in the format expected by Google Cloud Logging:
-
-```dart
-Chirp.root = ChirpLogger(
-  writers: [
-    ConsoleChirpMessageWriter(
-      formatter: GcpChirpMessageFormatter(
-        projectId: 'my-project-id',
-        logName: 'application-logs',
-      ),
-    ),
-  ],
-);
-
-// Logs are automatically formatted for GCP with proper severity levels
-Chirp.error(
-  'Payment failed',
-  error: e,
-  stackTrace: st,
-  data: {'userId': 'user_123', 'amount': 99.99},
-);
-```
-
-**GCP Formatter Output:**
-```json
-{
-  "severity": "ERROR",
-  "message": "Payment failed",
-  "timestamp": "2025-11-11T05:00:00.000Z",
-  "logName": "projects/my-project-id/logs/application-logs",
-  "userId": "user_123",
-  "amount": 99.99,
-  "error": "Exception: Insufficient funds",
-  "stackTrace": "..."
-}
-```
-
-**GCP Severity Mapping:**
-- `trace` (0-99) → `DEFAULT`
-- `debug` (100-199) → `DEBUG`
-- `info` (200-299) → `INFO`
-- `notice` (300-399) → `NOTICE`
-- `warning` (400-499) → `WARNING`
-- `error` (500-599) → `ERROR`
-- `critical` (600-699) → `CRITICAL`
-- `wtf` (1000+) → `EMERGENCY`
-
 ### Multiple Writers with Different Formats
 
 Each writer can have its own formatter, perfect for multi-environment setups:
 
 ```dart
-Chirp.root = ChirpLogger(
-  writers: [
-    // Colorful console logs for development
-    ConsoleChirpMessageWriter(
-      formatter: CompactChirpMessageFormatter(),
-    ),
-    // JSON logs to file for production
-    ConsoleChirpMessageWriter(
-      formatter: JsonChirpMessageFormatter(),
-      output: (msg) => writeToFile('app.log', msg),
-    ),
-    // GCP format for cloud logging
-    ConsoleChirpMessageWriter(
-      formatter: GcpChirpMessageFormatter(
-        projectId: 'my-project',
-        logName: 'app-logs',
-      ),
-      output: (msg) => sendToGcp(msg),
-    ),
-  ],
-);
+Chirp.root = ChirpLogger()
+  // Colorful console logs for development
+  ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
+  // JSON logs to file for production
+  ..addConsoleWriter(
+    formatter: JsonMessageFormatter(),
+    output: (msg) => writeToFile('app.log', msg),
+  );
 ```
 
 ### Available Formatters
 
 **CompactChirpMessageFormatter** - Colorful, human-readable format for development
 ```
-08:30:45.123 ══════════════════════════════════ UserService:a1b2
-User logged in
+08:30:45.123 UserService@a1b2 User logged in
 ```
 
-**JsonChirpMessageFormatter** - Machine-readable JSON format
+**JsonMessageFormatter** - Machine-readable JSON format
 ```json
 {"timestamp":"2025-11-11T08:30:45.123","level":"info","class":"UserService","hash":"a1b2","message":"User logged in"}
 ```
 
-**GcpChirpMessageFormatter** - Google Cloud Platform compatible format
-```json
-{"severity":"INFO","message":"User logged in","timestamp":"2025-11-11T08:30:45.123Z","logName":"projects/my-project/logs/app"}
-```
-
 **RainbowMessageFormatter** - Colorful, categorized format with class name colors
 ```
-08:30:45.123 ══════════════════════════════════ UserService:a1b2
-User logged in
-  data: userId=user_123, email=user@example.com
+08:30:45.123 UserService@a1b2 [info] User logged in (userId: "user_123", email: "user@example.com")
 ```
 
 ## Span-Based Formatting (Optional, Advanced)
@@ -502,7 +424,7 @@ class MyConsoleFormatter extends SpanBasedFormatter {
       ),
 
       // Optional: show data if present
-      if (record.data.isNotEmpty) ...[
+      if (record.data?.isNotEmpty ?? false) ...[
         NewLine(),
         MultilineData(record.data),
       ],
@@ -614,7 +536,7 @@ span.wrap((child) => AnsiColored(
   if (record.level.name == 'critical') {
     // Wrap the entire tree
     tree.wrap((child) => Bordered(
-      style: BorderStyle.double,
+      style: BoxBorderStyle.double,
       child: child,
     ));
   }
@@ -653,27 +575,27 @@ EmptySpan()            // (renders nothing - like SizedBox.shrink())
 
 **Semantic Spans** - these know how to format log data:
 ```dart
-Timestamp(dateTime)                    // 14:32:05.123
-FullTimestamp(dateTime)                // 2025-01-15T14:32:05.123
-BracketedLogLevel(ChirpLogLevel.info)  // [INFO]
-LogMessage('User logged in')           // User logged in
-LoggerName('payment')                  // payment
-ClassName('UserService', 'a1b2')       // UserService@a1b2
-MethodName('fetchUser')                // fetchUser
-DartSourceCodeLocation('user.dart', 42) // user.dart:42
-InlineData({'userId': '123'})          // userId=123
-MultilineData({'a': 1, 'b': 2})        //   a: 1
-                                       //   b: 2
-ErrorSpan(exception)                   // Exception: Something went wrong
-StackTraceSpan(stackTrace)             // #0 main (file.dart:10)
-                                       // #1 ...
+Timestamp(dateTime)                                    // 14:32:05.123
+FullTimestamp(dateTime)                                // 2025-01-15 14:32:05.123
+BracketedLogLevel(ChirpLogLevel.info)                  // [info]
+LogMessage('User logged in')                           // User logged in
+LoggerName('payment')                                  // payment
+ClassName('UserService', instanceHash: 'a1b2')         // UserService@a1b2
+MethodName('fetchUser')                                // fetchUser
+DartSourceCodeLocation(fileName: 'user.dart', line: 42) // user.dart:42
+InlineData({'userId': '123'})                          //  (userId: "123")
+MultilineData({'a': 1, 'b': 2})                        // a: 1
+                                                       // b: 2
+ErrorSpan(exception)                                   // Exception: Something went wrong
+StackTraceSpan(stackTrace)                             // #0 main (file.dart:10)
+                                                       // #1 ...
 ```
 
 **Container Spans:**
 ```dart
 SpanSequence([a, b, c])                // Renders a, b, c in order
 AnsiColored(foreground: XtermColor.red, child: span)  // Colored text
-Bordered(style: BorderStyle.rounded, child: span)     // ╭─────╮
+Bordered(style: BoxBorderStyle.rounded, child: span)  // ╭─────╮
                                                       // │text │
                                                       // ╰─────╯
 Surrounded(prefix: PlainText('['), child: span, suffix: PlainText(']'))
@@ -686,26 +608,21 @@ Surrounded(prefix: PlainText('['), child: span, suffix: PlainText(']'))
 |----------|---------------------|
 | Development console | Span-based formatters (`RainbowMessageFormatter`) |
 | CI/CD logs | Span-based or simple text formatters |
-| Log files | `JsonChirpMessageFormatter` |
-| Cloud logging (GCP, AWS) | `GcpChirpMessageFormatter` or JSON |
+| Log files | `JsonMessageFormatter` |
+| Cloud logging (GCP, AWS) | JSON formatters |
 | Log aggregators (ELK, Datadog) | JSON formatters |
 | Debugging with colors | Span-based formatters |
 
 **Example: Multiple writers for different outputs:**
 ```dart
-Chirp.root = ChirpLogger(
-  writers: [
-    // Pretty console output for humans
-    ConsoleChirpMessageWriter(
-      formatter: RainbowMessageFormatter(),
-    ),
-    // JSON for log files - no spans needed
-    ConsoleChirpMessageWriter(
-      formatter: JsonChirpMessageFormatter(),
-      output: (msg) => logFile.writeAsStringSync('$msg\n', mode: FileMode.append),
-    ),
-  ],
-);
+Chirp.root = ChirpLogger()
+  // Pretty console output for humans
+  ..addConsoleWriter(formatter: RainbowMessageFormatter())
+  // JSON for log files - no spans needed
+  ..addConsoleWriter(
+    formatter: JsonMessageFormatter(),
+    output: (msg) => logFile.writeAsStringSync('$msg\n', mode: FileMode.append),
+  );
 ```
 
 ## Configuration
@@ -717,31 +634,23 @@ Configure the global root logger that all child loggers and extensions inherit f
 ```dart
 void main() {
   // Configure once at app startup
-  Chirp.root = ChirpLogger(
-    writers: [
-      ConsoleChirpMessageWriter(
-        formatter: GcpChirpMessageFormatter(
-          projectId: 'my-project',
-          logName: 'app-logs',
-        ),
-      ),
-    ],
-  );
+  Chirp.root = ChirpLogger()
+    ..addConsoleWriter(formatter: RainbowMessageFormatter());
 
-  // All loggers now use GCP format
+  // All loggers now use the configured formatter
   runApp();
 }
 ```
 
 ### Custom Formatters
 
-Create your own formatter by extending `ChirpMessageFormatter`:
+Create your own formatter by extending `ConsoleMessageFormatter`:
 
 ```dart
-class MyCustomFormatter extends ChirpMessageFormatter {
+class MyCustomFormatter extends ConsoleMessageFormatter {
   @override
-  String format(LogRecord entry) {
-    return '[${entry.level.name.toUpperCase()}] ${entry.message}';
+  void format(LogRecord record, ConsoleMessageBuffer buffer) {
+    buffer.write('[${record.level.name.toUpperCase()}] ${record.message}');
   }
 }
 ```
@@ -751,16 +660,8 @@ class MyCustomFormatter extends ChirpMessageFormatter {
 ```dart
 // Setup (once at app startup)
 void main() {
-  Chirp.root = ChirpLogger(
-    writers: [
-      ConsoleChirpMessageWriter(
-        formatter: GcpChirpMessageFormatter(
-          projectId: 'my-project',
-          logName: 'app-logs',
-        ),
-      ),
-    ],
-  );
+  Chirp.root = ChirpLogger()
+    ..addConsoleWriter(formatter: RainbowMessageFormatter());
 
   runApp();
 }
@@ -803,8 +704,8 @@ See [example/main.dart](example/main.dart) for a comprehensive example covering:
 - Named loggers with structured data
 - Child loggers for per-request context
 - Instance tracking with `.chirp` extension
-- GCP Cloud Logging format
 - Multiple writers with different formats
+- Span transformers for customizing output
 
 ## License
 

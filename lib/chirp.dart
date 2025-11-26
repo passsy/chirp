@@ -104,16 +104,8 @@ class Chirp {
   ///
   /// Example:
   /// ```dart
-  /// Chirp.root = ChirpLogger(
-  ///   writers: [
-  ///     ConsoleChirpMessageWriter(
-  ///       formatter: GcpChirpMessageFormatter(
-  ///         projectId: 'my-project',
-  ///         logName: 'application-logs',
-  ///       ),
-  ///     ),
-  ///   ],
-  /// );
+  /// Chirp.root = ChirpLogger()
+  ///   ..addConsoleWriter(formatter: RainbowMessageFormatter());
   /// ```
   static ChirpLogger root = ChirpLogger();
 
