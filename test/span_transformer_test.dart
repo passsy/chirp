@@ -515,6 +515,203 @@ void main() {
       });
     });
 
+    group('SingleChildSpan as nested child', () {
+      test('replaceWith when SingleChildSpan has a parent', () {
+        final inner = AnsiColored(child: PlainText('inner'));
+        final outer = SpanSequence([inner]);
+
+        final newSpan = AnsiColored(child: PlainText('replaced'));
+        final result = inner.replaceWith(newSpan);
+
+        expect(result, isTrue);
+        expect(outer.children.first, newSpan);
+        expect(newSpan.parent, outer);
+        expect(inner.parent, isNull);
+      });
+
+      test('remove when SingleChildSpan has a parent', () {
+        final inner = AnsiColored(child: PlainText('inner'));
+        final outer = SpanSequence([inner]);
+
+        final result = inner.remove();
+
+        expect(result, isTrue);
+        expect(outer.children, isEmpty);
+        expect(inner.parent, isNull);
+      });
+
+      test('replaceWith returns false for root SingleChildSpan', () {
+        final span = AnsiColored(child: PlainText('child'));
+        expect(span.replaceWith(PlainText('new')), isFalse);
+      });
+
+      test('remove returns false for root SingleChildSpan', () {
+        final span = AnsiColored(child: PlainText('child'));
+        expect(span.remove(), isFalse);
+      });
+    });
+
+    group('MultiChildSpan as nested child', () {
+      test('replaceWith when MultiChildSpan has a parent', () {
+        final inner = SpanSequence([PlainText('a'), PlainText('b')]);
+        final outer = AnsiColored(child: inner);
+
+        final newSpan = SpanSequence([PlainText('replaced')]);
+        final result = inner.replaceWith(newSpan);
+
+        expect(result, isTrue);
+        expect(outer.child, newSpan);
+        expect(newSpan.parent, outer);
+        expect(inner.parent, isNull);
+      });
+
+      test('remove when MultiChildSpan has a parent', () {
+        final inner = SpanSequence([PlainText('a')]);
+        final outer = AnsiColored(child: inner);
+
+        final result = inner.remove();
+
+        expect(result, isTrue);
+        expect(outer.child, isNull);
+        expect(inner.parent, isNull);
+      });
+
+      test('replaceWith returns false for root MultiChildSpan', () {
+        final span = SpanSequence([PlainText('child')]);
+        expect(span.replaceWith(PlainText('new')), isFalse);
+      });
+
+      test('remove returns false for root MultiChildSpan', () {
+        final span = SpanSequence([PlainText('child')]);
+        expect(span.remove(), isFalse);
+      });
+    });
+
+    group('SlottedSpan operations', () {
+      test('allChildren returns slot values', () {
+        final surrounded = Surrounded(
+          prefix: PlainText('['),
+          child: PlainText('content'),
+          suffix: PlainText(']'),
+        );
+
+        final children = surrounded.allChildren.toList();
+        expect(children.length, 3);
+      });
+
+      test('replaceWith when SlottedSpan has a parent', () {
+        final inner = Surrounded(
+          prefix: PlainText('['),
+          child: PlainText('content'),
+          suffix: PlainText(']'),
+        );
+        final outer = SpanSequence([inner]);
+
+        final newSpan = Surrounded(child: PlainText('new'));
+        final result = inner.replaceWith(newSpan);
+
+        expect(result, isTrue);
+        expect(outer.children.first, newSpan);
+        expect(newSpan.parent, outer);
+        expect(inner.parent, isNull);
+      });
+
+      test('remove when SlottedSpan has a parent', () {
+        final inner = Surrounded(child: PlainText('content'));
+        final outer = SpanSequence([inner]);
+
+        final result = inner.remove();
+
+        expect(result, isTrue);
+        expect(outer.children, isEmpty);
+        expect(inner.parent, isNull);
+      });
+
+      test('replaceWith returns false for root SlottedSpan', () {
+        final span = Surrounded(child: PlainText('child'));
+        expect(span.replaceWith(PlainText('new')), isFalse);
+      });
+
+      test('remove returns false for root SlottedSpan', () {
+        final span = Surrounded(child: PlainText('child'));
+        expect(span.remove(), isFalse);
+      });
+
+      test('setSlot to null removes slot', () {
+        final surrounded = Surrounded(
+          prefix: PlainText('['),
+          child: PlainText('content'),
+        );
+        final prefix = surrounded.prefix;
+
+        surrounded.prefix = null;
+
+        expect(surrounded.prefix, isNull);
+        expect(prefix?.parent, isNull);
+      });
+    });
+
+    group('SlottedSpan parent operations', () {
+      test('replaceChild in SlottedSpan parent', () {
+        final surrounded = Surrounded(
+          prefix: PlainText('['),
+          child: PlainText('old'),
+          suffix: PlainText(']'),
+        );
+        final oldChild = surrounded.child!;
+        final newChild = PlainText('new');
+
+        oldChild.replaceWith(newChild);
+
+        expect(surrounded.child, newChild);
+        expect(newChild.parent, surrounded);
+        expect(oldChild.parent, isNull);
+      });
+
+      test('removeChild from SlottedSpan parent', () {
+        final surrounded = Surrounded(
+          prefix: PlainText('['),
+          child: PlainText('content'),
+          suffix: PlainText(']'),
+        );
+        final child = surrounded.child!;
+
+        child.remove();
+
+        expect(surrounded.child, isNull);
+        expect(child.parent, isNull);
+      });
+    });
+
+    group('wrap with SlottedSpan parent', () {
+      test('wrap span in SlottedSpan parent', () {
+        final child = PlainText('content');
+        final surrounded = Surrounded(child: child);
+
+        child.wrap((c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
+
+        expect(surrounded.child, isA<AnsiColored>());
+        expect((surrounded.child as AnsiColored).child, isA<PlainText>());
+      });
+
+      test('wrap preserves slot position', () {
+        final prefix = PlainText('[');
+        final content = PlainText('content');
+        final surrounded = Surrounded(
+          prefix: prefix,
+          child: content,
+        );
+
+        prefix.wrap((c) => AnsiColored(foreground: XtermColor.blue1_21, child: c));
+
+        expect(surrounded.prefix, isA<AnsiColored>());
+
+        final buffer = ConsoleMessageBuffer();
+        renderSpan(surrounded, buffer);
+        expect(buffer.toString(), '[content');
+      });
+    });
+
     group('chained build', () {
       test('renderSpan loops through chained build() calls', () {
         // Chain: FancyTimestamp -> Timestamp -> PlainText
