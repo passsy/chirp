@@ -386,6 +386,59 @@ void main() {
     });
   });
 
+  group('RainbowMessageFormatter instance formatting', () {
+    test('instance label has single @ and 4-char hash', () {
+      final formatter = RainbowMessageFormatter();
+      final instance = _TestClass();
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        instance: instance,
+      );
+
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
+
+      // Calculate expected short hash (last 4 hex digits)
+      final hash =
+          identityHashCode(instance).toRadixString(16).padLeft(4, '0');
+      final shortHash = hash.substring(hash.length >= 4 ? hash.length - 4 : 0);
+
+      // Should be exactly: "timestamp _TestClass@XXXX [info] message"
+      expect(
+        result,
+        '10:23:45.123 _TestClass@$shortHash [info] Test message',
+      );
+
+      // Verify only one @ in the class portion
+      final classMatch = RegExp(r'_TestClass@[0-9a-f]+').firstMatch(result);
+      expect(classMatch, isNotNull);
+      expect(classMatch!.group(0), '_TestClass@$shortHash');
+    });
+
+    test('instance hash is exactly 4 hex characters', () {
+      final formatter = RainbowMessageFormatter();
+      final instance = _TestClass();
+      final entry = LogRecord(
+        message: 'Test',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        instance: instance,
+      );
+
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
+
+      // Extract the hash portion after _TestClass@
+      final hashMatch = RegExp(r'_TestClass@([0-9a-f]+)').firstMatch(result);
+      expect(hashMatch, isNotNull);
+      final extractedHash = hashMatch!.group(1)!;
+      expect(extractedHash.length, 4,
+          reason: 'Instance hash should be exactly 4 hex characters');
+    });
+  });
+
   group('RainbowMessageFormatter exception formatting', () {
     test('exceptions are output on new line', () {
       final formatter = RainbowMessageFormatter();

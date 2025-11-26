@@ -104,10 +104,7 @@ LogSpan _buildRainbowLogSpan({
     if (instanceLabel != null) {
       className = AnsiColored(
         foreground: hashColor(instanceLabel, readableColorsLowSaturation),
-        child: ClassName(
-          instanceLabel,
-          instanceHash: record.instanceHash?.toRadixString(16),
-        ),
+        child: ClassName(instanceLabel),
       );
     } else if (callerInfo?.callerClassName != null) {
       final cn = callerInfo!.callerClassName!;

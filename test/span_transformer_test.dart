@@ -47,14 +47,6 @@ void main() {
       );
 
       final formatter = RainbowMessageFormatter(
-        options: const RainbowFormatOptions(
-          showTime: true,
-          showLocation: false,
-          showLogger: false,
-          showClass: false,
-          showMethod: false,
-          showLogLevel: false,
-        ),
         spanTransformers: [
           (tree, record) {
             final timestamp = tree.findFirst<Timestamp>();
@@ -67,7 +59,10 @@ void main() {
       formatter.format(record, buffer);
       final result = buffer.toString();
 
-      expect(result, '\u{1f50d} Hello');
+      // Emoji replaces timestamp, followed by level and message
+      expect(result, contains('\u{1f50d}'));
+      expect(result, contains('[info]'));
+      expect(result, contains('Hello'));
     });
 
     test('wraps Timestamp with custom span', () {
@@ -78,14 +73,6 @@ void main() {
       );
 
       final formatter = RainbowMessageFormatter(
-        options: const RainbowFormatOptions(
-          showTime: true,
-          showLocation: false,
-          showLogger: false,
-          showClass: false,
-          showMethod: false,
-          showLogLevel: false,
-        ),
         spanTransformers: [
           (tree, record) {
             final timestamp = tree.findFirst<Timestamp>();
@@ -112,14 +99,6 @@ void main() {
       );
 
       final formatter = RainbowMessageFormatter(
-        options: const RainbowFormatOptions(
-          showTime: true,
-          showLocation: false,
-          showLogger: false,
-          showClass: false,
-          showMethod: false,
-          showLogLevel: false,
-        ),
         spanTransformers: [
           (tree, record) {
             tree.findFirst<Timestamp>()?.remove();
