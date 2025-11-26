@@ -514,7 +514,78 @@ void main() {
         expect(child.parent, parent2);
       });
     });
+
+    group('chained build', () {
+      test('renderSpan loops through chained build() calls', () {
+        // Chain: FancyTimestamp -> Timestamp -> PlainText
+        // This exercises the while loop in renderSpan
+        final date = DateTime(2024, 1, 15, 10, 23, 45, 123);
+        final fancyTimestamp = _FancyTimestamp(date);
+
+        final buffer = ConsoleMessageBuffer();
+        renderSpan(fancyTimestamp, buffer);
+
+        // Should render as ">>> 10:23:45.123 <<<"
+        expect(buffer.toString(), '>>> 10:23:45.123 <<<');
+      });
+
+      test('triple chained build works', () {
+        // Chain: Level3 -> Level2 -> Level1 -> PlainText
+        final span = _Level3Span('hello');
+
+        final buffer = ConsoleMessageBuffer();
+        renderSpan(span, buffer);
+
+        expect(buffer.toString(), '<<<[[[hello]]]>>>');
+      });
+    });
   });
+}
+
+/// Builds to Timestamp (which builds to PlainText).
+/// Chain: FancyTimestamp -> Timestamp -> PlainText
+class _FancyTimestamp extends LeafSpan {
+  final DateTime date;
+
+  _FancyTimestamp(this.date);
+
+  @override
+  LogSpan build() {
+    // Returns a Timestamp wrapped with decoration
+    // Timestamp.build() will return PlainText
+    return SpanSequence([
+      PlainText('>>> '),
+      Timestamp(date),
+      PlainText(' <<<'),
+    ]);
+  }
+}
+
+/// Level 3 -> Level 2
+class _Level3Span extends LeafSpan {
+  final String text;
+  _Level3Span(this.text);
+
+  @override
+  LogSpan build() => _Level2Span(text);
+}
+
+/// Level 2 -> Level 1
+class _Level2Span extends LeafSpan {
+  final String text;
+  _Level2Span(this.text);
+
+  @override
+  LogSpan build() => _Level1Span(text);
+}
+
+/// Level 1 -> PlainText
+class _Level1Span extends LeafSpan {
+  final String text;
+  _Level1Span(this.text);
+
+  @override
+  LogSpan build() => PlainText('<<<[[[$text]]]>>>');
 }
 
 /// Custom span that shows an emoji based on log level.

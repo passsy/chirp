@@ -146,10 +146,34 @@ abstract class LogSpan {
     }
   }
 
+  /// Builds this span into another span, or returns itself if already terminal.
+  ///
+  /// Override this for composable spans that build to other spans.
+  /// Default implementation returns `this`.
+  ///
+  /// Example:
+  /// ```dart
+  /// class Timestamp extends LeafSpan {
+  ///   final DateTime date;
+  ///   Timestamp(this.date);
+  ///
+  ///   @override
+  ///   LogSpan build() => PlainText('${date.hour}:${date.minute}');
+  /// }
+  /// ```
+  LogSpan build() => this;
+
   /// Renders this span to the [buffer].
   ///
-  /// Subclasses must implement this to write their content.
-  void render(ConsoleMessageBuffer buffer);
+  /// For primitive spans (PlainText, AnsiColored, etc.), override this to
+  /// write directly to the buffer.
+  ///
+  /// For composite spans that override [build], the default implementation
+  /// delegates to the built span.
+  void render(ConsoleMessageBuffer buffer) {
+    // Default: delegate to build() result
+    renderSpan(build(), buffer);
+  }
 
   /// Called by parent when setting/clearing this span's parent.
   void _setParent(LogSpan? parent) {
@@ -491,7 +515,16 @@ typedef SpanTransformer = void Function(
 
 /// Renders a [LogSpan] tree to a [ConsoleMessageBuffer].
 ///
-/// Simply calls [LogSpan.render] on the span.
+/// Repeatedly calls [LogSpan.build] until the span returns itself (terminal),
+/// then calls [LogSpan.render] on the terminal span.
 void renderSpan(LogSpan span, ConsoleMessageBuffer buffer) {
-  span.render(buffer);
+  // Build until terminal (span returns itself)
+  var current = span;
+  var built = current.build();
+  while (!identical(built, current)) {
+    current = built;
+    built = current.build();
+  }
+  // Now current is terminal - call render directly
+  current.render(buffer);
 }

@@ -150,18 +150,20 @@ class Surrounded extends SlottedSpan {
 // =============================================================================
 
 /// Timestamp when the log was created.
+///
+/// Builds to [PlainText] with format "HH:mm:ss.mmm".
 class Timestamp extends LeafSpan {
   final DateTime date;
 
   Timestamp(this.date);
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
+  LogSpan build() {
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
     final second = date.second.toString().padLeft(2, '0');
     final ms = date.millisecond.toString().padLeft(3, '0');
-    buffer.write('$hour:$minute:$second.$ms');
+    return PlainText('$hour:$minute:$second.$ms');
   }
 
   @override
@@ -169,6 +171,8 @@ class Timestamp extends LeafSpan {
 }
 
 /// Source code location (file and line).
+///
+/// Builds to [PlainText] with format "file:line" or [EmptySpan] if no file.
 class DartSourceCodeLocation extends LeafSpan {
   final String? fileName;
   final int? line;
@@ -176,13 +180,12 @@ class DartSourceCodeLocation extends LeafSpan {
   DartSourceCodeLocation({this.fileName, this.line});
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
-    if (fileName == null) return;
+  LogSpan build() {
+    if (fileName == null) return EmptySpan();
     if (line != null) {
-      buffer.write('$fileName:$line');
-    } else {
-      buffer.write(fileName);
+      return PlainText('$fileName:$line');
     }
+    return PlainText(fileName!);
   }
 
   @override
@@ -190,21 +193,23 @@ class DartSourceCodeLocation extends LeafSpan {
 }
 
 /// Logger name for named loggers.
+///
+/// Builds to [PlainText].
 class LoggerName extends LeafSpan {
   final String name;
 
   LoggerName(this.name);
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
-    buffer.write(name);
-  }
+  LogSpan build() => PlainText(name);
 
   @override
   String toString() => 'LoggerName("$name")';
 }
 
 /// Class or instance name.
+///
+/// Builds to [PlainText] with format "ClassName" or "ClassName@hash".
 class ClassName extends LeafSpan {
   final String name;
   final String? instanceHash;
@@ -212,12 +217,11 @@ class ClassName extends LeafSpan {
   ClassName(this.name, {this.instanceHash});
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
+  LogSpan build() {
     if (instanceHash != null) {
-      buffer.write('$name@$instanceHash');
-    } else {
-      buffer.write(name);
+      return PlainText('$name@$instanceHash');
     }
+    return PlainText(name);
   }
 
   @override
@@ -225,44 +229,48 @@ class ClassName extends LeafSpan {
 }
 
 /// Method name where the log was called.
+///
+/// Builds to [PlainText].
 class MethodName extends LeafSpan {
   final String name;
 
   MethodName(this.name);
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
-    buffer.write(name);
-  }
+  LogSpan build() => PlainText(name);
 
   @override
   String toString() => 'MethodName("$name")';
 }
 
 /// Log severity level with brackets.
+///
+/// Builds to [PlainText] with format "[levelName]".
 class BracketedLogLevel extends LeafSpan {
   final ChirpLogLevel level;
 
   BracketedLogLevel(this.level);
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
-    buffer.write('[${level.name}]');
-  }
+  LogSpan build() => PlainText('[${level.name}]');
 
   @override
   String toString() => 'BracketedLogLevel(${level.name})';
 }
 
 /// The primary log message.
+///
+/// Builds to [PlainText] or [EmptySpan] if message is null/empty.
 class LogMessage extends LeafSpan {
   final Object? message;
 
   LogMessage(this.message);
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
-    buffer.write(message?.toString() ?? '');
+  LogSpan build() {
+    final str = message?.toString() ?? '';
+    if (str.isEmpty) return EmptySpan();
+    return PlainText(str);
   }
 
   @override
@@ -270,19 +278,21 @@ class LogMessage extends LeafSpan {
 }
 
 /// Structured key-value data rendered inline: ` (key: value, key: value)`.
+///
+/// Builds to [PlainText] or [EmptySpan] if data is null/empty.
 class InlineData extends LeafSpan {
   final Map<String, Object?>? data;
 
   InlineData(this.data);
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
+  LogSpan build() {
     final d = data;
-    if (d == null || d.isEmpty) return;
+    if (d == null || d.isEmpty) return EmptySpan();
     final str = d.entries
         .map((e) => '${formatYamlKey(e.key)}: ${formatYamlValue(e.value)}')
         .join(', ');
-    buffer.write(' ($str)');
+    return PlainText(' ($str)');
   }
 
   @override
@@ -290,17 +300,19 @@ class InlineData extends LeafSpan {
 }
 
 /// Structured key-value data rendered as multiline YAML.
+///
+/// Builds to [PlainText] or [EmptySpan] if data is null/empty.
 class MultilineData extends LeafSpan {
   final Map<String, Object?>? data;
 
   MultilineData(this.data);
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
+  LogSpan build() {
     final d = data;
-    if (d == null || d.isEmpty) return;
+    if (d == null || d.isEmpty) return EmptySpan();
     final lines = formatAsYaml(d, 0);
-    buffer.write('\n${lines.join('\n')}');
+    return PlainText('\n${lines.join('\n')}');
   }
 
   @override
@@ -308,15 +320,17 @@ class MultilineData extends LeafSpan {
 }
 
 /// Error object.
+///
+/// Builds to [PlainText] or [EmptySpan] if error is null.
 class ErrorSpan extends LeafSpan {
   final Object? error;
 
   ErrorSpan(this.error);
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
-    if (error == null) return;
-    buffer.write(error.toString());
+  LogSpan build() {
+    if (error == null) return EmptySpan();
+    return PlainText(error.toString());
   }
 
   @override
@@ -324,15 +338,15 @@ class ErrorSpan extends LeafSpan {
 }
 
 /// Stack trace.
+///
+/// Builds to [PlainText].
 class StackTraceSpan extends LeafSpan {
   final StackTrace stackTrace;
 
   StackTraceSpan(this.stackTrace);
 
   @override
-  void render(ConsoleMessageBuffer buffer) {
-    buffer.write(stackTrace.toString());
-  }
+  LogSpan build() => PlainText(stackTrace.toString());
 
   @override
   String toString() => 'StackTraceSpan(...)';
