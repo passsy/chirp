@@ -53,3 +53,20 @@ abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
     renderSpan(span.root, buffer);
   }
 }
+
+/// Callback type for transforming log spans before rendering.
+///
+/// Receives a root [LogSpan] that can be mutated in place.
+/// The [record] provides access to the original log data.
+///
+/// Example:
+/// ```dart
+/// void myTransformer(LogSpan root, LogRecord record) {
+///   // Replace timestamp with level emoji
+///   root.findFirst<Timestamp>()?.replaceWith(LevelEmoji(record.level));
+/// }
+/// ```
+typedef SpanTransformer = void Function(
+  LogSpan span,
+  LogRecord record,
+);

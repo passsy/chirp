@@ -123,14 +123,14 @@ abstract class LogSpan {
           // Set the wrapper as the new child (we were already removed)
           if (parent._child == null || parent._child == this) {
             wrapped._parent?._removeChild(wrapped);
-            wrapped._setParent(parent);
+            wrapped._parent = parent;
             parent._child = wrapped;
           }
         case final MultiChildSpan parent:
           // Insert wrapper at our original position
           if (originalIndex != null && originalIndex >= 0) {
             wrapped._parent?._removeChild(wrapped);
-            wrapped._setParent(parent);
+            wrapped._parent = parent;
             // Clamp index in case list changed
             final insertIndex = originalIndex.clamp(0, parent._children.length);
             parent._children.insert(insertIndex, wrapped);
@@ -139,7 +139,7 @@ abstract class LogSpan {
           // Fill our original slot with the wrapper
           if (originalSlotKey != null) {
             wrapped._parent?._removeChild(wrapped);
-            wrapped._setParent(parent);
+            wrapped._parent = parent;
             parent._slots[originalSlotKey] = wrapped;
           }
       }
@@ -173,11 +173,6 @@ abstract class LogSpan {
   void render(ConsoleMessageBuffer buffer) {
     // Default: delegate to build() result
     renderSpan(build(), buffer);
-  }
-
-  /// Called by parent when setting/clearing this span's parent.
-  void _setParent(LogSpan? parent) {
-    _parent = parent;
   }
 
   /// Finds the first descendant (including self) of type [T].
@@ -279,12 +274,12 @@ abstract class SingleChildSpan extends LogSpan {
 
   /// Sets the child span, updating parent references.
   set child(LogSpan? newChild) {
-    _child?._setParent(null);
+    _child?._parent = null;
     _child = newChild;
     if (newChild != null) {
       // Remove from old parent first
       newChild._parent?._removeChild(newChild);
-      newChild._setParent(this);
+      newChild._parent = this;
     }
   }
 
@@ -337,14 +332,14 @@ abstract class MultiChildSpan extends LogSpan {
   /// Adds [child] as the last child.
   void addChild(LogSpan child) {
     child._parent?._removeChild(child);
-    child._setParent(this);
+    child._parent = this;
     _children.add(child);
   }
 
   /// Inserts [child] at [index].
   void insertChild(int index, LogSpan child) {
     child._parent?._removeChild(child);
-    child._setParent(this);
+    child._parent = this;
     _children.insert(index, child);
   }
 
@@ -398,10 +393,10 @@ abstract class SlottedSpan extends LogSpan {
 
   /// Sets the span in the named [slot].
   void setSlot(String slot, LogSpan? child) {
-    _slots[slot]?._setParent(null);
+    _slots[slot]?._parent = null;
     if (child != null) {
       child._parent?._removeChild(child);
-      child._setParent(this);
+      child._parent = this;
       _slots[slot] = child;
     } else {
       _slots.remove(slot);
@@ -438,25 +433,25 @@ extension _ParentChildManagement on LogSpan {
     switch (this) {
       case final SingleChildSpan parent:
         if (parent._child == oldChild) {
-          oldChild._setParent(null);
+          oldChild._parent = null;
           newChild._parent?._removeChild(newChild);
-          newChild._setParent(parent);
+          newChild._parent = parent;
           parent._child = newChild;
         }
       case final MultiChildSpan parent:
         final index = parent._children.indexOf(oldChild);
         if (index != -1) {
-          oldChild._setParent(null);
+          oldChild._parent = null;
           newChild._parent?._removeChild(newChild);
-          newChild._setParent(parent);
+          newChild._parent = parent;
           parent._children[index] = newChild;
         }
       case final SlottedSpan parent:
         for (final entry in parent._slots.entries) {
           if (entry.value == oldChild) {
-            oldChild._setParent(null);
+            oldChild._parent = null;
             newChild._parent?._removeChild(newChild);
-            newChild._setParent(parent);
+            newChild._parent = parent;
             parent._slots[entry.key] = newChild;
             return;
           }
@@ -469,11 +464,11 @@ extension _ParentChildManagement on LogSpan {
     switch (this) {
       case final SingleChildSpan parent:
         if (parent._child == child) {
-          child._setParent(null);
+          child._parent = null;
           parent._child = null;
         }
       case final MultiChildSpan parent:
-        child._setParent(null);
+        child._parent = null;
         parent._children.remove(child);
       case final SlottedSpan parent:
         final key = parent._slots.entries
@@ -481,33 +476,12 @@ extension _ParentChildManagement on LogSpan {
             .map((e) => e.key)
             .firstOrNull;
         if (key != null) {
-          child._setParent(null);
+          child._parent = null;
           parent._slots.remove(key);
         }
     }
   }
 }
-
-// =============================================================================
-// Span transformer - callback for modifying spans before rendering
-// =============================================================================
-
-/// Callback type for transforming log spans before rendering.
-///
-/// Receives a root [LogSpan] that can be mutated in place.
-/// The [record] provides access to the original log data.
-///
-/// Example:
-/// ```dart
-/// void myTransformer(LogSpan root, LogRecord record) {
-///   // Replace timestamp with level emoji
-///   root.findFirst<Timestamp>()?.replaceWith(LevelEmoji(record.level));
-/// }
-/// ```
-typedef SpanTransformer = void Function(
-  LogSpan span,
-  LogRecord record,
-);
 
 // =============================================================================
 // Rendering
