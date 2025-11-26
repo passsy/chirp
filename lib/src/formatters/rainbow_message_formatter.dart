@@ -90,7 +90,7 @@ class RainbowLogSpan extends LogSpan {
               foreground: XtermColor.brightBlack_8,
               child: DartSourceCodeLocation(fileName: fileName, line: callerInfo?.line),
             );
-      spans.add(Prefixed(prefix: const Whitespace(), child: location));
+      spans.add(Surrounded(prefix: const Whitespace(), child: location));
     }
 
     // Logger name
@@ -102,7 +102,7 @@ class RainbowLogSpan extends LogSpan {
               foreground: hashColor(name, readableColorsHighSaturation),
               child: LoggerName(name),
             );
-      spans.add(Prefixed(prefix: const Whitespace(), child: loggerName));
+      spans.add(Surrounded(prefix: const Whitespace(), child: loggerName));
     }
 
     // Class name
@@ -123,7 +123,7 @@ class RainbowLogSpan extends LogSpan {
           child: ClassName(cn),
         );
       }
-      spans.add(Prefixed(prefix: const Whitespace(), child: className));
+      spans.add(Surrounded(prefix: const Whitespace(), child: className));
     }
 
     // Method name
@@ -140,7 +140,7 @@ class RainbowLogSpan extends LogSpan {
           child: MethodName(name),
         );
       }
-      spans.add(Prefixed(prefix: const Whitespace(), child: methodName));
+      spans.add(Surrounded(prefix: const Whitespace(), child: methodName));
     }
 
     // Level

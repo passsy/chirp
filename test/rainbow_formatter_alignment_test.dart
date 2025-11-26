@@ -18,9 +18,9 @@ void main() {
         },
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -42,9 +42,9 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(result, '10:23:45.123 API [info] Short (key: "value")');
     });
@@ -56,9 +56,9 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(result, '10:23:45.123 [info] Line 1\nLine 2\nLine 3');
     });
@@ -75,9 +75,9 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -99,9 +99,9 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -122,9 +122,9 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -142,9 +142,9 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -164,9 +164,9 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -187,9 +187,9 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -212,9 +212,9 @@ void main() {
         ),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -232,9 +232,9 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: true);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: true);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       // Should contain ANSI escape codes
       expect(result, contains(RegExp(r'\x1B\[')));
@@ -249,9 +249,9 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(result, '10:23:45.123 [info] Test message');
     });
@@ -266,9 +266,9 @@ void main() {
         loggerName: 'TestLogger',
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -292,9 +292,9 @@ void main() {
         },
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -316,9 +316,9 @@ void main() {
         },
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -337,9 +337,9 @@ void main() {
         },
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -360,9 +360,9 @@ void main() {
         },
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -378,9 +378,9 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(result, '10:23:45.123 [info] Test message');
     });
@@ -395,9 +395,9 @@ void main() {
         error: Exception('Something went wrong'),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -416,9 +416,9 @@ void main() {
             '#0      main (file.dart:10:5)\n#1      test (file.dart:20:3)'),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,

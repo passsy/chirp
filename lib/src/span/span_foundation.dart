@@ -38,7 +38,7 @@ abstract class RenderSpan extends LogSpan {
   @override
   LogSpan build() => this;
 
-  /// Renders this span to the builder.
+  /// Renders this span to the buffer.
   void render(ConsoleMessageBuffer buffer);
 }
 
@@ -46,12 +46,12 @@ abstract class RenderSpan extends LogSpan {
 ///
 /// Repeatedly calls [LogSpan.build] until reaching a [RenderSpan],
 /// then calls [RenderSpan.render].
-void renderSpan(LogSpan span, ConsoleMessageBuffer builder) {
+void renderSpan(LogSpan span, ConsoleMessageBuffer buffer) {
   var current = span;
   while (current is! RenderSpan) {
     current = current.build();
   }
-  current.render(builder);
+  current.render(buffer);
 }
 
 // =============================================================================
@@ -62,7 +62,7 @@ void renderSpan(LogSpan span, ConsoleMessageBuffer builder) {
 ///
 /// Implement this to allow generic span traversal and transformation.
 abstract interface class SingleChildSpan implements LogSpan {
-  /// The child span (may be null for optional children like [Prefixed]).
+  /// The child span (may be null for optional children like [Surrounded]).
   LogSpan? get child;
 }
 
@@ -86,7 +86,6 @@ typedef SpanTransformer = void Function(
   SpanNode tree,
   LogRecord record,
 );
-
 
 // =============================================================================
 // Span tree utilities
@@ -131,7 +130,7 @@ SpanMatch<T>? _findSpan<T extends LogSpan>(
     }
   }
 
-  // Handle SingleChildSpan (Styled, Box, Prefixed)
+  // Handle SingleChildSpan (Styled, Box, Surrounded)
   if (span is SingleChildSpan) {
     final child = span.child;
     if (child != null) {
@@ -203,45 +202,6 @@ class SpanNode {
     }
 
     return node;
-  }
-
-  /// Rebuilds a [LogSpan] tree from this [SpanNode] tree.
-  ///
-  /// This creates new span instances where children have changed.
-  /// Leaf spans are returned as-is (no allocation).
-  LogSpan toSpan() {
-    final s = _span;
-
-    if (s is SpanSequence) {
-      return SpanSequence(_children.map((c) => c.toSpan()).toList());
-    }
-
-    if (s is AnsiColored) {
-      return AnsiColored(
-        foreground: s.foreground,
-        background: s.background,
-        child: _children.isNotEmpty ? _children.first.toSpan() : const PlainText(''),
-      );
-    }
-
-    if (s is Prefixed) {
-      return Prefixed(
-        prefix: _children.isNotEmpty ? _children[0].toSpan() : const PlainText(''),
-        child: _children.length > 1 ? _children[1].toSpan() : null,
-      );
-    }
-
-    if (s is Bordered) {
-      return Bordered(
-        style: s.style,
-        borderColor: s.borderColor,
-        padding: s.padding,
-        child: _children.isNotEmpty ? _children.first.toSpan() : const PlainText(''),
-      );
-    }
-
-    // Leaf spans (PlainText, Whitespace, NewLine, Timestamp, BracketedLogLevel, etc.)
-    return s;
   }
 
   /// Finds the first descendant node (including self) where span is of type [T].

@@ -241,7 +241,7 @@ class KeyValueData extends LogSpan {
 
   @override
   LogSpan build() {
-    if (data.isEmpty) return const PlainText('');
+    if (data.isEmpty) return const EmptySpan();
     final str = data.entries.map((e) => '${e.key}=${e.value}').join(' ');
     return PlainText(str);
   }

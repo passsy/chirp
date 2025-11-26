@@ -5,6 +5,22 @@ import 'package:chirp/src/formatters/yaml_formatter.dart';
 // Primitive RenderSpans
 // =============================================================================
 
+/// A span that renders nothing.
+///
+/// Use this when a span conditionally has no output, similar to
+/// Flutter's `SizedBox.shrink()`.
+class EmptySpan extends RenderSpan {
+  const EmptySpan();
+
+  @override
+  void render(ConsoleMessageBuffer buffer) {
+    // Intentionally empty - renders nothing
+  }
+
+  @override
+  String toString() => 'EmptySpan()';
+}
+
 /// Plain text span.
 class PlainText extends RenderSpan {
   final String value;
@@ -95,25 +111,30 @@ class AnsiColored extends RenderSpan implements SingleChildSpan {
 // Composite LogSpans
 // =============================================================================
 
-/// Renders a prefix before an optional child.
+/// Renders a prefix and/or suffix around an optional child.
 ///
-/// If [child] is null, builds to an empty [Row].
-/// If [child] is non-null, builds to [Row] with [prefix] then [child].
-class Prefixed extends LogSpan implements SingleChildSpan {
-  final LogSpan prefix;
+/// If [child] is null, builds to an empty [SpanSequence].
+/// If [child] is non-null, builds to [SpanSequence] with [prefix], [child], [suffix].
+class Surrounded extends LogSpan implements SingleChildSpan {
+  final LogSpan? prefix;
   @override
   final LogSpan? child;
+  final LogSpan? suffix;
 
-  const Prefixed({required this.prefix, this.child});
+  const Surrounded({this.prefix, this.child, this.suffix});
 
   @override
   LogSpan build() {
-    if (child == null) return const SpanSequence([]);
-    return SpanSequence([prefix, child!]);
+    if (child == null) return const EmptySpan();
+    return SpanSequence([
+      if (prefix != null) prefix!,
+      child!,
+      if (suffix != null) suffix!,
+    ]);
   }
 
   @override
-  String toString() => 'Prefixed(prefix: $prefix, child: $child)';
+  String toString() => 'Surrounded(prefix: $prefix, child: $child, suffix: $suffix)';
 }
 
 // =============================================================================
@@ -148,7 +169,7 @@ class DartSourceCodeLocation extends LogSpan {
 
   @override
   LogSpan build() {
-    if (fileName == null) return const PlainText('');
+    if (fileName == null) return const EmptySpan();
     if (line != null) {
       return PlainText('$fileName:$line');
     }
@@ -239,7 +260,7 @@ class InlineData extends LogSpan {
   @override
   LogSpan build() {
     final d = data;
-    if (d == null || d.isEmpty) return const PlainText('');
+    if (d == null || d.isEmpty) return const EmptySpan();
     final str = d.entries
         .map((e) => '${formatYamlKey(e.key)}: ${formatYamlValue(e.value)}')
         .join(', ');
@@ -259,7 +280,7 @@ class MultilineData extends LogSpan {
   @override
   LogSpan build() {
     final d = data;
-    if (d == null || d.isEmpty) return const PlainText('');
+    if (d == null || d.isEmpty) return const EmptySpan();
     final lines = formatAsYaml(d, 0);
     return PlainText('\n${lines.join('\n')}');
   }
@@ -276,7 +297,7 @@ class ErrorSpan extends LogSpan {
 
   @override
   LogSpan build() {
-    if (error == null) return const PlainText('');
+    if (error == null) return const EmptySpan();
     return PlainText(error.toString());
   }
 
@@ -402,7 +423,7 @@ class Bordered extends RenderSpan implements SingleChildSpan {
   void render(ConsoleMessageBuffer buffer) {
     final temp = buffer.createChildBuffer();
     renderSpan(child, temp);
-    final content = temp.build();
+    final content = temp.toString();
 
     final lines = content.isEmpty ? <String>[] : content.split('\n');
     if (lines.isEmpty) return;

@@ -51,6 +51,6 @@ abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
     for (final transformer in spanTransformers) {
       transformer(tree, record);
     }
-    renderSpan(tree.toSpan(), buffer);
+    renderSpan(tree.span, buffer);
   }
 }

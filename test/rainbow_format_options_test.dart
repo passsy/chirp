@@ -16,9 +16,9 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -39,9 +39,9 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -63,9 +63,9 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -87,9 +87,9 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -114,9 +114,9 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -135,9 +135,9 @@ void main() {
         data: {'userId': 'user_123'},
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -158,9 +158,9 @@ void main() {
         formatOptions: const [],
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,
@@ -184,9 +184,9 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuffer(useColors: false);
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       expect(
         result,

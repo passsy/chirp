@@ -11,18 +11,18 @@ void main() {
       const span = AnsiColored(
         foreground: XtermColor.red1_196, // red
         child: SpanSequence([
-           PlainText('Hello '),
+          PlainText('Hello '),
           AnsiColored(
             foreground: XtermColor.blue1_21, // blue
-            child:  PlainText('World'),
+            child: PlainText('World'),
           ),
           PlainText('!'),
         ]),
       );
 
-      final builder = ConsoleMessageBuffer(useColors: true);
-      renderSpan(span, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer(useColors: true);
+      renderSpan(span, buffer);
+      final result = buffer.toString();
 
       // Red color code 196 should appear before "Hello"
       expect(result, contains('[38;5;196m'));
@@ -30,10 +30,11 @@ void main() {
       expect(result, contains('[38;5;21m'));
       // "!" should be red - red must be restored after blue ends
       final exclamationIndex = result.indexOf('!');
-      final beforeExclamation =
-          result.substring(result.lastIndexOf('\x1B', exclamationIndex), exclamationIndex);
+      final beforeExclamation = result.substring(
+          result.lastIndexOf('\x1B', exclamationIndex), exclamationIndex);
       expect(beforeExclamation, contains('[38;5;196m'),
-          reason: '"!" should be red (parent color restored after nested blue)');
+          reason:
+              '"!" should be red (parent color restored after nested blue)');
     });
   });
 
@@ -62,9 +63,9 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuffer();
-      formatter.format(record, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer();
+      formatter.format(record, buffer);
+      final result = buffer.toString();
 
       expect(result, '🔍 Hello');
     });
@@ -95,9 +96,9 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuffer();
-      formatter.format(record, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer();
+      formatter.format(record, buffer);
+      final result = buffer.toString();
 
       // Timestamp wrapped with brackets
       expect(result, contains('[10:23:45.123]'));
@@ -126,9 +127,9 @@ void main() {
         ],
       );
 
-      final builder = ConsoleMessageBuffer();
-      formatter.format(record, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer();
+      formatter.format(record, buffer);
+      final result = buffer.toString();
 
       // No timestamp in output
       expect(result, isNot(contains('10:23:45.123')));
@@ -141,8 +142,8 @@ void main() {
       test('wraps a leaf span with Colored', () {
         final tree = SpanNode.fromSpan(const PlainText('hello'));
 
-        tree.wrap(
-            (child) => AnsiColored(foreground: XtermColor.red1_196, child: child));
+        tree.wrap((child) =>
+            AnsiColored(foreground: XtermColor.red1_196, child: child));
 
         expect(tree.span, isA<AnsiColored>());
         expect((tree.span as AnsiColored).foreground, XtermColor.red1_196);
@@ -159,13 +160,13 @@ void main() {
         ]));
 
         final target = tree.children[1];
-        target.wrap(
-            (child) => AnsiColored(foreground: XtermColor.blue1_21, child: child));
+        target.wrap((child) =>
+            AnsiColored(foreground: XtermColor.blue1_21, child: child));
 
-        final result = tree.toSpan();
+        final result = tree.span;
         final buffer = ConsoleMessageBuffer();
         renderSpan(result, buffer);
-        expect(buffer.build(), 'beforetargetafter');
+        expect(buffer.toString(), 'beforetargetafter');
 
         // Structure check
         expect(tree.children[1].span, isA<AnsiColored>());
@@ -173,7 +174,8 @@ void main() {
       });
 
       test('wrap preserves parent reference', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
+        final tree =
+            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
 
         final child = tree.children.first;
         child.wrap(
@@ -200,7 +202,8 @@ void main() {
       test('unwraps a node inside a tree', () {
         final tree = SpanNode.fromSpan(const SpanSequence([
           PlainText('before'),
-          AnsiColored(foreground: XtermColor.red1_196, child: PlainText('target')),
+          AnsiColored(
+              foreground: XtermColor.red1_196, child: PlainText('target')),
           PlainText('after'),
         ]));
 
@@ -228,7 +231,8 @@ void main() {
 
       test('unwrap preserves parent reference', () {
         final tree = SpanNode.fromSpan(const SpanSequence([
-          AnsiColored(foreground: XtermColor.red1_196, child: PlainText('child')),
+          AnsiColored(
+              foreground: XtermColor.red1_196, child: PlainText('child')),
         ]));
 
         final styledNode = tree.children.first;
@@ -241,7 +245,8 @@ void main() {
     test('wrap then unwrap restores original', () {
       final tree = SpanNode.fromSpan(const PlainText('hello'));
 
-      tree.wrap((child) => AnsiColored(foreground: XtermColor.red1_196, child: child));
+      tree.wrap((child) =>
+          AnsiColored(foreground: XtermColor.red1_196, child: child));
       expect(tree.span, isA<AnsiColored>());
 
       tree.unwrap();
@@ -375,7 +380,8 @@ void main() {
       });
 
       test('removes child from previous parent', () {
-        final parent1 = SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
+        final parent1 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
         final parent2 = SpanNode.fromSpan(const SpanSequence([]));
         final child = parent1.children.first;
 
@@ -388,8 +394,10 @@ void main() {
       });
 
       test('moves child between parents preserves identity', () {
-        final parent1 = SpanNode.fromSpan(const SpanSequence([PlainText('moving')]));
-        final parent2 = SpanNode.fromSpan(const SpanSequence([PlainText('existing')]));
+        final parent1 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('moving')]));
+        final parent2 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('existing')]));
         final child = parent1.children.first;
 
         parent2.append(child);
@@ -430,8 +438,10 @@ void main() {
       });
 
       test('removes child from previous parent', () {
-        final parent1 = SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
-        final parent2 = SpanNode.fromSpan(const SpanSequence([PlainText('existing')]));
+        final parent1 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
+        final parent2 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('existing')]));
         final child = parent1.children.first;
 
         parent2.prepend(child);
@@ -443,7 +453,8 @@ void main() {
       });
 
       test('existing children have correct parent after prepend', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([PlainText('existing')]));
+        final tree =
+            SpanNode.fromSpan(const SpanSequence([PlainText('existing')]));
         final newChild = SpanNode.fromSpan(const PlainText('new'));
         final existingChild = tree.children.first;
 
@@ -502,8 +513,10 @@ void main() {
       });
 
       test('removes node from previous parent', () {
-        final parent1 = SpanNode.fromSpan(const SpanSequence([PlainText('moving')]));
-        final parent2 = SpanNode.fromSpan(const SpanSequence([PlainText('target')]));
+        final parent1 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('moving')]));
+        final parent2 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('target')]));
         final movingNode = parent1.children.first;
         final targetNode = parent2.children.first;
 
@@ -577,8 +590,10 @@ void main() {
       });
 
       test('removes node from previous parent', () {
-        final parent1 = SpanNode.fromSpan(const SpanSequence([PlainText('moving')]));
-        final parent2 = SpanNode.fromSpan(const SpanSequence([PlainText('target')]));
+        final parent1 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('moving')]));
+        final parent2 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('target')]));
         final movingNode = parent1.children.first;
         final targetNode = parent2.children.first;
 
@@ -627,7 +642,8 @@ void main() {
 
         // Verify all children point to tree as parent
         for (final child in tree.children) {
-          expect(child.parent, tree, reason: 'child ${child.span} should have tree as parent');
+          expect(child.parent, tree,
+              reason: 'child ${child.span} should have tree as parent');
         }
 
         // Verify order: first, a, middle, b, last
@@ -639,7 +655,8 @@ void main() {
       });
 
       test('moving node clears old parent relationship', () {
-        final parent1 = SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
+        final parent1 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
         final parent2 = SpanNode.fromSpan(const SpanSequence([]));
         final child = parent1.children.first;
 
@@ -660,11 +677,11 @@ void main() {
         tree.prepend(SpanNode.fromSpan(const PlainText('a')));
         tree.append(SpanNode.fromSpan(const PlainText('c')));
 
-        final span = tree.toSpan();
+        final span = tree.span;
         final buffer = ConsoleMessageBuffer();
         renderSpan(span, buffer);
 
-        expect(buffer.build(), 'abc');
+        expect(buffer.toString(), 'abc');
       });
     });
 
@@ -675,7 +692,8 @@ void main() {
       });
 
       test('returns parent for direct child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
+        final tree =
+            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
         final child = tree.children.first;
 
         final ancestors = child.allAncestors.toList();
@@ -702,7 +720,8 @@ void main() {
       });
 
       test('does not include self', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
+        final tree =
+            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
         final child = tree.children.first;
 
         expect(child.allAncestors.contains(child), isFalse);
@@ -716,7 +735,8 @@ void main() {
       });
 
       test('returns root from direct child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
+        final tree =
+            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
         final child = tree.children.first;
 
         expect(child.root, tree);
@@ -737,7 +757,8 @@ void main() {
       });
 
       test('root updates after moving node', () {
-        final tree1 = SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
+        final tree1 =
+            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
         final tree2 = SpanNode.fromSpan(const SpanSequence([]));
         final child = tree1.children.first;
 
@@ -776,5 +797,6 @@ class _BracketedSpan extends LogSpan {
   const _BracketedSpan({required this.child});
 
   @override
-  LogSpan build() => SpanSequence([const PlainText('['), child, const PlainText(']')]);
+  LogSpan build() =>
+      SpanSequence([const PlainText('['), child, const PlainText(']')]);
 }

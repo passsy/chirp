@@ -15,9 +15,9 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final builder = ConsoleMessageBuffer();
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer();
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       final hash = identityHashCode(instance).toRadixString(16);
       final decoded = jsonDecode(result) as Map<String, dynamic>;
@@ -42,9 +42,9 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final builder = ConsoleMessageBuffer();
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer();
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       final hash = identityHashCode(instance).toRadixString(16);
       final decoded = jsonDecode(result) as Map<String, dynamic>;
@@ -71,9 +71,9 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final builder = ConsoleMessageBuffer();
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer();
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       final hash = identityHashCode(instance).toRadixString(16);
       final decoded = jsonDecode(result) as Map<String, dynamic>;
@@ -103,9 +103,9 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final builder = ConsoleMessageBuffer();
-      formatter.format(entry, builder);
-      final result = builder.build();
+      final buffer = ConsoleMessageBuffer();
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
 
       final hash = identityHashCode(instance).toRadixString(16);
       final decoded = jsonDecode(result) as Map<String, dynamic>;

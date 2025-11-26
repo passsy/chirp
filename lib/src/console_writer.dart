@@ -11,9 +11,9 @@ class ConsoleWriter implements ChirpWriter {
   @override
   void write(LogRecord record) {
     const bool consoleSupportsColors = true;
-    final builder = ConsoleMessageBuffer(useColors: consoleSupportsColors);
-    formatter.format(record, builder);
-    final text = builder.build();
+    final buffer = ConsoleMessageBuffer(useColors: consoleSupportsColors);
+    formatter.format(record, buffer);
+    final text = buffer.toString();
 
     if (output != null) {
       output!(text);
@@ -57,7 +57,7 @@ abstract class ConsoleMessageFormatter {
 /// buffer.popColor(); // restores red
 /// buffer.write('!');
 /// buffer.popColor(); // resets to default
-/// print(buffer.build()); // "Hello " in red, "World" in blue, "!" in red
+/// print(buffer.toString()); // "Hello " in red, "World" in blue, "!" in red
 /// ```
 class ConsoleMessageBuffer {
   /// Whether to emit ANSI color codes.
@@ -125,7 +125,8 @@ class ConsoleMessageBuffer {
   }
 
   /// Returns the accumulated buffer contents as a string.
-  String build() {
+  @override
+  String toString() {
     return _buffer.toString();
   }
 
