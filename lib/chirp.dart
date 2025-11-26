@@ -858,11 +858,13 @@ class ChirpLogger {
   void addConsoleWriter({
     ConsoleMessageFormatter? formatter,
     void Function(String)? output,
+    bool? useColors,
   }) {
     addWriter(
       ConsoleWriter(
         formatter: formatter ?? RainbowMessageFormatter(),
         output: output,
+        useColors: useColors,
       ),
     );
   }
