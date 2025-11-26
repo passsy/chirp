@@ -2,16 +2,14 @@ import 'package:chirp/chirp.dart';
 import 'package:chirp/src/formatters/yaml_formatter.dart';
 
 // =============================================================================
-// Primitive RenderSpans
+// Leaf Spans (no children)
 // =============================================================================
 
 /// A span that renders nothing.
 ///
 /// Use this when a span conditionally has no output, similar to
 /// Flutter's `SizedBox.shrink()`.
-class EmptySpan extends RenderSpan {
-  const EmptySpan();
-
+class EmptySpan extends LeafSpan {
   @override
   void render(ConsoleMessageBuffer buffer) {
     // Intentionally empty - renders nothing
@@ -22,10 +20,10 @@ class EmptySpan extends RenderSpan {
 }
 
 /// Plain text span.
-class PlainText extends RenderSpan {
+class PlainText extends LeafSpan {
   final String value;
 
-  const PlainText(this.value);
+  PlainText(this.value);
 
   @override
   void render(ConsoleMessageBuffer buffer) {
@@ -37,9 +35,7 @@ class PlainText extends RenderSpan {
 }
 
 /// A single space.
-class Whitespace extends RenderSpan {
-  const Whitespace();
-
+class Whitespace extends LeafSpan {
   @override
   void render(ConsoleMessageBuffer buffer) {
     buffer.write(' ');
@@ -50,9 +46,7 @@ class Whitespace extends RenderSpan {
 }
 
 /// A line break.
-class NewLine extends RenderSpan {
-  const NewLine();
-
+class NewLine extends LeafSpan {
   @override
   void render(ConsoleMessageBuffer buffer) {
     buffer.write('\n');
@@ -62,43 +56,27 @@ class NewLine extends RenderSpan {
   String toString() => 'NewLine()';
 }
 
-/// A sequence of spans rendered sequentially.
-class SpanSequence extends RenderSpan implements MultiChildSpan {
-  @override
-  final List<LogSpan> children;
-
-  const SpanSequence(this.children);
-
-  @override
-  void render(ConsoleMessageBuffer buffer) {
-    for (final child in children) {
-      renderSpan(child, buffer);
-    }
-  }
-
-  @override
-  String toString() => 'SpanSequence($children)';
-}
+// =============================================================================
+// Single Child Spans
+// =============================================================================
 
 /// Applies foreground and/or background color to a child span.
-///
-/// Renders the child to plain text, then writes it with the specified colors.
-class AnsiColored extends RenderSpan implements SingleChildSpan {
-  @override
-  final LogSpan child;
+class AnsiColored extends SingleChildSpan {
   final XtermColor? foreground;
   final XtermColor? background;
 
-  const AnsiColored({
-    required this.child,
+  AnsiColored({
+    super.child,
     this.foreground,
     this.background,
   });
 
   @override
   void render(ConsoleMessageBuffer buffer) {
+    final c = child;
+    if (c == null) return;
     buffer.pushColor(foreground: foreground, background: background);
-    renderSpan(child, buffer);
+    c.render(buffer);
     buffer.popColor();
   }
 
@@ -108,33 +86,63 @@ class AnsiColored extends RenderSpan implements SingleChildSpan {
 }
 
 // =============================================================================
-// Composite LogSpans
+// Multi Child Spans
+// =============================================================================
+
+/// A sequence of spans rendered sequentially.
+class SpanSequence extends MultiChildSpan {
+  SpanSequence([List<LogSpan>? children]) : super(children: children);
+
+  @override
+  void render(ConsoleMessageBuffer buffer) {
+    for (final child in children) {
+      child.render(buffer);
+    }
+  }
+
+  @override
+  String toString() => 'SpanSequence($children)';
+}
+
+// =============================================================================
+// Slotted Spans
 // =============================================================================
 
 /// Renders a prefix and/or suffix around an optional child.
 ///
-/// If [child] is null, builds to an empty [SpanSequence].
-/// If [child] is non-null, builds to [SpanSequence] with [prefix], [child], [suffix].
-class Surrounded extends LogSpan implements SingleChildSpan {
-  final LogSpan? prefix;
-  @override
-  final LogSpan? child;
-  final LogSpan? suffix;
+/// If [child] is null, renders nothing (empty).
+/// If [child] is non-null, renders [prefix], [child], [suffix].
+class Surrounded extends SlottedSpan {
+  static const prefixSlot = 'prefix';
+  static const childSlot = 'child';
+  static const suffixSlot = 'suffix';
 
-  const Surrounded({this.prefix, this.child, this.suffix});
+  LogSpan? get prefix => getSlot(prefixSlot);
+  set prefix(LogSpan? v) => setSlot(prefixSlot, v);
 
-  @override
-  LogSpan build() {
-    if (child == null) return const EmptySpan();
-    return SpanSequence([
-      if (prefix != null) prefix!,
-      child!,
-      if (suffix != null) suffix!,
-    ]);
+  LogSpan? get child => getSlot(childSlot);
+  set child(LogSpan? v) => setSlot(childSlot, v);
+
+  LogSpan? get suffix => getSlot(suffixSlot);
+  set suffix(LogSpan? v) => setSlot(suffixSlot, v);
+
+  Surrounded({LogSpan? prefix, LogSpan? child, LogSpan? suffix}) {
+    this.prefix = prefix;
+    this.child = child;
+    this.suffix = suffix;
   }
 
   @override
-  String toString() => 'Surrounded(prefix: $prefix, child: $child, suffix: $suffix)';
+  void render(ConsoleMessageBuffer buffer) {
+    if (child == null) return;
+    prefix?.render(buffer);
+    child?.render(buffer);
+    suffix?.render(buffer);
+  }
+
+  @override
+  String toString() =>
+      'Surrounded(prefix: $prefix, child: $child, suffix: $suffix)';
 }
 
 // =============================================================================
@@ -142,18 +150,18 @@ class Surrounded extends LogSpan implements SingleChildSpan {
 // =============================================================================
 
 /// Timestamp when the log was created.
-class Timestamp extends LogSpan {
+class Timestamp extends LeafSpan {
   final DateTime date;
 
-  const Timestamp(this.date);
+  Timestamp(this.date);
 
   @override
-  LogSpan build() {
+  void render(ConsoleMessageBuffer buffer) {
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
     final second = date.second.toString().padLeft(2, '0');
     final ms = date.millisecond.toString().padLeft(3, '0');
-    return PlainText('$hour:$minute:$second.$ms');
+    buffer.write('$hour:$minute:$second.$ms');
   }
 
   @override
@@ -161,19 +169,20 @@ class Timestamp extends LogSpan {
 }
 
 /// Source code location (file and line).
-class DartSourceCodeLocation extends LogSpan {
+class DartSourceCodeLocation extends LeafSpan {
   final String? fileName;
   final int? line;
 
-  const DartSourceCodeLocation({this.fileName, this.line});
+  DartSourceCodeLocation({this.fileName, this.line});
 
   @override
-  LogSpan build() {
-    if (fileName == null) return const EmptySpan();
+  void render(ConsoleMessageBuffer buffer) {
+    if (fileName == null) return;
     if (line != null) {
-      return PlainText('$fileName:$line');
+      buffer.write('$fileName:$line');
+    } else {
+      buffer.write(fileName);
     }
-    return PlainText(fileName!);
   }
 
   @override
@@ -181,31 +190,34 @@ class DartSourceCodeLocation extends LogSpan {
 }
 
 /// Logger name for named loggers.
-class LoggerName extends LogSpan {
+class LoggerName extends LeafSpan {
   final String name;
 
-  const LoggerName(this.name);
+  LoggerName(this.name);
 
   @override
-  LogSpan build() => PlainText(name);
+  void render(ConsoleMessageBuffer buffer) {
+    buffer.write(name);
+  }
 
   @override
   String toString() => 'LoggerName("$name")';
 }
 
 /// Class or instance name.
-class ClassName extends LogSpan {
+class ClassName extends LeafSpan {
   final String name;
   final String? instanceHash;
 
-  const ClassName(this.name, {this.instanceHash});
+  ClassName(this.name, {this.instanceHash});
 
   @override
-  LogSpan build() {
+  void render(ConsoleMessageBuffer buffer) {
     if (instanceHash != null) {
-      return PlainText('$name@$instanceHash');
+      buffer.write('$name@$instanceHash');
+    } else {
+      buffer.write(name);
     }
-    return PlainText(name);
   }
 
   @override
@@ -213,58 +225,64 @@ class ClassName extends LogSpan {
 }
 
 /// Method name where the log was called.
-class MethodName extends LogSpan {
+class MethodName extends LeafSpan {
   final String name;
 
-  const MethodName(this.name);
+  MethodName(this.name);
 
   @override
-  LogSpan build() => PlainText(name);
+  void render(ConsoleMessageBuffer buffer) {
+    buffer.write(name);
+  }
 
   @override
   String toString() => 'MethodName("$name")';
 }
 
 /// Log severity level with brackets.
-class BracketedLogLevel extends LogSpan {
+class BracketedLogLevel extends LeafSpan {
   final ChirpLogLevel level;
 
-  const BracketedLogLevel(this.level);
+  BracketedLogLevel(this.level);
 
   @override
-  LogSpan build() => PlainText('[${level.name}]');
+  void render(ConsoleMessageBuffer buffer) {
+    buffer.write('[${level.name}]');
+  }
 
   @override
   String toString() => 'BracketedLogLevel(${level.name})';
 }
 
 /// The primary log message.
-class LogMessage extends LogSpan {
+class LogMessage extends LeafSpan {
   final Object? message;
 
-  const LogMessage(this.message);
+  LogMessage(this.message);
 
   @override
-  LogSpan build() => PlainText(message?.toString() ?? '');
+  void render(ConsoleMessageBuffer buffer) {
+    buffer.write(message?.toString() ?? '');
+  }
 
   @override
   String toString() => 'LogMessage("$message")';
 }
 
 /// Structured key-value data rendered inline: ` (key: value, key: value)`.
-class InlineData extends LogSpan {
+class InlineData extends LeafSpan {
   final Map<String, Object?>? data;
 
-  const InlineData(this.data);
+  InlineData(this.data);
 
   @override
-  LogSpan build() {
+  void render(ConsoleMessageBuffer buffer) {
     final d = data;
-    if (d == null || d.isEmpty) return const EmptySpan();
+    if (d == null || d.isEmpty) return;
     final str = d.entries
         .map((e) => '${formatYamlKey(e.key)}: ${formatYamlValue(e.value)}')
         .join(', ');
-    return PlainText(' ($str)');
+    buffer.write(' ($str)');
   }
 
   @override
@@ -272,17 +290,17 @@ class InlineData extends LogSpan {
 }
 
 /// Structured key-value data rendered as multiline YAML.
-class MultilineData extends LogSpan {
+class MultilineData extends LeafSpan {
   final Map<String, Object?>? data;
 
-  const MultilineData(this.data);
+  MultilineData(this.data);
 
   @override
-  LogSpan build() {
+  void render(ConsoleMessageBuffer buffer) {
     final d = data;
-    if (d == null || d.isEmpty) return const EmptySpan();
+    if (d == null || d.isEmpty) return;
     final lines = formatAsYaml(d, 0);
-    return PlainText('\n${lines.join('\n')}');
+    buffer.write('\n${lines.join('\n')}');
   }
 
   @override
@@ -290,15 +308,15 @@ class MultilineData extends LogSpan {
 }
 
 /// Error object.
-class ErrorSpan extends LogSpan {
+class ErrorSpan extends LeafSpan {
   final Object? error;
 
-  const ErrorSpan(this.error);
+  ErrorSpan(this.error);
 
   @override
-  LogSpan build() {
-    if (error == null) return const EmptySpan();
-    return PlainText(error.toString());
+  void render(ConsoleMessageBuffer buffer) {
+    if (error == null) return;
+    buffer.write(error.toString());
   }
 
   @override
@@ -306,13 +324,15 @@ class ErrorSpan extends LogSpan {
 }
 
 /// Stack trace.
-class StackTraceSpan extends LogSpan {
+class StackTraceSpan extends LeafSpan {
   final StackTrace stackTrace;
 
-  const StackTraceSpan(this.stackTrace);
+  StackTraceSpan(this.stackTrace);
 
   @override
-  LogSpan build() => PlainText(stackTrace.toString());
+  void render(ConsoleMessageBuffer buffer) {
+    buffer.write(stackTrace.toString());
+  }
 
   @override
   String toString() => 'StackTraceSpan(...)';
@@ -344,39 +364,39 @@ class BoxBorderChars {
   });
 
   static const single = BoxBorderChars(
-    topLeft: '┌',
-    topRight: '┐',
-    bottomLeft: '└',
-    bottomRight: '┘',
-    horizontal: '─',
-    vertical: '│',
+    topLeft: '\u250c',
+    topRight: '\u2510',
+    bottomLeft: '\u2514',
+    bottomRight: '\u2518',
+    horizontal: '\u2500',
+    vertical: '\u2502',
   );
 
   static const double = BoxBorderChars(
-    topLeft: '╔',
-    topRight: '╗',
-    bottomLeft: '╚',
-    bottomRight: '╝',
-    horizontal: '═',
-    vertical: '║',
+    topLeft: '\u2554',
+    topRight: '\u2557',
+    bottomLeft: '\u255a',
+    bottomRight: '\u255d',
+    horizontal: '\u2550',
+    vertical: '\u2551',
   );
 
   static const rounded = BoxBorderChars(
-    topLeft: '╭',
-    topRight: '╮',
-    bottomLeft: '╰',
-    bottomRight: '╯',
-    horizontal: '─',
-    vertical: '│',
+    topLeft: '\u256d',
+    topRight: '\u256e',
+    bottomLeft: '\u2570',
+    bottomRight: '\u256f',
+    horizontal: '\u2500',
+    vertical: '\u2502',
   );
 
   static const heavy = BoxBorderChars(
-    topLeft: '┏',
-    topRight: '┓',
-    bottomLeft: '┗',
-    bottomRight: '┛',
-    horizontal: '━',
-    vertical: '┃',
+    topLeft: '\u250f',
+    topRight: '\u2513',
+    bottomLeft: '\u2517',
+    bottomRight: '\u251b',
+    horizontal: '\u2501',
+    vertical: '\u2503',
   );
 
   static const ascii = BoxBorderChars(
@@ -405,15 +425,13 @@ class BoxBorderChars {
 }
 
 /// A span that draws an ASCII box around its content.
-class Bordered extends RenderSpan implements SingleChildSpan {
-  @override
-  final LogSpan child;
+class Bordered extends SingleChildSpan {
   final BoxBorderStyle style;
   final XtermColor? borderColor;
   final int padding;
 
-  const Bordered({
-    required this.child,
+  Bordered({
+    super.child,
     this.style = BoxBorderStyle.single,
     this.borderColor,
     this.padding = 1,
@@ -421,8 +439,11 @@ class Bordered extends RenderSpan implements SingleChildSpan {
 
   @override
   void render(ConsoleMessageBuffer buffer) {
+    final c = child;
+    if (c == null) return;
+
     final temp = buffer.createChildBuffer();
-    renderSpan(child, temp);
+    c.render(temp);
     final content = temp.toString();
 
     final lines = content.isEmpty ? <String>[] : content.split('\n');

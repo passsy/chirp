@@ -15,7 +15,7 @@ import 'package:chirp/chirp.dart';
 ///   LogSpan buildSpan(LogRecord record) {
 ///     return SpanSequence([
 ///       Timestamp(record.date),
-///       const Whitespace(),
+///       Whitespace(),
 ///       LogMessage(record.message),
 ///     ]);
 ///   }
@@ -42,15 +42,11 @@ abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
   void format(LogRecord record, ConsoleMessageBuffer buffer) {
     final span = buildSpan(record);
 
-    if (spanTransformers.isEmpty) {
-      renderSpan(span, buffer);
-      return;
+    // Apply transformers directly to the mutable span tree
+    for (final transformer in spanTransformers) {
+      transformer(span, record);
     }
 
-    final tree = SpanNode.fromSpan(span);
-    for (final transformer in spanTransformers) {
-      transformer(tree, record);
-    }
-    renderSpan(tree.span, buffer);
+    renderSpan(span, buffer);
   }
 }

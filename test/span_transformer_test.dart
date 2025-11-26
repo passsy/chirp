@@ -8,7 +8,7 @@ void main() {
     test('nested Colored colors override parent colors', () {
       // Parent: red, Child: blue
       // "Hello " should be red, "World" should be blue
-      const span = AnsiColored(
+      final span = AnsiColored(
         foreground: XtermColor.red1_196, // red
         child: SpanSequence([
           PlainText('Hello '),
@@ -57,8 +57,8 @@ void main() {
         ),
         spanTransformers: [
           (tree, record) {
-            final node = tree.findFirst<Timestamp>();
-            node?.replaceSpan(_LevelEmojiSpan(record.level));
+            final timestamp = tree.findFirst<Timestamp>();
+            timestamp?.replaceWith(_LevelEmojiSpan(record.level));
           },
         ],
       );
@@ -67,7 +67,7 @@ void main() {
       formatter.format(record, buffer);
       final result = buffer.toString();
 
-      expect(result, '🔍 Hello');
+      expect(result, '\u{1f50d} Hello');
     });
 
     test('wraps Timestamp with custom span', () {
@@ -88,9 +88,9 @@ void main() {
         ),
         spanTransformers: [
           (tree, record) {
-            final node = tree.findFirst<Timestamp>();
-            if (node != null) {
-              node.replaceSpan(_BracketedSpan(child: node.span));
+            final timestamp = tree.findFirst<Timestamp>();
+            if (timestamp != null) {
+              timestamp.wrap((child) => _BracketedSpan(child: child));
             }
           },
         ],
@@ -137,666 +137,416 @@ void main() {
     });
   });
 
-  group('SpanNode', () {
-    group('wrap', () {
-      test('wraps a leaf span with Colored', () {
-        final tree = SpanNode.fromSpan(const PlainText('hello'));
-
-        tree.wrap((child) =>
-            AnsiColored(foreground: XtermColor.red1_196, child: child));
-
-        expect(tree.span, isA<AnsiColored>());
-        expect((tree.span as AnsiColored).foreground, XtermColor.red1_196);
-        expect(tree.children.length, 1);
-        expect(tree.children.first.span, isA<PlainText>());
-        expect((tree.children.first.span as PlainText).value, 'hello');
-      });
-
-      test('wraps a node inside a tree', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
+  group('LogSpan tree manipulation', () {
+    group('replaceWith', () {
+      test('replaces a leaf span in parent', () {
+        final sequence = SpanSequence([
           PlainText('before'),
           PlainText('target'),
           PlainText('after'),
-        ]));
+        ]);
 
-        final target = tree.children[1];
-        target.wrap((child) =>
-            AnsiColored(foreground: XtermColor.blue1_21, child: child));
+        final target = sequence.children[1];
+        target.replaceWith(PlainText('replaced'));
 
-        final result = tree.span;
         final buffer = ConsoleMessageBuffer();
-        renderSpan(result, buffer);
-        expect(buffer.toString(), 'beforetargetafter');
-
-        // Structure check
-        expect(tree.children[1].span, isA<AnsiColored>());
-        expect(tree.children[1].children.first.span, isA<PlainText>());
+        renderSpan(sequence, buffer);
+        expect(buffer.toString(), 'beforereplacedafter');
       });
 
-      test('wrap preserves parent reference', () {
-        final tree =
-            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
-
-        final child = tree.children.first;
-        child.wrap(
-            (c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
-
-        expect(tree.children.first.parent, tree);
-        expect(tree.children.first.children.first.parent, tree.children.first);
-      });
-    });
-
-    group('unwrap', () {
-      test('unwraps a Colored span to its child', () {
-        final tree = SpanNode.fromSpan(const AnsiColored(
+      test('replaces nested span', () {
+        final outer = AnsiColored(
           foreground: XtermColor.red1_196,
-          child: PlainText('hello'),
-        ));
+          child: PlainText('nested'),
+        );
+        final sequence = SpanSequence([outer]);
 
-        expect(tree.unwrap(), isTrue);
-        expect(tree.span, isA<PlainText>());
-        expect((tree.span as PlainText).value, 'hello');
-        expect(tree.children, isEmpty);
-      });
+        outer.child!.replaceWith(PlainText('replaced'));
 
-      test('unwraps a node inside a tree', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('before'),
-          AnsiColored(
-              foreground: XtermColor.red1_196, child: PlainText('target')),
-          PlainText('after'),
-        ]));
-
-        final styledNode = tree.children[1];
-        expect(styledNode.unwrap(), isTrue);
-
-        expect(tree.children[1].span, isA<PlainText>());
-        expect((tree.children[1].span as PlainText).value, 'target');
-      });
-
-      test('unwrap returns false for leaf spans', () {
-        final tree = SpanNode.fromSpan(const PlainText('hello'));
-        expect(tree.unwrap(), isFalse);
-        expect(tree.span, isA<PlainText>());
-      });
-
-      test('unwrap returns false for multi-child spans', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('a'),
-          PlainText('b'),
-        ]));
-        expect(tree.unwrap(), isFalse);
-        expect(tree.span, isA<SpanSequence>());
-      });
-
-      test('unwrap preserves parent reference', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          AnsiColored(
-              foreground: XtermColor.red1_196, child: PlainText('child')),
-        ]));
-
-        final styledNode = tree.children.first;
-        styledNode.unwrap();
-
-        expect(tree.children.first.parent, tree);
-      });
-    });
-
-    test('wrap then unwrap restores original', () {
-      final tree = SpanNode.fromSpan(const PlainText('hello'));
-
-      tree.wrap((child) =>
-          AnsiColored(foreground: XtermColor.red1_196, child: child));
-      expect(tree.span, isA<AnsiColored>());
-
-      tree.unwrap();
-      expect(tree.span, isA<PlainText>());
-      expect((tree.span as PlainText).value, 'hello');
-    });
-
-    group('previousSibling', () {
-      test('returns null for root node', () {
-        final tree = SpanNode.fromSpan(const PlainText('hello'));
-        expect(tree.previousSibling, isNull);
-      });
-
-      test('returns null for first child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('first'),
-          PlainText('second'),
-          PlainText('third'),
-        ]));
-        expect(tree.children[0].previousSibling, isNull);
-      });
-
-      test('returns previous sibling for middle child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('first'),
-          PlainText('second'),
-          PlainText('third'),
-        ]));
-        final middle = tree.children[1];
-        expect(middle.previousSibling, tree.children[0]);
-        expect((middle.previousSibling!.span as PlainText).value, 'first');
-      });
-
-      test('returns previous sibling for last child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('first'),
-          PlainText('second'),
-          PlainText('third'),
-        ]));
-        final last = tree.children[2];
-        expect(last.previousSibling, tree.children[1]);
-        expect((last.previousSibling!.span as PlainText).value, 'second');
-      });
-    });
-
-    group('nextSibling', () {
-      test('returns null for root node', () {
-        final tree = SpanNode.fromSpan(const PlainText('hello'));
-        expect(tree.nextSibling, isNull);
-      });
-
-      test('returns null for last child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('first'),
-          PlainText('second'),
-          PlainText('third'),
-        ]));
-        expect(tree.children[2].nextSibling, isNull);
-      });
-
-      test('returns next sibling for first child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('first'),
-          PlainText('second'),
-          PlainText('third'),
-        ]));
-        final first = tree.children[0];
-        expect(first.nextSibling, tree.children[1]);
-        expect((first.nextSibling!.span as PlainText).value, 'second');
-      });
-
-      test('returns next sibling for middle child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('first'),
-          PlainText('second'),
-          PlainText('third'),
-        ]));
-        final middle = tree.children[1];
-        expect(middle.nextSibling, tree.children[2]);
-        expect((middle.nextSibling!.span as PlainText).value, 'third');
-      });
-    });
-
-    test('sibling navigation chain', () {
-      final tree = SpanNode.fromSpan(const SpanSequence([
-        PlainText('a'),
-        PlainText('b'),
-        PlainText('c'),
-      ]));
-
-      final a = tree.children[0];
-      final b = tree.children[1];
-      final c = tree.children[2];
-
-      // Forward navigation
-      expect(a.nextSibling, b);
-      expect(b.nextSibling, c);
-      expect(c.nextSibling, isNull);
-
-      // Backward navigation
-      expect(c.previousSibling, b);
-      expect(b.previousSibling, a);
-      expect(a.previousSibling, isNull);
-    });
-
-    group('append', () {
-      test('adds child to empty node', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([]));
-        final child = SpanNode.fromSpan(const PlainText('hello'));
-
-        tree.append(child);
-
-        expect(tree.children.length, 1);
-        expect(tree.children.first, child);
-        expect(child.parent, tree);
-      });
-
-      test('adds child at the end', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('a'),
-          PlainText('b'),
-        ]));
-        final child = SpanNode.fromSpan(const PlainText('c'));
-
-        tree.append(child);
-
-        expect(tree.children.length, 3);
-        expect(tree.children[2], child);
-        expect((tree.children[2].span as PlainText).value, 'c');
-        expect(child.parent, tree);
-      });
-
-      test('removes child from previous parent', () {
-        final parent1 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
-        final parent2 = SpanNode.fromSpan(const SpanSequence([]));
-        final child = parent1.children.first;
-
-        parent2.append(child);
-
-        expect(parent1.children, isEmpty);
-        expect(parent2.children.length, 1);
-        expect(parent2.children.first, child);
-        expect(child.parent, parent2);
-      });
-
-      test('moves child between parents preserves identity', () {
-        final parent1 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('moving')]));
-        final parent2 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('existing')]));
-        final child = parent1.children.first;
-
-        parent2.append(child);
-
-        expect(identical(parent2.children[1], child), isTrue);
-        expect(child.parent, parent2);
-        expect(parent1.children, isEmpty);
-      });
-    });
-
-    group('prepend', () {
-      test('adds child to empty node', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([]));
-        final child = SpanNode.fromSpan(const PlainText('hello'));
-
-        tree.prepend(child);
-
-        expect(tree.children.length, 1);
-        expect(tree.children.first, child);
-        expect(child.parent, tree);
-      });
-
-      test('adds child at the beginning', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('b'),
-          PlainText('c'),
-        ]));
-        final child = SpanNode.fromSpan(const PlainText('a'));
-
-        tree.prepend(child);
-
-        expect(tree.children.length, 3);
-        expect(tree.children[0], child);
-        expect((tree.children[0].span as PlainText).value, 'a');
-        expect((tree.children[1].span as PlainText).value, 'b');
-        expect((tree.children[2].span as PlainText).value, 'c');
-        expect(child.parent, tree);
-      });
-
-      test('removes child from previous parent', () {
-        final parent1 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
-        final parent2 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('existing')]));
-        final child = parent1.children.first;
-
-        parent2.prepend(child);
-
-        expect(parent1.children, isEmpty);
-        expect(parent2.children.length, 2);
-        expect(parent2.children.first, child);
-        expect(child.parent, parent2);
-      });
-
-      test('existing children have correct parent after prepend', () {
-        final tree =
-            SpanNode.fromSpan(const SpanSequence([PlainText('existing')]));
-        final newChild = SpanNode.fromSpan(const PlainText('new'));
-        final existingChild = tree.children.first;
-
-        tree.prepend(newChild);
-
-        expect(existingChild.parent, tree);
-        expect(newChild.parent, tree);
-        expect(tree.children[0], newChild);
-        expect(tree.children[1], existingChild);
-      });
-    });
-
-    group('insertBefore', () {
-      test('returns false for root node', () {
-        final tree = SpanNode.fromSpan(const PlainText('root'));
-        final newNode = SpanNode.fromSpan(const PlainText('new'));
-
-        expect(tree.insertBefore(newNode), isFalse);
-      });
-
-      test('inserts before first child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('a'),
-          PlainText('b'),
-        ]));
-        final newNode = SpanNode.fromSpan(const PlainText('new'));
-        final firstChild = tree.children[0];
-
-        expect(firstChild.insertBefore(newNode), isTrue);
-
-        expect(tree.children.length, 3);
-        expect(tree.children[0], newNode);
-        expect(tree.children[1], firstChild);
-        expect((tree.children[0].span as PlainText).value, 'new');
-        expect((tree.children[1].span as PlainText).value, 'a');
-        expect(newNode.parent, tree);
-      });
-
-      test('inserts before middle child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('a'),
-          PlainText('b'),
-          PlainText('c'),
-        ]));
-        final newNode = SpanNode.fromSpan(const PlainText('new'));
-        final middleChild = tree.children[1];
-
-        expect(middleChild.insertBefore(newNode), isTrue);
-
-        expect(tree.children.length, 4);
-        expect((tree.children[0].span as PlainText).value, 'a');
-        expect((tree.children[1].span as PlainText).value, 'new');
-        expect((tree.children[2].span as PlainText).value, 'b');
-        expect((tree.children[3].span as PlainText).value, 'c');
-        expect(newNode.parent, tree);
-      });
-
-      test('removes node from previous parent', () {
-        final parent1 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('moving')]));
-        final parent2 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('target')]));
-        final movingNode = parent1.children.first;
-        final targetNode = parent2.children.first;
-
-        expect(targetNode.insertBefore(movingNode), isTrue);
-
-        expect(parent1.children, isEmpty);
-        expect(parent2.children.length, 2);
-        expect(parent2.children[0], movingNode);
-        expect(parent2.children[1], targetNode);
-        expect(movingNode.parent, parent2);
-      });
-
-      test('sibling relationships correct after insertBefore', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('a'),
-          PlainText('c'),
-        ]));
-        final newNode = SpanNode.fromSpan(const PlainText('b'));
-        final c = tree.children[1];
-
-        c.insertBefore(newNode);
-
-        final a = tree.children[0];
-        final b = tree.children[1];
-        expect(a.nextSibling, b);
-        expect(b.previousSibling, a);
-        expect(b.nextSibling, c);
-        expect(c.previousSibling, b);
-      });
-    });
-
-    group('insertAfter', () {
-      test('returns false for root node', () {
-        final tree = SpanNode.fromSpan(const PlainText('root'));
-        final newNode = SpanNode.fromSpan(const PlainText('new'));
-
-        expect(tree.insertAfter(newNode), isFalse);
-      });
-
-      test('inserts after last child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('a'),
-          PlainText('b'),
-        ]));
-        final newNode = SpanNode.fromSpan(const PlainText('new'));
-        final lastChild = tree.children[1];
-
-        expect(lastChild.insertAfter(newNode), isTrue);
-
-        expect(tree.children.length, 3);
-        expect(tree.children[2], newNode);
-        expect((tree.children[2].span as PlainText).value, 'new');
-        expect(newNode.parent, tree);
-      });
-
-      test('inserts after first child', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('a'),
-          PlainText('c'),
-        ]));
-        final newNode = SpanNode.fromSpan(const PlainText('b'));
-        final firstChild = tree.children[0];
-
-        expect(firstChild.insertAfter(newNode), isTrue);
-
-        expect(tree.children.length, 3);
-        expect((tree.children[0].span as PlainText).value, 'a');
-        expect((tree.children[1].span as PlainText).value, 'b');
-        expect((tree.children[2].span as PlainText).value, 'c');
-        expect(newNode.parent, tree);
-      });
-
-      test('removes node from previous parent', () {
-        final parent1 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('moving')]));
-        final parent2 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('target')]));
-        final movingNode = parent1.children.first;
-        final targetNode = parent2.children.first;
-
-        expect(targetNode.insertAfter(movingNode), isTrue);
-
-        expect(parent1.children, isEmpty);
-        expect(parent2.children.length, 2);
-        expect(parent2.children[0], targetNode);
-        expect(parent2.children[1], movingNode);
-        expect(movingNode.parent, parent2);
-      });
-
-      test('sibling relationships correct after insertAfter', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('a'),
-          PlainText('c'),
-        ]));
-        final newNode = SpanNode.fromSpan(const PlainText('b'));
-        final a = tree.children[0];
-
-        a.insertAfter(newNode);
-
-        final b = tree.children[1];
-        final c = tree.children[2];
-        expect(a.nextSibling, b);
-        expect(b.previousSibling, a);
-        expect(b.nextSibling, c);
-        expect(c.previousSibling, b);
-      });
-    });
-
-    group('parent/child consistency', () {
-      test('all children have correct parent after multiple operations', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('a'),
-          PlainText('b'),
-        ]));
-
-        final newFirst = SpanNode.fromSpan(const PlainText('first'));
-        final newMiddle = SpanNode.fromSpan(const PlainText('middle'));
-        final newLast = SpanNode.fromSpan(const PlainText('last'));
-
-        tree.prepend(newFirst);
-        tree.children[2].insertBefore(newMiddle);
-        tree.append(newLast);
-
-        // Verify all children point to tree as parent
-        for (final child in tree.children) {
-          expect(child.parent, tree,
-              reason: 'child ${child.span} should have tree as parent');
-        }
-
-        // Verify order: first, a, middle, b, last
-        expect((tree.children[0].span as PlainText).value, 'first');
-        expect((tree.children[1].span as PlainText).value, 'a');
-        expect((tree.children[2].span as PlainText).value, 'middle');
-        expect((tree.children[3].span as PlainText).value, 'b');
-        expect((tree.children[4].span as PlainText).value, 'last');
-      });
-
-      test('moving node clears old parent relationship', () {
-        final parent1 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
-        final parent2 = SpanNode.fromSpan(const SpanSequence([]));
-        final child = parent1.children.first;
-
-        // Move child to parent2
-        parent2.append(child);
-
-        // child should no longer be in parent1's children
-        expect(parent1.children.contains(child), isFalse);
-        // child's parent should be parent2
-        expect(child.parent, parent2);
-      });
-
-      test('toSpan preserves structure after mutations', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          PlainText('b'),
-        ]));
-
-        tree.prepend(SpanNode.fromSpan(const PlainText('a')));
-        tree.append(SpanNode.fromSpan(const PlainText('c')));
-
-        final span = tree.span;
         final buffer = ConsoleMessageBuffer();
-        renderSpan(span, buffer);
+        renderSpan(sequence, buffer);
+        expect(buffer.toString(), 'replaced');
+      });
 
-        expect(buffer.toString(), 'abc');
+      test('returns false for root span', () {
+        final span = PlainText('root');
+        expect(span.replaceWith(PlainText('new')), isFalse);
+      });
+
+      test('updates parent references correctly', () {
+        final sequence = SpanSequence([PlainText('child')]);
+        final newSpan = PlainText('new');
+
+        sequence.children.first.replaceWith(newSpan);
+
+        expect(newSpan.parent, sequence);
+      });
+    });
+
+    group('remove', () {
+      test('removes span from parent', () {
+        final sequence = SpanSequence([
+          PlainText('a'),
+          PlainText('b'),
+          PlainText('c'),
+        ]);
+
+        sequence.children[1].remove();
+
+        final buffer = ConsoleMessageBuffer();
+        renderSpan(sequence, buffer);
+        expect(buffer.toString(), 'ac');
+      });
+
+      test('returns false for root span', () {
+        final span = PlainText('root');
+        expect(span.remove(), isFalse);
+      });
+
+      test('clears parent reference after removal', () {
+        final sequence = SpanSequence([PlainText('child')]);
+        final child = sequence.children.first;
+
+        child.remove();
+
+        expect(child.parent, isNull);
+      });
+    });
+
+    group('wrap', () {
+      test('wraps a span with colored', () {
+        final sequence = SpanSequence([PlainText('hello')]);
+        final child = sequence.children.first;
+
+        child.wrap((c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
+
+        expect(sequence.children.first, isA<AnsiColored>());
+        expect((sequence.children.first as SingleChildSpan).child, isA<PlainText>());
+      });
+
+      test('preserves rendering after wrap', () {
+        final sequence = SpanSequence([PlainText('hello')]);
+        final child = sequence.children.first;
+
+        child.wrap((c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
+
+        final buffer = ConsoleMessageBuffer();
+        renderSpan(sequence, buffer);
+        expect(buffer.toString(), 'hello');
+      });
+    });
+
+    group('findFirst', () {
+      test('finds direct match', () {
+        final span = Timestamp(DateTime.now());
+        expect(span.findFirst<Timestamp>(), span);
+      });
+
+      test('finds nested span', () {
+        final timestamp = Timestamp(DateTime.now());
+        final sequence = SpanSequence([
+          PlainText('before'),
+          AnsiColored(child: timestamp),
+        ]);
+
+        expect(sequence.findFirst<Timestamp>(), timestamp);
+      });
+
+      test('returns null when not found', () {
+        final sequence = SpanSequence([PlainText('hello')]);
+        expect(sequence.findFirst<Timestamp>(), isNull);
+      });
+    });
+
+    group('findAll', () {
+      test('finds all matching spans', () {
+        final t1 = PlainText('a');
+        final t2 = PlainText('b');
+        final t3 = PlainText('c');
+        final sequence = SpanSequence([
+          t1,
+          AnsiColored(child: t2),
+          t3,
+        ]);
+
+        final found = sequence.findAll<PlainText>().toList();
+        expect(found, containsAll([t1, t2, t3]));
+      });
+
+      test('includes self if matching', () {
+        final span = PlainText('hello');
+        expect(span.findAll<PlainText>().toList(), [span]);
+      });
+    });
+
+    group('allChildren', () {
+      test('returns empty for leaf span', () {
+        final span = PlainText('hello');
+        expect(span.allChildren, isEmpty);
+      });
+
+      test('returns child for single child span', () {
+        final child = PlainText('child');
+        final span = AnsiColored(child: child);
+        expect(span.allChildren.toList(), [child]);
+      });
+
+      test('returns all children for multi child span', () {
+        final a = PlainText('a');
+        final b = PlainText('b');
+        final c = PlainText('c');
+        final span = SpanSequence([a, b, c]);
+        expect(span.allChildren.toList(), [a, b, c]);
+      });
+    });
+
+    group('allDescendants', () {
+      test('returns self for leaf', () {
+        final span = PlainText('hello');
+        expect(span.allDescendants.toList(), [span]);
+      });
+
+      test('returns self and all descendants', () {
+        final a = PlainText('a');
+        final b = PlainText('b');
+        final inner = AnsiColored(child: b);
+        final sequence = SpanSequence([a, inner]);
+
+        final descendants = sequence.allDescendants.toList();
+        expect(descendants, [sequence, a, inner, b]);
       });
     });
 
     group('allAncestors', () {
-      test('returns empty for root node', () {
-        final tree = SpanNode.fromSpan(const PlainText('root'));
-        expect(tree.allAncestors, isEmpty);
-      });
-
-      test('returns parent for direct child', () {
-        final tree =
-            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
-        final child = tree.children.first;
-
-        final ancestors = child.allAncestors.toList();
-
-        expect(ancestors.length, 1);
-        expect(ancestors[0], tree);
+      test('returns empty for root', () {
+        final span = PlainText('root');
+        expect(span.allAncestors, isEmpty);
       });
 
       test('returns ancestors from parent to root', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          AnsiColored(
-            foreground: XtermColor.red1_196,
-            child: PlainText('deep'),
-          ),
-        ]));
-        final colored = tree.children.first;
-        final deep = colored.children.first;
+        final deep = PlainText('deep');
+        final middle = AnsiColored(child: deep);
+        final root = SpanSequence([middle]);
 
         final ancestors = deep.allAncestors.toList();
-
-        expect(ancestors.length, 2);
-        expect(ancestors[0], colored, reason: 'first ancestor is parent');
-        expect(ancestors[1], tree, reason: 'last ancestor is root');
-      });
-
-      test('does not include self', () {
-        final tree =
-            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
-        final child = tree.children.first;
-
-        expect(child.allAncestors.contains(child), isFalse);
+        expect(ancestors, [middle, root]);
       });
     });
 
     group('root', () {
-      test('returns self for root node', () {
-        final tree = SpanNode.fromSpan(const PlainText('root'));
-        expect(tree.root, tree);
+      test('returns self for root span', () {
+        final span = PlainText('root');
+        expect(span.root, span);
       });
 
-      test('returns root from direct child', () {
-        final tree =
-            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
-        final child = tree.children.first;
+      test('returns root from nested span', () {
+        final deep = PlainText('deep');
+        final root = SpanSequence([AnsiColored(child: deep)]);
 
-        expect(child.root, tree);
+        expect(deep.root, root);
+      });
+    });
+
+    group('parent', () {
+      test('is null for root span', () {
+        final span = PlainText('root');
+        expect(span.parent, isNull);
       });
 
-      test('returns root from deeply nested node', () {
-        final tree = SpanNode.fromSpan(const SpanSequence([
-          AnsiColored(
-            foreground: XtermColor.red1_196,
-            child: SpanSequence([
-              PlainText('deep'),
-            ]),
-          ),
-        ]));
-        final deep = tree.children.first.children.first.children.first;
+      test('is set for child span', () {
+        final child = PlainText('child');
+        final parent = SpanSequence([child]);
 
-        expect(deep.root, tree);
+        expect(child.parent, parent);
+      });
+    });
+
+    group('MultiChildSpan operations', () {
+      test('addChild adds to end', () {
+        final sequence = SpanSequence([PlainText('a')]);
+        sequence.addChild(PlainText('b'));
+
+        final buffer = ConsoleMessageBuffer();
+        renderSpan(sequence, buffer);
+        expect(buffer.toString(), 'ab');
       });
 
-      test('root updates after moving node', () {
-        final tree1 =
-            SpanNode.fromSpan(const SpanSequence([PlainText('child')]));
-        final tree2 = SpanNode.fromSpan(const SpanSequence([]));
-        final child = tree1.children.first;
+      test('insertChild at index', () {
+        final sequence = SpanSequence([PlainText('a'), PlainText('c')]);
+        sequence.insertChild(1, PlainText('b'));
 
-        expect(child.root, tree1);
+        final buffer = ConsoleMessageBuffer();
+        renderSpan(sequence, buffer);
+        expect(buffer.toString(), 'abc');
+      });
 
-        tree2.append(child);
+      test('indexOf returns correct index', () {
+        final a = PlainText('a');
+        final b = PlainText('b');
+        final sequence = SpanSequence([a, b]);
 
-        expect(child.root, tree2);
+        expect(sequence.indexOf(a), 0);
+        expect(sequence.indexOf(b), 1);
+      });
+
+      test('previousSiblingOf and nextSiblingOf', () {
+        final a = PlainText('a');
+        final b = PlainText('b');
+        final c = PlainText('c');
+        final sequence = SpanSequence([a, b, c]);
+
+        expect(sequence.previousSiblingOf(a), isNull);
+        expect(sequence.previousSiblingOf(b), a);
+        expect(sequence.nextSiblingOf(b), c);
+        expect(sequence.nextSiblingOf(c), isNull);
+      });
+    });
+
+    group('SingleChildSpan operations', () {
+      test('setting child updates parent reference', () {
+        final span = AnsiColored();
+        final child = PlainText('hello');
+
+        span.child = child;
+
+        expect(child.parent, span);
+      });
+
+      test('replacing child clears old parent reference', () {
+        final span = AnsiColored();
+        final oldChild = PlainText('old');
+        final newChild = PlainText('new');
+
+        span.child = oldChild;
+        expect(oldChild.parent, span);
+
+        span.child = newChild;
+        expect(oldChild.parent, isNull);
+        expect(newChild.parent, span);
+      });
+    });
+
+    group('SlottedSpan operations', () {
+      test('setSlot updates parent reference', () {
+        final surrounded = Surrounded();
+        final prefix = PlainText('[');
+        final child = PlainText('content');
+
+        surrounded.prefix = prefix;
+        surrounded.child = child;
+
+        expect(prefix.parent, surrounded);
+        expect(child.parent, surrounded);
+      });
+
+      test('replacing slot clears old parent reference', () {
+        final surrounded = Surrounded();
+        final oldChild = PlainText('old');
+        final newChild = PlainText('new');
+
+        surrounded.child = oldChild;
+        expect(oldChild.parent, surrounded);
+
+        surrounded.child = newChild;
+        expect(oldChild.parent, isNull);
+        expect(newChild.parent, surrounded);
+      });
+
+      test('renders correctly with slots', () {
+        final surrounded = Surrounded(
+          prefix: PlainText('['),
+          child: PlainText('content'),
+          suffix: PlainText(']'),
+        );
+
+        final buffer = ConsoleMessageBuffer();
+        renderSpan(surrounded, buffer);
+        expect(buffer.toString(), '[content]');
+      });
+
+      test('renders empty when child is null', () {
+        final surrounded = Surrounded(
+          prefix: PlainText('['),
+          suffix: PlainText(']'),
+        );
+
+        final buffer = ConsoleMessageBuffer();
+        renderSpan(surrounded, buffer);
+        expect(buffer.toString(), isEmpty);
+      });
+    });
+
+    group('complex tree operations', () {
+      test('multiple operations preserve consistency', () {
+        final sequence = SpanSequence([
+          PlainText('a'),
+          PlainText('b'),
+        ]);
+
+        // Add new children
+        sequence.addChild(PlainText('c'));
+        sequence.insertChild(0, PlainText('0'));
+
+        // Verify structure
+        expect(sequence.children.length, 4);
+
+        // Verify all parents
+        for (final child in sequence.children) {
+          expect(child.parent, sequence,
+              reason: 'child ${child} should have sequence as parent');
+        }
+
+        // Verify output
+        final buffer = ConsoleMessageBuffer();
+        renderSpan(sequence, buffer);
+        expect(buffer.toString(), '0abc');
+      });
+
+      test('moving child between parents', () {
+        final parent1 = SpanSequence([PlainText('child')]);
+        final parent2 = SpanSequence();
+        final child = parent1.children.first;
+
+        parent2.addChild(child);
+
+        expect(parent1.children, isEmpty);
+        expect(parent2.children.length, 1);
+        expect(child.parent, parent2);
       });
     });
   });
 }
 
 /// Custom span that shows an emoji based on log level.
-class _LevelEmojiSpan extends LogSpan {
+class _LevelEmojiSpan extends LeafSpan {
   final ChirpLogLevel level;
 
-  const _LevelEmojiSpan(this.level);
+  _LevelEmojiSpan(this.level);
 
   @override
-  LogSpan build() {
+  void render(ConsoleMessageBuffer buffer) {
     final emoji = switch (level.severity) {
-      >= 500 => '❌',
-      >= 400 => '⚠️',
-      >= 300 => 'ℹ️',
-      _ => '🔍',
+      >= 500 => '\u{274c}',
+      >= 400 => '\u{26a0}\u{fe0f}',
+      >= 300 => '\u{2139}\u{fe0f}',
+      _ => '\u{1f50d}',
     };
-    return PlainText(emoji);
+    buffer.write(emoji);
   }
 }
 
 /// Custom span that wraps a child with brackets.
-class _BracketedSpan extends LogSpan {
-  final LogSpan child;
-
-  const _BracketedSpan({required this.child});
+class _BracketedSpan extends MultiChildSpan {
+  _BracketedSpan({required LogSpan child}) {
+    addChild(PlainText('['));
+    addChild(child);
+    addChild(PlainText(']'));
+  }
 
   @override
-  LogSpan build() =>
-      SpanSequence([const PlainText('['), child, const PlainText(']')]);
+  void render(ConsoleMessageBuffer buffer) {
+    for (final child in children) {
+      child.render(buffer);
+    }
+  }
 }

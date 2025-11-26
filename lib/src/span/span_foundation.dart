@@ -3,401 +3,495 @@ import 'package:chirp/chirp.dart';
 export 'package:chirp/src/span/span_based_formatter.dart';
 export 'package:chirp/src/span/spans.dart';
 
-/// Base class for all log spans.
+// =============================================================================
+// Base LogSpan class - mutable tree with parent/child management
+// =============================================================================
+
+/// Base class for all log spans - a mutable tree structure.
 ///
-/// Spans are composable building blocks for log output. Third-party developers
-/// should extend this class to create custom spans.
+/// Spans are composable building blocks for log output. Each span knows its
+/// parent and can be manipulated in place (replaced, removed, wrapped).
+///
+/// ## Class hierarchy
+///
+/// ```text
+/// LogSpan (abstract base)
+/// ├── LeafSpan (no children)
+/// │   ├── PlainText
+/// │   ├── Whitespace
+/// │   ├── NewLine
+/// │   └── EmptySpan
+/// ├── SingleChildSpan (one child)
+/// │   ├── AnsiColored
+/// │   └── Bordered
+/// ├── MultiChildSpan (ordered children)
+/// │   └── SpanSequence
+/// └── SlottedSpan (named children)
+///     └── Surrounded
+/// ```
 ///
 /// ## Example: Custom span
 ///
 /// ```dart
-/// class EmojiSpan extends LogSpan {
+/// class EmojiSpan extends LeafSpan {
 ///   final String emoji;
-///   final LogSpan child;
 ///
-///   const EmojiSpan(this.emoji, {required this.child});
+///   EmojiSpan(this.emoji);
 ///
 ///   @override
-///   LogSpan build() => Row([Text('$emoji '), child]);
+///   void render(ConsoleMessageBuffer buffer) {
+///     buffer.write(emoji);
+///   }
+/// }
+/// ```
+///
+/// ## Example: Transforming spans
+///
+/// ```dart
+/// void transform(LogSpan root, LogRecord record) {
+///   // Replace timestamp with emoji
+///   root.findFirst<Timestamp>()?.replaceWith(LevelEmoji(record.level));
+///
+///   // Remove class name
+///   root.findFirst<ClassName>()?.remove();
+///
+///   // Wrap message with border
+///   root.findFirst<Message>()?.wrap((child) => Bordered(child: child));
 /// }
 /// ```
 abstract class LogSpan {
-  const LogSpan();
+  LogSpan? _parent;
 
-  /// Builds this span into another span (or itself for RenderSpans).
-  LogSpan build();
-}
+  /// Parent span in the tree, or null if this is the root.
+  LogSpan? get parent => _parent;
 
-/// A span that renders directly to a [ConsoleMessageBuffer].
-///
-/// Most spans should extend [LogSpan] and return composed spans from [build].
-/// Only extend [RenderSpan] for primitive spans that write text directly.
-abstract class RenderSpan extends LogSpan {
-  const RenderSpan();
-
-  @override
-  LogSpan build() => this;
-
-  /// Renders this span to the buffer.
-  void render(ConsoleMessageBuffer buffer);
-}
-
-/// Builds and renders a [LogSpan] tree to a [ConsoleMessageBuffer].
-///
-/// Repeatedly calls [LogSpan.build] until reaching a [RenderSpan],
-/// then calls [RenderSpan.render].
-void renderSpan(LogSpan span, ConsoleMessageBuffer buffer) {
-  var current = span;
-  while (current is! RenderSpan) {
-    current = current.build();
-  }
-  current.render(buffer);
-}
-
-// =============================================================================
-// Span interfaces for traversal
-// =============================================================================
-
-/// Interface for spans that have a single child.
-///
-/// Implement this to allow generic span traversal and transformation.
-abstract interface class SingleChildSpan implements LogSpan {
-  /// The child span (may be null for optional children like [Surrounded]).
-  LogSpan? get child;
-}
-
-/// Interface for spans that have multiple children.
-///
-/// Implement this to allow generic span traversal and transformation.
-abstract interface class MultiChildSpan implements LogSpan {
-  /// The child spans.
-  List<LogSpan> get children;
-}
-
-// =============================================================================
-// Span transformer
-// =============================================================================
-
-/// Callback type for transforming log spans before rendering.
-///
-/// Receives a [SpanNode] tree that can be mutated in place.
-/// The [record] provides access to the original log data.
-typedef SpanTransformer = void Function(
-  SpanNode tree,
-  LogRecord record,
-);
-
-// =============================================================================
-// Span tree utilities
-// =============================================================================
-
-/// Result of finding a span in the tree.
-class SpanMatch<T extends LogSpan> {
-  /// The found span.
-  final T span;
-
-  /// Parent spans from root to immediate parent (does not include [span]).
-  final List<LogSpan> parents;
-
-  const SpanMatch(this.span, this.parents);
-
-  @override
-  String toString() => 'SpanMatch($span, parents: $parents)';
-}
-
-/// Finds the first span of type [T] in the tree and returns it with its parents.
-///
-/// Returns `null` if no span of type [T] is found.
-/// The [parents] list contains the path from root to the found span (exclusive).
-SpanMatch<T>? findSpan<T extends LogSpan>(LogSpan span) {
-  return _findSpan<T>(span, []);
-}
-
-SpanMatch<T>? _findSpan<T extends LogSpan>(
-    LogSpan span, List<LogSpan> parents) {
-  // Found the target
-  if (span is T) {
-    return SpanMatch(span, parents);
-  }
-
-  final newParents = [...parents, span];
-
-  // Handle MultiChildSpan (Row)
-  if (span is MultiChildSpan) {
-    for (final child in span.children) {
-      final result = _findSpan<T>(child, newParents);
-      if (result != null) return result;
-    }
-  }
-
-  // Handle SingleChildSpan (Styled, Box, Surrounded)
-  if (span is SingleChildSpan) {
-    final child = span.child;
-    if (child != null) {
-      final result = _findSpan<T>(child, newParents);
-      if (result != null) return result;
-    }
-  }
-
-  return null;
-}
-
-// =============================================================================
-// SpanNode - Mutable wrapper for tree manipulation
-// =============================================================================
-
-/// A mutable wrapper around [LogSpan] that provides parent links and
-/// tree manipulation methods.
-///
-/// SpanNode is like Flutter's Element - it represents a specific position
-/// in the tree, while [LogSpan] (like Widget) is the immutable description.
-///
-/// ## Usage
-///
-/// ```dart
-/// // Build a SpanNode tree from a LogSpan tree
-/// final tree = SpanNode.fromSpan(rootSpan);
-///
-/// // Find and manipulate nodes
-/// final levelNode = tree.findFirst<Level>();
-/// levelNode?.remove();
-///
-/// // Convert back to LogSpan tree
-/// final newSpan = tree.toSpan();
-/// ```
-class SpanNode {
-  LogSpan _span;
-  final List<SpanNode> _children = [];
-
-  /// The underlying [LogSpan] this node wraps.
-  LogSpan get span => _span;
-
-  /// Parent node, null for root.
-  SpanNode? parent;
-
-  /// Child nodes in tree order (read-only view).
+  /// All direct children of this span.
   ///
-  /// For [Row]: all children in order.
-  /// For [Styled], [Box]: single child at index 0.
-  List<SpanNode> get children => List.unmodifiable(_children);
+  /// Override in subclasses to provide children.
+  /// Returns an empty iterable by default (for leaf spans).
+  Iterable<LogSpan> get allChildren => const [];
 
-  SpanNode._(this._span);
-
-  /// Builds a [SpanNode] tree from a [LogSpan] tree.
+  /// Replaces this span in its parent with [newSpan].
   ///
-  /// This is O(n) where n is the number of spans in the tree.
-  factory SpanNode.fromSpan(LogSpan span) {
-    final node = SpanNode._(span);
+  /// Returns true if replaced, false if this span has no parent.
+  bool replaceWith(LogSpan newSpan);
 
-    if (span is MultiChildSpan) {
-      for (final child in span.children) {
-        final childNode = SpanNode.fromSpan(child);
-        childNode.parent = node;
-        node._children.add(childNode);
+  /// Removes this span from its parent.
+  ///
+  /// Returns true if removed, false if this span has no parent.
+  bool remove();
+
+  /// Wraps this span with a wrapper span.
+  ///
+  /// The [wrapper] function receives this span and should return a new span
+  /// that contains this span as a child.
+  ///
+  /// Note: The wrapper function will receive this span as an argument. When
+  /// adding this span as a child to the wrapper (e.g., via constructor parameter
+  /// or addChild), the span will be automatically removed from its current
+  /// parent. The wrap method handles updating the original parent to point
+  /// to the wrapper.
+  ///
+  /// Example:
+  /// ```dart
+  /// span.wrap((child) => AnsiColored(foreground: XtermColor.red, child: child));
+  /// ```
+  void wrap(LogSpan Function(LogSpan child) wrapper) {
+    final originalParent = _parent;
+    // Store position info before the wrapper constructor potentially removes us
+    int? originalIndex;
+    String? originalSlotKey;
+    if (originalParent is MultiChildSpan) {
+      originalIndex = originalParent._children.indexOf(this);
+    } else if (originalParent is SlottedSpan) {
+      for (final entry in originalParent._slots.entries) {
+        if (entry.value == this) {
+          originalSlotKey = entry.key;
+          break;
+        }
       }
-    } else if (span is SingleChildSpan && span.child != null) {
-      final childNode = SpanNode.fromSpan(span.child!);
-      childNode.parent = node;
-      node._children.add(childNode);
     }
 
-    return node;
+    // Create the wrapper - this may remove this span from its original parent
+    // when addChild or setting child property is called
+    final wrapped = wrapper(this);
+
+    // If we had an original parent, we need to put the wrapper in our place
+    if (originalParent != null) {
+      switch (originalParent) {
+        case final SingleChildSpan parent:
+          // Set the wrapper as the new child (we were already removed)
+          if (parent._child == null || parent._child == this) {
+            wrapped._parent?._removeChild(wrapped);
+            wrapped._setParent(parent);
+            parent._child = wrapped;
+          }
+        case final MultiChildSpan parent:
+          // Insert wrapper at our original position
+          if (originalIndex != null && originalIndex >= 0) {
+            wrapped._parent?._removeChild(wrapped);
+            wrapped._setParent(parent);
+            // Clamp index in case list changed
+            final insertIndex = originalIndex.clamp(0, parent._children.length);
+            parent._children.insert(insertIndex, wrapped);
+          }
+        case final SlottedSpan parent:
+          // Fill our original slot with the wrapper
+          if (originalSlotKey != null) {
+            wrapped._parent?._removeChild(wrapped);
+            wrapped._setParent(parent);
+            parent._slots[originalSlotKey] = wrapped;
+          }
+      }
+    }
   }
 
-  /// Finds the first descendant node (including self) where span is of type [T].
+  /// Renders this span to the [buffer].
   ///
-  /// Returns null if no matching node is found.
-  SpanNode? findFirst<T extends LogSpan>() {
-    if (_span is T) return this;
-    for (final child in _children) {
+  /// Subclasses must implement this to write their content.
+  void render(ConsoleMessageBuffer buffer);
+
+  /// Called by parent when setting/clearing this span's parent.
+  void _setParent(LogSpan? parent) {
+    _parent = parent;
+  }
+
+  /// Finds the first descendant (including self) of type [T].
+  ///
+  /// Returns null if no span of type [T] is found.
+  T? findFirst<T extends LogSpan>() {
+    if (this is T) return this as T;
+    for (final child in allChildren) {
       final found = child.findFirst<T>();
       if (found != null) return found;
     }
     return null;
   }
 
-  /// Finds all descendant nodes (including self) where span is of type [T].
-  List<SpanNode> findAll<T extends LogSpan>() {
-    final results = <SpanNode>[];
-    _findAll<T>(results);
-    return results;
-  }
-
-  void _findAll<T extends LogSpan>(List<SpanNode> results) {
-    if (_span is T) results.add(this);
-    for (final child in _children) {
-      child._findAll<T>(results);
+  /// Finds all descendants (including self) of type [T].
+  Iterable<T> findAll<T extends LogSpan>() sync* {
+    if (this is T) yield this as T;
+    for (final child in allChildren) {
+      yield* child.findAll<T>();
     }
   }
-
-  /// Removes this node from its parent's children.
-  ///
-  /// Returns true if the node was removed, false if it had no parent.
-  bool remove() {
-    final removed = parent?._children.remove(this) ?? false;
-    if (removed) parent = null;
-    return removed;
-  }
-
-  /// Adds [child] as the last child of this node.
-  ///
-  /// If [child] already has a parent, it is removed from its current parent.
-  void append(SpanNode child) {
-    child.remove();
-    child.parent = this;
-    _children.add(child);
-  }
-
-  /// Adds [child] as the first child of this node.
-  ///
-  /// If [child] already has a parent, it is removed from its current parent.
-  void prepend(SpanNode child) {
-    child.remove();
-    child.parent = this;
-    _children.insert(0, child);
-  }
-
-  /// Inserts [newNode] before this node in its parent's children.
-  ///
-  /// Returns true if inserted, false if this node has no parent.
-  bool insertBefore(SpanNode newNode) {
-    if (parent == null) return false;
-    final idx = parent!._children.indexOf(this);
-    if (idx < 0) return false;
-
-    newNode.remove();
-    newNode.parent = parent;
-    parent!._children.insert(idx, newNode);
-    return true;
-  }
-
-  /// Inserts [newNode] after this node in its parent's children.
-  ///
-  /// Returns true if inserted, false if this node has no parent.
-  bool insertAfter(SpanNode newNode) {
-    if (parent == null) return false;
-    final idx = parent!._children.indexOf(this);
-    if (idx < 0) return false;
-
-    newNode.remove();
-    newNode.parent = parent;
-    parent!._children.insert(idx + 1, newNode);
-    return true;
-  }
-
-  /// Replaces this node with another node in its parent's children.
-  ///
-  /// Returns true if replaced, false if this node has no parent.
-  bool replaceWith(SpanNode replacement) {
-    if (parent == null) return false;
-    final idx = parent!._children.indexOf(this);
-    if (idx < 0) return false;
-
-    parent!._children[idx] = replacement;
-    replacement.parent = parent;
-    parent = null;
-    return true;
-  }
-
-  /// Replaces this node's span with a new span.
-  ///
-  /// This rebuilds the children to match the new span's structure.
-  void replaceSpan(LogSpan newSpan) {
-    // Clear existing children
-    for (final child in _children) {
-      child.parent = null;
-    }
-    _children.clear();
-
-    _span = newSpan;
-
-    // Rebuild children from new span using interfaces only
-    if (newSpan is MultiChildSpan) {
-      for (final child in newSpan.children) {
-        final childNode = SpanNode.fromSpan(child);
-        childNode.parent = this;
-        _children.add(childNode);
-      }
-    } else if (newSpan is SingleChildSpan && newSpan.child != null) {
-      final childNode = SpanNode.fromSpan(newSpan.child!);
-      childNode.parent = this;
-      _children.add(childNode);
-    }
-  }
-
-  /// Wraps this node's span with a wrapper span.
-  ///
-  /// The wrapper must be a [SingleChildSpan] that takes this node's span
-  /// as its child.
-  ///
-  /// Example:
-  /// ```dart
-  /// node.wrap((child) => Styled(foreground: XtermColor.red, child: child));
-  /// ```
-  void wrap(LogSpan Function(LogSpan child) wrapper) {
-    final wrapped = wrapper(_span);
-    replaceSpan(wrapped);
-  }
-
-  /// Unwraps this node by replacing it with its single child.
-  ///
-  /// Only works if this node has exactly one child.
-  /// Returns true if unwrapped, false if node doesn't have exactly one child.
-  bool unwrap() {
-    if (_children.length != 1) return false;
-    final child = _children.first;
-    replaceSpan(child._span);
-    return true;
-  }
-
-  /// Gets the previous sibling, or null if first child or no parent.
-  SpanNode? get previousSibling {
-    if (parent == null) return null;
-    final idx = parent!._children.indexOf(this);
-    return idx > 0 ? parent!._children[idx - 1] : null;
-  }
-
-  /// Gets the next sibling, or null if last child or no parent.
-  SpanNode? get nextSibling {
-    if (parent == null) return null;
-    final siblings = parent!._children;
-    final idx = siblings.indexOf(this);
-    return idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1] : null;
-  }
-
-  /// Index of this node in parent's children, or -1 if no parent.
-  int get index => parent?._children.indexOf(this) ?? -1;
 
   /// Returns all descendants (including self) in pre-order.
-  Iterable<SpanNode> get allDescendants sync* {
+  Iterable<LogSpan> get allDescendants sync* {
     yield this;
-    for (final child in _children) {
+    for (final child in allChildren) {
       yield* child.allDescendants;
     }
   }
 
   /// Returns all ancestors from parent to root.
   ///
-  /// Does not include self. Empty if this is the root node.
-  Iterable<SpanNode> get allAncestors sync* {
-    var current = parent;
+  /// Does not include self. Empty if this is the root.
+  Iterable<LogSpan> get allAncestors sync* {
+    var current = _parent;
     while (current != null) {
       yield current;
-      current = current.parent;
+      current = current._parent;
     }
   }
 
-  /// Returns the root node of the tree.
+  /// Returns the root span of the tree.
   ///
-  /// Returns self if this node has no parent.
-  SpanNode get root {
+  /// Returns self if this span has no parent.
+  LogSpan get root {
     var current = this;
-    while (current.parent != null) {
-      current = current.parent!;
+    while (current._parent != null) {
+      current = current._parent!;
     }
     return current;
   }
+}
+
+// =============================================================================
+// LeafSpan - spans with no children
+// =============================================================================
+
+/// Base class for spans that have no children.
+///
+/// Leaf spans are the primitive building blocks that render directly
+/// to the buffer. Examples: [PlainText], [Whitespace], [NewLine], [EmptySpan].
+abstract class LeafSpan extends LogSpan {
+  @override
+  bool replaceWith(LogSpan newSpan) {
+    final p = _parent;
+    if (p == null) return false;
+    p._replaceChild(this, newSpan);
+    return true;
+  }
 
   @override
-  String toString() => 'SpanNode(${span.runtimeType})';
+  bool remove() {
+    final p = _parent;
+    if (p == null) return false;
+    p._removeChild(this);
+    return true;
+  }
+}
+
+// =============================================================================
+// SingleChildSpan - spans with exactly one child
+// =============================================================================
+
+/// Base class for spans that have exactly one child.
+///
+/// Examples: [AnsiColored], [Bordered].
+abstract class SingleChildSpan extends LogSpan {
+  LogSpan? _child;
+
+  /// Creates a single child span with an optional [child].
+  SingleChildSpan({LogSpan? child}) {
+    if (child != null) {
+      this.child = child;
+    }
+  }
+
+  /// The single child of this span.
+  LogSpan? get child => _child;
+
+  /// Sets the child span, updating parent references.
+  set child(LogSpan? newChild) {
+    _child?._setParent(null);
+    _child = newChild;
+    if (newChild != null) {
+      // Remove from old parent first
+      newChild._parent?._removeChild(newChild);
+      newChild._setParent(this);
+    }
+  }
+
+  @override
+  Iterable<LogSpan> get allChildren =>
+      _child != null ? [_child!] : const <LogSpan>[];
+
+  @override
+  bool replaceWith(LogSpan newSpan) {
+    final p = _parent;
+    if (p == null) return false;
+    p._replaceChild(this, newSpan);
+    return true;
+  }
+
+  @override
+  bool remove() {
+    final p = _parent;
+    if (p == null) return false;
+    p._removeChild(this);
+    return true;
+  }
+}
+
+// =============================================================================
+// MultiChildSpan - spans with multiple ordered children
+// =============================================================================
+
+/// Base class for spans that have multiple ordered children.
+///
+/// Examples: [SpanSequence].
+abstract class MultiChildSpan extends LogSpan {
+  final List<LogSpan> _children = [];
+
+  /// Creates a multi child span with optional initial [children].
+  MultiChildSpan({List<LogSpan>? children}) {
+    if (children != null) {
+      for (final child in children) {
+        addChild(child);
+      }
+    }
+  }
+
+  /// Read-only view of children.
+  List<LogSpan> get children => List.unmodifiable(_children);
+
+  @override
+  Iterable<LogSpan> get allChildren => _children;
+
+  /// Adds [child] as the last child.
+  void addChild(LogSpan child) {
+    child._parent?._removeChild(child);
+    child._setParent(this);
+    _children.add(child);
+  }
+
+  /// Inserts [child] at [index].
+  void insertChild(int index, LogSpan child) {
+    child._parent?._removeChild(child);
+    child._setParent(this);
+    _children.insert(index, child);
+  }
+
+  /// Gets the index of [child] in this span's children.
+  ///
+  /// Returns -1 if [child] is not a child of this span.
+  int indexOf(LogSpan child) => _children.indexOf(child);
+
+  /// Gets the previous sibling of [child], or null if first.
+  LogSpan? previousSiblingOf(LogSpan child) {
+    final idx = _children.indexOf(child);
+    return idx > 0 ? _children[idx - 1] : null;
+  }
+
+  /// Gets the next sibling of [child], or null if last.
+  LogSpan? nextSiblingOf(LogSpan child) {
+    final idx = _children.indexOf(child);
+    return idx >= 0 && idx < _children.length - 1 ? _children[idx + 1] : null;
+  }
+
+  @override
+  bool replaceWith(LogSpan newSpan) {
+    final p = _parent;
+    if (p == null) return false;
+    p._replaceChild(this, newSpan);
+    return true;
+  }
+
+  @override
+  bool remove() {
+    final p = _parent;
+    if (p == null) return false;
+    p._removeChild(this);
+    return true;
+  }
+}
+
+// =============================================================================
+// SlottedSpan - spans with named child slots
+// =============================================================================
+
+/// Base class for spans that have named child slots.
+///
+/// Unlike [MultiChildSpan], slots have semantic names (e.g., prefix, child, suffix).
+/// Examples: [Surrounded].
+abstract class SlottedSpan extends LogSpan {
+  final Map<String, LogSpan> _slots = {};
+
+  /// Gets the span in the named [slot].
+  LogSpan? getSlot(String slot) => _slots[slot];
+
+  /// Sets the span in the named [slot].
+  void setSlot(String slot, LogSpan? child) {
+    _slots[slot]?._setParent(null);
+    if (child != null) {
+      child._parent?._removeChild(child);
+      child._setParent(this);
+      _slots[slot] = child;
+    } else {
+      _slots.remove(slot);
+    }
+  }
+
+  @override
+  Iterable<LogSpan> get allChildren => _slots.values;
+
+  @override
+  bool replaceWith(LogSpan newSpan) {
+    final p = _parent;
+    if (p == null) return false;
+    p._replaceChild(this, newSpan);
+    return true;
+  }
+
+  @override
+  bool remove() {
+    final p = _parent;
+    if (p == null) return false;
+    p._removeChild(this);
+    return true;
+  }
+}
+
+// =============================================================================
+// Internal child manipulation - called by child's replaceWith/remove
+// =============================================================================
+
+extension _ParentChildManagement on LogSpan {
+  /// Replaces [oldChild] with [newChild] in this span's children.
+  void _replaceChild(LogSpan oldChild, LogSpan newChild) {
+    switch (this) {
+      case final SingleChildSpan parent:
+        if (parent._child == oldChild) {
+          oldChild._setParent(null);
+          newChild._parent?._removeChild(newChild);
+          newChild._setParent(parent);
+          parent._child = newChild;
+        }
+      case final MultiChildSpan parent:
+        final index = parent._children.indexOf(oldChild);
+        if (index != -1) {
+          oldChild._setParent(null);
+          newChild._parent?._removeChild(newChild);
+          newChild._setParent(parent);
+          parent._children[index] = newChild;
+        }
+      case final SlottedSpan parent:
+        for (final entry in parent._slots.entries) {
+          if (entry.value == oldChild) {
+            oldChild._setParent(null);
+            newChild._parent?._removeChild(newChild);
+            newChild._setParent(parent);
+            parent._slots[entry.key] = newChild;
+            return;
+          }
+        }
+    }
+  }
+
+  /// Removes [child] from this span's children.
+  void _removeChild(LogSpan child) {
+    switch (this) {
+      case final SingleChildSpan parent:
+        if (parent._child == child) {
+          child._setParent(null);
+          parent._child = null;
+        }
+      case final MultiChildSpan parent:
+        child._setParent(null);
+        parent._children.remove(child);
+      case final SlottedSpan parent:
+        final key = parent._slots.entries
+            .where((e) => e.value == child)
+            .map((e) => e.key)
+            .firstOrNull;
+        if (key != null) {
+          child._setParent(null);
+          parent._slots.remove(key);
+        }
+    }
+  }
+}
+
+// =============================================================================
+// Span transformer - callback for modifying spans before rendering
+// =============================================================================
+
+/// Callback type for transforming log spans before rendering.
+///
+/// Receives a root [LogSpan] that can be mutated in place.
+/// The [record] provides access to the original log data.
+///
+/// Example:
+/// ```dart
+/// void myTransformer(LogSpan root, LogRecord record) {
+///   // Replace timestamp with level emoji
+///   root.findFirst<Timestamp>()?.replaceWith(LevelEmoji(record.level));
+/// }
+/// ```
+typedef SpanTransformer = void Function(
+  LogSpan tree,
+  LogRecord record,
+);
+
+// =============================================================================
+// Rendering
+// =============================================================================
+
+/// Renders a [LogSpan] tree to a [ConsoleMessageBuffer].
+///
+/// Simply calls [LogSpan.render] on the span.
+void renderSpan(LogSpan span, ConsoleMessageBuffer buffer) {
+  span.render(buffer);
 }

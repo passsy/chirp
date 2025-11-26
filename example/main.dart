@@ -292,21 +292,23 @@ final sectionLogger = ChirpLogger()
   );
 
 /// Prepends a newline before messages starting with "=== ".
-void _prependNewlineForSectionHeaders(SpanNode tree, LogRecord record) {
+void _prependNewlineForSectionHeaders(LogSpan tree, LogRecord record) {
   final message = record.message?.toString() ?? '';
   if (message.startsWith('=== ')) {
-    // Replace the root span with a new SpanSequence that includes a newline prefix
-    tree.replaceSpan(SpanSequence([const NewLine(), tree.span]));
+    // Find the root sequence and prepend a newline
+    if (tree is MultiChildSpan) {
+      tree.insertChild(0, NewLine());
+    }
   }
 }
 
 /// Removes the BracketedLogLevel span from the output.
-void _removeLevel(SpanNode tree, LogRecord record) {
+void _removeLevel(LogSpan tree, LogRecord record) {
   tree.findFirst<BracketedLogLevel>()?.remove();
 }
 
 /// Wraps WTF level messages in a bordered box.
-void _boxWtfMessages(SpanNode tree, LogRecord record) {
+void _boxWtfMessages(LogSpan tree, LogRecord record) {
   if (record.level != ChirpLogLevel.wtf) return;
 
   tree.wrap(

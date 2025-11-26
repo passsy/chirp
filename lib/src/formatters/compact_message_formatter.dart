@@ -28,9 +28,9 @@ class CompactChirpMessageFormatter extends SpanBasedFormatter {
 
     final spans = <LogSpan>[
       Timestamp(record.date),
-      const Whitespace(),
+      Whitespace(),
       PlainText(classLabel),
-      const Whitespace(),
+      Whitespace(),
       LogMessage(record.message),
     ];
 
@@ -43,7 +43,7 @@ class CompactChirpMessageFormatter extends SpanBasedFormatter {
     // Error
     if (record.error != null) {
       spans.addAll([
-        const NewLine(),
+        NewLine(),
         ErrorSpan(record.error),
       ]);
     }
@@ -51,7 +51,7 @@ class CompactChirpMessageFormatter extends SpanBasedFormatter {
     // Stack trace
     if (record.stackTrace case final stackTrace?) {
       spans.addAll([
-        const NewLine(),
+        NewLine(),
         StackTraceSpan(stackTrace),
       ]);
     }

@@ -49,163 +49,150 @@ class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
 
   @override
   LogSpan buildSpan(LogRecord record) {
-    return SimpleLogSpan(
+    return _buildSimpleLogSpan(
       record: record,
       showLoggerName: showLoggerName,
       showCaller: showCaller,
       showInstance: showInstance,
       showData: showData,
-    ).build();
+    );
   }
 }
 
-/// A span that renders a [LogRecord] in simple comprehensive format.
-class SimpleLogSpan extends LogSpan {
-  final LogRecord record;
-  final bool showLoggerName;
-  final bool showCaller;
-  final bool showInstance;
-  final bool showData;
+/// Builds a span tree for a [LogRecord] in simple comprehensive format.
+LogSpan _buildSimpleLogSpan({
+  required LogRecord record,
+  required bool showLoggerName,
+  required bool showCaller,
+  required bool showInstance,
+  required bool showData,
+}) {
+  final spans = <LogSpan>[];
 
-  const SimpleLogSpan({
-    required this.record,
-    required this.showLoggerName,
-    required this.showCaller,
-    required this.showInstance,
-    required this.showData,
-  });
+  // Timestamp: 2024-01-10 10:30:45.123
+  spans.add(FullTimestamp(record.date));
 
-  @override
-  LogSpan build() {
-    final spans = <LogSpan>[];
+  // Level: [INFO]
+  spans.addAll([
+    Whitespace(),
+    BracketedLogLevel(record.level),
+  ]);
 
-    // Timestamp: 2024-01-10 10:30:45.123
-    spans.add(FullTimestamp(record.date));
+  // Caller location and method
+  if (showCaller && record.caller != null) {
+    final callerInfo = getCallerInfo(record.caller!);
+    if (callerInfo != null) {
+      // Location: main:42
+      spans.addAll([
+        Whitespace(),
+        DartSourceCodeLocation(
+          fileName: callerInfo.callerFileName,
+          line: callerInfo.line,
+        ),
+      ]);
 
-    // Level: [INFO]
-    spans.addAll([
-      const Whitespace(),
-      BracketedLogLevel(record.level),
-    ]);
+      // Method name
+      final className = _resolveClassName(record);
+      final method = callerInfo.callerMethod;
+      String? methodToShow;
 
-    // Caller location and method
-    if (showCaller && record.caller != null) {
-      final callerInfo = getCallerInfo(record.caller!);
-      if (callerInfo != null) {
-        // Location: main:42
-        spans.addAll([
-          const Whitespace(),
-          DartSourceCodeLocation(
-            fileName: callerInfo.callerFileName,
-            line: callerInfo.line,
-          ),
-        ]);
-
-        // Method name
-        final className = _resolveClassName();
-        final method = callerInfo.callerMethod;
-        String? methodToShow;
-
-        if (method != '<unknown>' &&
-            (className == null || !method.startsWith('$className.'))) {
-          methodToShow = method;
-        } else if (className != null && method.startsWith('$className.')) {
-          final methodName = method.substring(className.length + 1);
-          if (methodName.isNotEmpty) {
-            methodToShow = methodName;
-          }
-        }
-
-        if (methodToShow != null) {
-          spans.addAll([
-            const Whitespace(),
-            MethodName(methodToShow),
-          ]);
+      if (method != '<unknown>' &&
+          (className == null || !method.startsWith('$className.'))) {
+        methodToShow = method;
+      } else if (className != null && method.startsWith('$className.')) {
+        final methodName = method.substring(className.length + 1);
+        if (methodName.isNotEmpty) {
+          methodToShow = methodName;
         }
       }
-    }
 
-    // Class and instance information
-    if (showInstance) {
-      final className = _resolveClassName();
-      if (className != null) {
-        final instanceHash = record.instanceHash?.toRadixString(16).padLeft(8, '0');
+      if (methodToShow != null) {
         spans.addAll([
-          const Whitespace(),
-          ClassName(className, instanceHash: instanceHash),
+          Whitespace(),
+          MethodName(methodToShow),
         ]);
       }
     }
+  }
 
-    // Logger name - shown if present and not "root"
-    if (showLoggerName &&
-        record.loggerName != null &&
-        record.loggerName != 'root') {
+  // Class and instance information
+  if (showInstance) {
+    final className = _resolveClassName(record);
+    if (className != null) {
+      final instanceHash =
+          record.instanceHash?.toRadixString(16).padLeft(8, '0');
       spans.addAll([
-        const Whitespace(),
-        BracketedLoggerName(record.loggerName!),
+        Whitespace(),
+        ClassName(className, instanceHash: instanceHash),
       ]);
     }
+  }
 
-    // Message separator and text
+  // Logger name - shown if present and not "root"
+  if (showLoggerName &&
+      record.loggerName != null &&
+      record.loggerName != 'root') {
     spans.addAll([
-      const PlainText(' - '),
-      LogMessage(record.message),
+      Whitespace(),
+      BracketedLoggerName(record.loggerName!),
     ]);
-
-    // Structured data on separate line (key=value format)
-    if (showData && record.data != null && record.data!.isNotEmpty) {
-      spans.addAll([
-        const NewLine(),
-        const PlainText('  '),
-        KeyValueData(record.data!),
-      ]);
-    }
-
-    // Error on new line
-    if (record.error != null) {
-      spans.addAll([
-        const NewLine(),
-        ErrorSpan(record.error),
-      ]);
-    }
-
-    // Stack trace
-    if (record.stackTrace != null) {
-      spans.addAll([
-        const NewLine(),
-        StackTraceSpan(record.stackTrace!),
-      ]);
-    }
-
-    return SpanSequence(spans);
   }
 
-  String? _resolveClassName() {
-    if (record.caller != null) {
-      final callerInfo = getCallerInfo(record.caller!);
-      if (callerInfo?.callerClassName != null) {
-        return callerInfo!.callerClassName;
-      }
-    }
-    if (record.instance != null) {
-      return record.instance!.runtimeType.toString();
-    }
-    return null;
+  // Message separator and text
+  spans.addAll([
+    PlainText(' - '),
+    LogMessage(record.message),
+  ]);
+
+  // Structured data on separate line (key=value format)
+  if (showData && record.data != null && record.data!.isNotEmpty) {
+    spans.addAll([
+      NewLine(),
+      PlainText('  '),
+      KeyValueData(record.data!),
+    ]);
   }
 
-  @override
-  String toString() => 'SimpleLogSpan(${record.message})';
+  // Error on new line
+  if (record.error != null) {
+    spans.addAll([
+      NewLine(),
+      ErrorSpan(record.error),
+    ]);
+  }
+
+  // Stack trace
+  if (record.stackTrace != null) {
+    spans.addAll([
+      NewLine(),
+      StackTraceSpan(record.stackTrace!),
+    ]);
+  }
+
+  return SpanSequence(spans);
+}
+
+String? _resolveClassName(LogRecord record) {
+  if (record.caller != null) {
+    final callerInfo = getCallerInfo(record.caller!);
+    if (callerInfo?.callerClassName != null) {
+      return callerInfo!.callerClassName;
+    }
+  }
+  if (record.instance != null) {
+    return record.instance!.runtimeType.toString();
+  }
+  return null;
 }
 
 /// Full timestamp with date: 2024-01-10 10:30:45.123
-class FullTimestamp extends LogSpan {
+class FullTimestamp extends LeafSpan {
   final DateTime date;
 
-  const FullTimestamp(this.date);
+  FullTimestamp(this.date);
 
   @override
-  LogSpan build() {
+  void render(ConsoleMessageBuffer buffer) {
     final year = date.year.toString().padLeft(4, '0');
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
@@ -213,7 +200,7 @@ class FullTimestamp extends LogSpan {
     final minute = date.minute.toString().padLeft(2, '0');
     final second = date.second.toString().padLeft(2, '0');
     final ms = date.millisecond.toString().padLeft(3, '0');
-    return PlainText('$year-$month-$day $hour:$minute:$second.$ms');
+    buffer.write('$year-$month-$day $hour:$minute:$second.$ms');
   }
 
   @override
@@ -221,29 +208,31 @@ class FullTimestamp extends LogSpan {
 }
 
 /// Logger name in brackets: [payment]
-class BracketedLoggerName extends LogSpan {
+class BracketedLoggerName extends LeafSpan {
   final String name;
 
-  const BracketedLoggerName(this.name);
+  BracketedLoggerName(this.name);
 
   @override
-  LogSpan build() => PlainText('[$name]');
+  void render(ConsoleMessageBuffer buffer) {
+    buffer.write('[$name]');
+  }
 
   @override
   String toString() => 'BracketedLoggerName("$name")';
 }
 
 /// Key-value data in key=value format: userId=user_123 action=login
-class KeyValueData extends LogSpan {
+class KeyValueData extends LeafSpan {
   final Map<String, Object?> data;
 
-  const KeyValueData(this.data);
+  KeyValueData(this.data);
 
   @override
-  LogSpan build() {
-    if (data.isEmpty) return const EmptySpan();
+  void render(ConsoleMessageBuffer buffer) {
+    if (data.isEmpty) return;
     final str = data.entries.map((e) => '${e.key}=${e.value}').join(' ');
-    return PlainText(str);
+    buffer.write(str);
   }
 
   @override
