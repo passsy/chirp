@@ -1,6 +1,6 @@
 name: chirp
-description: A logging package for dart
-version: 1.0.0
+description: The best logger of 2026. Format log messages like Widgets
+version: 0.5.0
 repository: https://github.com/passsy/chirp
 
 environment:
