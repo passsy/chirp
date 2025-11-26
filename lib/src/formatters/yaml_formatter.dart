@@ -1,7 +1,7 @@
 /// Formats a value as YAML-like lines with proper indentation.
 ///
 /// Returns a list of lines without trailing newlines.
-List<String> formatAsYaml(Object? value, int indent) {
+List<String> formatAsYaml(Object? value, {int indent = 0}) {
   final indentStr = '  ' * indent;
 
   if (value == null) {
@@ -26,7 +26,7 @@ List<String> formatAsYaml(Object? value, int indent) {
           lines.add('$indentStr$formattedKey: $emptyVal');
         } else {
           lines.add('$indentStr$formattedKey:');
-          lines.addAll(formatAsYaml(val, indent + 1));
+          lines.addAll(formatAsYaml(val, indent: indent + 1));
         }
       } else {
         // Simple value: key: value on same line
@@ -50,7 +50,7 @@ List<String> formatAsYaml(Object? value, int indent) {
           lines.add('$indentStr- $emptyVal');
         } else {
           lines.add('$indentStr-');
-          lines.addAll(formatAsYaml(item, indent + 1));
+          lines.addAll(formatAsYaml(item, indent: indent + 1));
         }
       } else {
         // Simple item: dash and value on same line

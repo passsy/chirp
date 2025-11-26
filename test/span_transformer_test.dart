@@ -5,6 +5,77 @@ import 'package:test/test.dart';
 
 void main() {
   group('Colored', () {
+    test('applies color to each line of multi-line strings', () {
+      final span = AnsiColored(
+        foreground: XtermColor.red1_196,
+        child: PlainText('line1\nline2\nline3'),
+      );
+
+      final buffer = ConsoleMessageBuffer(useColors: true);
+      renderSpan(span, buffer);
+      final result = buffer.toString();
+
+      // Red color (196) should be applied at the start of each line
+      // Format: \x1B[38;5;196mline1\n\x1B[38;5;196mline2\n\x1B[38;5;196mline3\x1B[0m
+      expect(
+        result,
+        '\x1B[38;5;196mline1\n'
+        '\x1B[38;5;196mline2\n'
+        '\x1B[38;5;196mline3'
+        '\x1B[0m',
+      );
+    });
+
+    test('restores parent color after nested multi-line color', () {
+      // Parent: red, nested middle line: blue
+      final span = AnsiColored(
+        foreground: XtermColor.red1_196,
+        child: SpanSequence([
+          PlainText('red1\n'),
+          AnsiColored(
+            foreground: XtermColor.blue1_21,
+            child: PlainText('blue\n'),
+          ),
+          PlainText('red2'),
+        ]),
+      );
+
+      final buffer = ConsoleMessageBuffer(useColors: true);
+      renderSpan(span, buffer);
+      final result = buffer.toString();
+
+      // red1 in red, then newline, then blue in blue, newline, then red2 in red
+      expect(
+        result,
+        '\x1B[38;5;196mred1\n'
+        '\x1B[38;5;196m' // red re-applied after newline
+        '\x1B[38;5;21mblue\n'
+        '\x1B[38;5;21m' // blue re-applied after newline
+        '\x1B[38;5;196m' // red restored after blue pops
+        'red2'
+        '\x1B[0m',
+      );
+    });
+
+    test('handles trailing newline in colored text', () {
+      final span = AnsiColored(
+        foreground: XtermColor.red1_196,
+        child: PlainText('text\n'),
+      );
+
+      final buffer = ConsoleMessageBuffer(useColors: true);
+      renderSpan(span, buffer);
+      final result = buffer.toString();
+
+      // Should apply color, then text, then newline with color re-applied (even though nothing follows)
+      expect(
+        result,
+        '\x1B[38;5;196mtext\n'
+        '\x1B[38;5;196m' // color re-applied after newline
+        '\x1B[0m',
+      );
+    });
+
     test('nested Colored colors override parent colors', () {
       // Parent: red, Child: blue
       // "Hello " should be red, "World" should be blue

@@ -114,13 +114,33 @@ class ConsoleMessageBuffer {
   ///
   /// If [foreground] or [background] is provided and [useColors] is true,
   /// the value is wrapped with push/pop color calls.
+  ///
+  /// When colors are active (either from the color stack or from parameters),
+  /// color codes are re-applied after each newline to ensure colors persist
+  /// across multiple lines.
   void write(Object? value, {XtermColor? foreground, XtermColor? background}) {
     if (useColors && (foreground != null || background != null)) {
       pushColor(foreground: foreground, background: background);
-      _buffer.write(value ?? 'null');
+      _writeWithColorReapply(value, foreground, background);
       popColor();
+    } else if (useColors && _colorStack.isNotEmpty) {
+      final (fg, bg) = _colorStack.last;
+      _writeWithColorReapply(value, fg, bg);
     } else {
       _buffer.write(value);
+    }
+  }
+
+  /// Writes value to buffer, re-applying current color after each newline.
+  void _writeWithColorReapply(Object? value, XtermColor? fg, XtermColor? bg) {
+    final text = value?.toString() ?? 'null';
+    final lines = text.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      _buffer.write(lines[i]);
+      if (i < lines.length - 1) {
+        _buffer.write('\n');
+        _writeColorCode(fg, bg);
+      }
     }
   }
 

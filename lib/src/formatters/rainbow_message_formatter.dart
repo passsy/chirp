@@ -80,8 +80,8 @@ LogSpan _buildRainbowLogSpan({
         ? null
         : AnsiColored(
             foreground: XtermColor.brightBlack_8,
-            child:
-                DartSourceCodeLocation(fileName: fileName, line: callerInfo?.line),
+            child: DartSourceCodeLocation(
+                fileName: fileName, line: callerInfo?.line),
           );
     spans.add(Surrounded(prefix: Whitespace(), child: location));
   }
@@ -170,7 +170,10 @@ LogSpan _buildRainbowLogSpan({
   if (record.error != null) {
     spans.addAll([
       NewLine(),
-      AnsiColored(foreground: levelColor, child: ErrorSpan(record.error)),
+      AnsiColored(
+        foreground: levelColor ?? XtermColor.brightBlack_8,
+        child: ErrorSpan(record.error),
+      ),
     ]);
   }
 

@@ -311,7 +311,7 @@ class MultilineData extends LeafSpan {
   LogSpan build() {
     final d = data;
     if (d == null || d.isEmpty) return EmptySpan();
-    final lines = formatAsYaml(d, 0);
+    final lines = formatAsYaml(d);
     return PlainText('\n${lines.join('\n')}');
   }
 

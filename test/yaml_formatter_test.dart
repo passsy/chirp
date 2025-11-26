@@ -5,36 +5,36 @@ void main() {
   group('formatAsYaml', () {
     group('null values', () {
       test('formats null at root level', () {
-        final result = formatAsYaml(null, 0);
+        final result = formatAsYaml(null);
         expect(result, ['null']);
       });
 
       test('formats null with indentation', () {
-        final result = formatAsYaml(null, 2);
+        final result = formatAsYaml(null, indent: 2);
         expect(result, ['    null']);
       });
     });
 
     group('maps', () {
       test('formats empty map', () {
-        final result = formatAsYaml({}, 0);
+        final result = formatAsYaml({});
         expect(result, ['{}']);
       });
 
       test('formats empty map with indentation', () {
-        final result = formatAsYaml({}, 1);
+        final result = formatAsYaml({}, indent: 1);
         expect(result, ['  {}']);
       });
 
       test('formats simple map', () {
-        final result = formatAsYaml({'key': 'value'}, 0);
+        final result = formatAsYaml({'key': 'value'}, indent: 0);
         expect(result, ['key: "value"']);
       });
 
       test('formats nested map', () {
         final result = formatAsYaml({
           'outer': {'inner': 'value'}
-        }, 0);
+        });
         expect(result, [
           'outer:',
           '  inner: "value"',
@@ -42,21 +42,19 @@ void main() {
       });
 
       test('formats map with empty nested map', () {
-        final result = formatAsYaml({
-          'outer': <String, Object?>{}
-        }, 0);
+        final result = formatAsYaml({'outer': <String, Object?>{}});
         expect(result, ['outer: {}']);
       });
 
       test('formats map with empty nested list', () {
-        final result = formatAsYaml({'outer': <Object?>[]}, 0);
+        final result = formatAsYaml({'outer': <Object?>[]});
         expect(result, ['outer: []']);
       });
 
       test('formats map with nested list', () {
         final result = formatAsYaml({
           'items': ['a', 'b']
-        }, 0);
+        });
         expect(result, [
           'items:',
           '  - "a"',
@@ -67,17 +65,17 @@ void main() {
 
     group('lists', () {
       test('formats empty list', () {
-        final result = formatAsYaml([], 0);
+        final result = formatAsYaml([]);
         expect(result, ['[]']);
       });
 
       test('formats empty list with indentation', () {
-        final result = formatAsYaml([], 1);
+        final result = formatAsYaml([], indent: 1);
         expect(result, ['  []']);
       });
 
       test('formats simple list', () {
-        final result = formatAsYaml(['a', 'b', 'c'], 0);
+        final result = formatAsYaml(['a', 'b', 'c']);
         expect(result, [
           '- "a"',
           '- "b"',
@@ -88,7 +86,7 @@ void main() {
       test('formats list with nested map', () {
         final result = formatAsYaml([
           {'name': 'item1'}
-        ], 0);
+        ]);
         expect(result, [
           '-',
           '  name: "item1"',
@@ -98,7 +96,7 @@ void main() {
       test('formats list with nested list', () {
         final result = formatAsYaml([
           ['a', 'b']
-        ], 0);
+        ]);
         expect(result, [
           '-',
           '  - "a"',
@@ -107,34 +105,34 @@ void main() {
       });
 
       test('formats list with empty nested map', () {
-        final result = formatAsYaml([<String, Object?>{}], 0);
+        final result = formatAsYaml([<String, Object?>{}]);
         expect(result, ['- {}']);
       });
 
       test('formats list with empty nested list', () {
-        final result = formatAsYaml([<Object?>[]], 0);
+        final result = formatAsYaml([<Object?>[]]);
         expect(result, ['- []']);
       });
     });
 
     group('scalar values', () {
       test('formats string at root level', () {
-        final result = formatAsYaml('hello', 0);
+        final result = formatAsYaml('hello');
         expect(result, ['"hello"']);
       });
 
       test('formats number at root level', () {
-        final result = formatAsYaml(42, 0);
+        final result = formatAsYaml(42);
         expect(result, ['42']);
       });
 
       test('formats boolean at root level', () {
-        final result = formatAsYaml(true, 0);
+        final result = formatAsYaml(true);
         expect(result, ['true']);
       });
 
       test('formats scalar with indentation', () {
-        final result = formatAsYaml('hello', 2);
+        final result = formatAsYaml('hello', indent: 2);
         expect(result, ['    "hello"']);
       });
     });
@@ -143,11 +141,9 @@ void main() {
       test('formats deeply nested structure', () {
         final result = formatAsYaml({
           'level1': {
-            'level2': {
-              'level3': 'deep'
-            }
+            'level2': {'level3': 'deep'}
           }
-        }, 0);
+        });
         expect(result, [
           'level1:',
           '  level2:',
@@ -161,7 +157,7 @@ void main() {
             {'name': 'Alice', 'age': 30},
             {'name': 'Bob', 'age': 25},
           ]
-        }, 0);
+        });
         expect(result, [
           'users:',
           '  -',
@@ -216,7 +212,8 @@ void main() {
 
     test('escapes carriage return when key is quoted', () {
       // Key with space triggers quoting, then \r is escaped
-      expect(formatYamlKey('has\rreturn and space'), '"has\\rreturn and space"');
+      expect(
+          formatYamlKey('has\rreturn and space'), '"has\\rreturn and space"');
     });
   });
 

@@ -4,7 +4,7 @@ import 'package:chirp/chirp.dart';
 
 void main() {
   Chirp.root = ChirpLogger()
-    ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
+    // ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
     ..addConsoleWriter(
       formatter: RainbowMessageFormatter(
         spanTransformers: [_boxWtfMessages],
