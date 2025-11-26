@@ -313,17 +313,20 @@ void main() {
         final sequence = SpanSequence([PlainText('hello')]);
         final child = sequence.children.first;
 
-        child.wrap((c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
+        child.wrap(
+            (c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
 
         expect(sequence.children.first, isA<AnsiColored>());
-        expect((sequence.children.first as SingleChildSpan).child, isA<PlainText>());
+        expect((sequence.children.first as SingleChildSpan).child,
+            isA<PlainText>());
       });
 
       test('preserves rendering after wrap', () {
         final sequence = SpanSequence([PlainText('hello')]);
         final child = sequence.children.first;
 
-        child.wrap((c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
+        child.wrap(
+            (c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
 
         final buffer = ConsoleMessageBuffer();
         renderSpan(sequence, buffer);
@@ -588,7 +591,7 @@ void main() {
         // Verify all parents
         for (final child in sequence.children) {
           expect(child.parent, sequence,
-              reason: 'child ${child} should have sequence as parent');
+              reason: 'child $child should have sequence as parent');
         }
 
         // Verify output
@@ -783,10 +786,11 @@ void main() {
         final child = PlainText('content');
         final surrounded = Surrounded(child: child);
 
-        child.wrap((c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
+        child.wrap(
+            (c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
 
         expect(surrounded.child, isA<AnsiColored>());
-        expect((surrounded.child as AnsiColored).child, isA<PlainText>());
+        expect((surrounded.child! as AnsiColored).child, isA<PlainText>());
       });
 
       test('wrap preserves slot position', () {
@@ -797,7 +801,8 @@ void main() {
           child: content,
         );
 
-        prefix.wrap((c) => AnsiColored(foreground: XtermColor.blue1_21, child: c));
+        prefix.wrap(
+            (c) => AnsiColored(foreground: XtermColor.blue1_21, child: c));
 
         expect(surrounded.prefix, isA<AnsiColored>());
 
@@ -856,6 +861,7 @@ class _FancyTimestamp extends LeafSpan {
 /// Level 3 -> Level 2
 class _Level3Span extends LeafSpan {
   final String text;
+
   _Level3Span(this.text);
 
   @override
@@ -865,6 +871,7 @@ class _Level3Span extends LeafSpan {
 /// Level 2 -> Level 1
 class _Level2Span extends LeafSpan {
   final String text;
+
   _Level2Span(this.text);
 
   @override
@@ -874,6 +881,7 @@ class _Level2Span extends LeafSpan {
 /// Level 1 -> PlainText
 class _Level1Span extends LeafSpan {
   final String text;
+
   _Level1Span(this.text);
 
   @override

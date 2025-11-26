@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_redundant_argument_values
+
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
@@ -16,7 +18,8 @@ void main() {
       formatter.format(record, buffer);
       final result = buffer.toString();
 
-      expect(result, '2024-01-10 10:30:45.123 [info] [payment] - User logged in');
+      expect(
+          result, '2024-01-10 10:30:45.123 [info] [payment] - User logged in');
     });
 
     test('formats with caller information', () {
@@ -35,7 +38,8 @@ void main() {
       formatter.format(record, buffer);
       final result = buffer.toString();
 
-      expect(result, '2024-01-10 10:30:45.123 [info] main:42 myMethod MyClass - Test');
+      expect(result,
+          '2024-01-10 10:30:45.123 [info] main:42 myMethod MyClass - Test');
     });
 
     test('formats with instance information', () {
@@ -52,8 +56,7 @@ void main() {
       formatter.format(record, buffer);
       final result = buffer.toString();
 
-      final hash =
-          identityHashCode(instance).toRadixString(16).padLeft(8, '0');
+      final hash = identityHashCode(instance).toRadixString(16).padLeft(8, '0');
       expect(result, contains('_TestClass@$hash'));
     });
 

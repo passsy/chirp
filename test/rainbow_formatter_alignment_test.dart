@@ -401,8 +401,7 @@ void main() {
       final result = buffer.toString();
 
       // Calculate expected short hash (last 4 hex digits)
-      final hash =
-          identityHashCode(instance).toRadixString(16).padLeft(4, '0');
+      final hash = identityHashCode(instance).toRadixString(16).padLeft(4, '0');
       final shortHash = hash.substring(hash.length >= 4 ? hash.length - 4 : 0);
 
       // Should be exactly: "timestamp _TestClass@XXXX [info] message"
@@ -412,7 +411,7 @@ void main() {
       );
 
       // Verify only one @ in the class portion
-      final classMatch = RegExp(r'_TestClass@[0-9a-f]+').firstMatch(result);
+      final classMatch = RegExp('_TestClass@[0-9a-f]+').firstMatch(result);
       expect(classMatch, isNotNull);
       expect(classMatch!.group(0), '_TestClass@$shortHash');
     });
@@ -431,7 +430,7 @@ void main() {
       final result = buffer.toString();
 
       // Extract the hash portion after _TestClass@
-      final hashMatch = RegExp(r'_TestClass@([0-9a-f]+)').firstMatch(result);
+      final hashMatch = RegExp('_TestClass@([0-9a-f]+)').firstMatch(result);
       expect(hashMatch, isNotNull);
       final extractedHash = hashMatch!.group(1)!;
       expect(extractedHash.length, 4,

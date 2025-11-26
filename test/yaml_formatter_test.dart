@@ -27,7 +27,7 @@ void main() {
       });
 
       test('formats simple map', () {
-        final result = formatAsYaml({'key': 'value'}, indent: 0);
+        final result = formatAsYaml({'key': 'value'});
         expect(result, ['key: "value"']);
       });
 
