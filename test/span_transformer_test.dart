@@ -114,6 +114,51 @@ void main() {
       expect(result, isNot(contains('10:23:45.123')));
       expect(result, contains('Hello'));
     });
+
+    test('wraps entire WTF log with Bordered using root.wrap', () {
+      final record = LogRecord(
+        message: 'WTF error',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        level: ChirpLogLevel.wtf,
+      );
+
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(
+          data: DataPresentation.inline,
+          showTime: false,
+          showLocation: false,
+          showLogger: false,
+          showClass: false,
+          showMethod: false,
+          showLogLevel: false,
+        ),
+        spanTransformers: [
+          (tree, record) {
+            if (record.level != ChirpLogLevel.wtf) return;
+            tree.wrap(
+              (child) => Bordered(
+                child: child,
+                style: BoxBorderStyle.rounded,
+                borderColor: XtermColor.red3_160,
+              ),
+            );
+          },
+        ],
+      );
+
+      final buffer = ConsoleMessageBuffer();
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      // Full bordered box around the entire message. Using full-string
+      // comparison to ensure all lines (and their order) are correct.
+      expect(
+        result,
+        '╭────────────╮\n'
+        '│  WTF error │\n'
+        '╰────────────╯',
+      );
+    });
   });
 
   group('LogSpan tree manipulation', () {

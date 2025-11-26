@@ -47,6 +47,9 @@ abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
       transformer(span, record);
     }
 
-    renderSpan(span, buffer);
+    // Transformers may wrap the original root in a new parent span.
+    // Always render starting from the current root so wrappers (e.g. Bordered)
+    // that become ancestors of the original span are included.
+    renderSpan(span.root, buffer);
   }
 }

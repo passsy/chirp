@@ -505,7 +505,7 @@ extension _ParentChildManagement on LogSpan {
 /// }
 /// ```
 typedef SpanTransformer = void Function(
-  LogSpan tree,
+  LogSpan span,
   LogRecord record,
 );
 
