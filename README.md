@@ -272,6 +272,79 @@ Chirp.root = ChirpLogger()
   );
 ```
 
+### Console Writers
+
+Chirp provides two console writers optimized for different use cases:
+
+#### `PrintConsoleWriter` - For logcat/os_log visibility
+
+Uses `print()` which routes through Android's logcat and iOS's os_log. Best for production debugging where you need logs visible in platform tools.
+
+```dart
+Chirp.root = ChirpLogger(
+  writers: [PrintConsoleWriter(formatter: RainbowMessageFormatter())],
+);
+```
+
+| Feature | Details |
+|---------|---------|
+| **Output method** | `print()` → logcat (Android) / os_log (iOS) |
+| **ANSI colors** | ✅ Supported |
+| **Message limit** | Android: 1024 chars, iOS: ~1024 bytes |
+| **Auto-chunking** | ✅ Messages split automatically |
+| **Rate limiting** | ✅ 2ms throttle between chunks (configurable) |
+| **Visibility** | `adb logcat`, Xcode console, `flutter logs`, IDE debug console |
+
+**Why the 1024 limit?** Android's `liblog` defines `LOG_BUF_SIZE=1024` in [`logger_write.cpp`](https://cs.android.com/android/platform/superproject/main/+/main:system/logging/liblog/logger_write.cpp;l=62). The Flutter engine calls `__android_log_print()` which truncates at this buffer size.
+
+#### `DeveloperLogConsoleWriter` - For unlimited length
+
+Uses `developer.log()` which bypasses platform logging limits via the Dart VM Service Protocol. Best for development when you need to see full JSON responses or stack traces.
+
+```dart
+Chirp.root = ChirpLogger(
+  writers: [DeveloperLogConsoleWriter(name: 'myapp')],
+);
+```
+
+| Feature | Details |
+|---------|---------|
+| **Output method** | `developer.log()` → VM Service Protocol |
+| **ANSI colors** | ❌ Disabled (output has `[name]` prefix) |
+| **Message limit** | ♾️ Unlimited |
+| **Chunking** | Not needed |
+| **Rate limiting** | Not needed |
+| **Visibility** | Flutter DevTools, IDE debug console (requires debugger) |
+| **Release builds** | ❌ Not available (AOT strips VM service) |
+
+**Trade-off:** Logs don't appear in `adb logcat` or Xcode console - only in Flutter tooling when a debugger is attached.
+
+#### Choosing Between Writers
+
+| Scenario | Recommended Writer |
+|----------|-------------------|
+| Development with long JSON responses | `DeveloperLogConsoleWriter` |
+| Production debugging via `adb logcat` | `PrintConsoleWriter` |
+| CI/CD logs | `PrintConsoleWriter` |
+| Viewing logs in Android Studio logcat tab | `PrintConsoleWriter` |
+| Viewing logs in Flutter DevTools | Either (both work) |
+| Release builds | `PrintConsoleWriter` only |
+
+#### Using Both Writers
+
+For maximum flexibility, use both:
+
+```dart
+Chirp.root = ChirpLogger(
+  writers: [
+    // Always available, visible in logcat
+    PrintConsoleWriter(formatter: RainbowMessageFormatter()),
+    // Unlimited length when debugger attached
+    DeveloperLogConsoleWriter(name: 'myapp'),
+  ],
+);
+```
+
 ### Available Formatters
 
 **CompactChirpMessageFormatter** - Colorful, human-readable format for development

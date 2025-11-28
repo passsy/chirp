@@ -1,7 +1,10 @@
-/// Returns the recommended max chunk length for the current platform.
+/// Returns the recommended max chunk length for [print()] on the current platform.
 ///
 /// Web browsers don't have log truncation issues, so no chunking is needed.
-int? get platformMaxChunkLength => null;
+int? get platformPrintMaxChunkLength => null;
+
+/// @Deprecated('Use platformPrintMaxChunkLength instead')
+int? get platformMaxChunkLength => platformPrintMaxChunkLength;
 
 /// Whether the console supports ANSI escape codes for colors.
 ///

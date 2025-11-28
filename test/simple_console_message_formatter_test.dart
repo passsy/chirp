@@ -14,12 +14,11 @@ void main() {
         loggerName: 'payment',
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
-      expect(
-          result, '2024-01-10 10:30:45.123 [info] [payment] - User logged in');
+      expect(result, '10:30:45.123 [info] [payment] - User logged in');
     });
 
     test('formats with caller information', () {
@@ -34,12 +33,11 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
-      expect(result,
-          '2024-01-10 10:30:45.123 [info] main:42 myMethod MyClass - Test');
+      expect(result, '10:30:45.123 [info] main:42 myMethod MyClass - Test');
     });
 
     test('formats with instance information', () {
@@ -52,7 +50,7 @@ void main() {
         instance: instance,
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -69,13 +67,13 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        '2024-01-10 10:30:45.123 [info] - User action\n'
+        '10:30:45.123 [info] - User action\n'
         '  userId=user_123 action=login',
       );
     });
@@ -89,13 +87,13 @@ void main() {
         error: Exception('Payment failed'),
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        '2024-01-10 10:30:45.123 [error] - Payment failed\n'
+        '10:30:45.123 [error] - Payment failed\n'
         'Exception: Payment failed',
       );
     });
@@ -113,13 +111,13 @@ void main() {
         stackTrace: stackTrace,
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        '2024-01-10 10:30:45.123 [error] - Error\n'
+        '10:30:45.123 [error] - Error\n'
         '#0      PaymentService.process (payment_service.dart:78:5)\n'
         '#1      handlePayment (main.dart:123:12)',
       );
@@ -134,7 +132,7 @@ void main() {
         loggerName: 'root',
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -150,7 +148,7 @@ void main() {
         loggerName: 'payment',
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -168,7 +166,7 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -185,7 +183,7 @@ void main() {
         instance: instance,
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -201,7 +199,7 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -217,7 +215,7 @@ void main() {
         data: {},
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -233,7 +231,7 @@ void main() {
         level: ChirpLogLevel.info,
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -251,7 +249,7 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -271,7 +269,7 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -292,18 +290,18 @@ void main() {
         level: ChirpLogLevel.info,
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
-      expect(result, '2024-01-10 10:30:45.123 [info] - TRANSFORMED');
+      expect(result, '10:30:45.123 [info] - TRANSFORMED');
     });
   });
 
   group('FullTimestamp', () {
     test('formats date with full precision', () {
       final timestamp = FullTimestamp(DateTime(2024, 1, 10, 10, 30, 45, 123));
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       timestamp.render(buffer);
 
       expect(buffer.toString(), '2024-01-10 10:30:45.123');
@@ -311,7 +309,7 @@ void main() {
 
     test('pads single digits', () {
       final timestamp = FullTimestamp(DateTime(2024, 1, 5, 9, 3, 5, 7));
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       timestamp.render(buffer);
 
       expect(buffer.toString(), '2024-01-05 09:03:05.007');
@@ -328,7 +326,7 @@ void main() {
   group('BracketedLoggerName', () {
     test('formats name in brackets', () {
       final span = BracketedLoggerName('payment');
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       span.render(buffer);
 
       expect(buffer.toString(), '[payment]');
@@ -344,7 +342,7 @@ void main() {
   group('KeyValueData', () {
     test('formats data as key=value pairs', () {
       final span = KeyValueData({'userId': 'user_123', 'action': 'login'});
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       span.render(buffer);
 
       final result = buffer.toString();
@@ -354,7 +352,7 @@ void main() {
 
     test('renders nothing for empty data', () {
       final span = KeyValueData({});
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       span.render(buffer);
 
       expect(buffer.toString(), isEmpty);

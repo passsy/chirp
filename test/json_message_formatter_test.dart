@@ -15,7 +15,7 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -42,7 +42,7 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -71,7 +71,7 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -103,7 +103,7 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 

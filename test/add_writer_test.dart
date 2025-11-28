@@ -143,7 +143,7 @@ void main() {
     test('adding same writer twice is a no-op', () {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'TestLogger');
-      final writer = ConsoleWriter(
+      final writer = PrintConsoleWriter(
         formatter: CompactChirpMessageFormatter(),
         output: messages.add,
       );
@@ -202,7 +202,7 @@ void main() {
     test('removes writer from logger', () {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'TestLogger');
-      final writer = ConsoleWriter(
+      final writer = PrintConsoleWriter(
         formatter: CompactChirpMessageFormatter(),
         output: messages.add,
       );
@@ -222,7 +222,7 @@ void main() {
 
     test('returns false when writer not found', () {
       final logger = ChirpLogger(name: 'TestLogger');
-      final writer = ConsoleWriter(formatter: CompactChirpMessageFormatter());
+      final writer = PrintConsoleWriter(formatter: CompactChirpMessageFormatter());
 
       // Writer was never added
       final removed = logger.removeWriter(writer);
@@ -232,7 +232,7 @@ void main() {
     test('removeWriter only removes from own logger not parent', () {
       final messages = <String>[];
       final parent = ChirpLogger(name: 'Parent');
-      final writer = ConsoleWriter(
+      final writer = PrintConsoleWriter(
         formatter: JsonMessageFormatter(),
         output: messages.add,
       );

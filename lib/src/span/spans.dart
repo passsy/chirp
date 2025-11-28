@@ -465,8 +465,7 @@ class Bordered extends SingleChildSpan {
 
     final chars = BoxBorderChars.fromStyle(style);
     // Strip ANSI escape codes when calculating visible width
-    final visibleWidths =
-        lines.map(ConsoleMessageBuffer.visibleLengthOf).toList();
+    final visibleWidths = lines.map((l) => stripAnsiCodes(l).length).toList();
     final maxWidth = visibleWidths.reduce((a, b) => a > b ? a : b);
     final paddingStr = ' ' * padding;
     final innerWidth = maxWidth + (padding * 2);

@@ -5,7 +5,7 @@ import 'package:chirp/chirp.dart';
 ///
 /// Format pattern:
 /// ```dart
-/// 2024-01-10 10:30:45.123 [INFO] main:42 processUser UserService@0000a3f2 [payment] - User logged in
+/// 10:30:45.123 [INFO] main:42 processUser UserService@0000a3f2 [payment] - User logged in
 ///   userId=user_123 action=login
 /// Exception: Payment failed
 /// #0  PaymentService.process (payment_service.dart:78:5)
@@ -13,7 +13,7 @@ import 'package:chirp/chirp.dart';
 /// ```
 ///
 /// Components (all shown if present):
-/// - Timestamp: Full date and time with milliseconds
+/// - Timestamp: Time with milliseconds (HH:mm:ss.SSS) - uses [Timestamp] span
 /// - Level: Log level in uppercase brackets
 /// - Location: file:line from caller stack trace
 /// - Method: Method name from caller
@@ -27,11 +27,23 @@ import 'package:chirp/chirp.dart';
 /// This formatter prioritizes completeness over brevity, making it useful
 /// for debugging and development.
 class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
+  /// Whether to show the timestamp
+  final bool showTimestamp;
+
+  /// Whether to show the log level (e.g., [INFO])
+  final bool showLevel;
+
   /// Whether to show the logger name field
   final bool showLoggerName;
 
   /// Whether to show caller location (file:line)
   final bool showCaller;
+
+  /// Whether to show the method name from caller info.
+  ///
+  /// Only has effect when [showCaller] is true.
+  /// Set to false to show source location (file:line) without the method name.
+  final bool showMethod;
 
   /// Whether to show instance information (class@hash)
   final bool showInstance;
@@ -40,8 +52,11 @@ class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
   final bool showData;
 
   SimpleConsoleMessageFormatter({
+    this.showTimestamp = true,
+    this.showLevel = true,
     this.showLoggerName = true,
     this.showCaller = true,
+    this.showMethod = true,
     this.showInstance = true,
     this.showData = true,
     super.spanTransformers,
@@ -51,8 +66,11 @@ class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
   LogSpan buildSpan(LogRecord record) {
     return _buildSimpleLogSpan(
       record: record,
+      showTimestamp: showTimestamp,
+      showLevel: showLevel,
       showLoggerName: showLoggerName,
       showCaller: showCaller,
+      showMethod: showMethod,
       showInstance: showInstance,
       showData: showData,
     );
@@ -62,55 +80,62 @@ class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
 /// Builds a span tree for a [LogRecord] in simple comprehensive format.
 LogSpan _buildSimpleLogSpan({
   required LogRecord record,
+  required bool showTimestamp,
+  required bool showLevel,
   required bool showLoggerName,
   required bool showCaller,
+  required bool showMethod,
   required bool showInstance,
   required bool showData,
 }) {
   final spans = <LogSpan>[];
 
-  // Timestamp: 2024-01-10 10:30:45.123
-  spans.add(FullTimestamp(record.date));
+  // Timestamp: 10:30:45.123
+  if (showTimestamp) {
+    spans.add(Timestamp(record.date));
+  }
 
   // Level: [INFO]
-  spans.addAll([
-    Whitespace(),
-    BracketedLogLevel(record.level),
-  ]);
+  if (showLevel) {
+    if (spans.isNotEmpty) spans.add(Whitespace());
+    spans.add(BracketedLogLevel(record.level));
+  }
 
   // Caller location and method
   if (showCaller && record.caller != null) {
     final callerInfo = getCallerInfo(record.caller!);
     if (callerInfo != null) {
       // Location: main:42
-      spans.addAll([
-        Whitespace(),
+      if (spans.isNotEmpty) spans.add(Whitespace());
+      spans.add(
         DartSourceCodeLocation(
           fileName: callerInfo.callerFileName,
           line: callerInfo.line,
         ),
-      ]);
+      );
 
-      // Method name
-      final className = _resolveClassName(record);
-      final method = callerInfo.callerMethod;
-      String? methodToShow;
+      // Method name (only if showMethod is true)
+      if (showMethod) {
+        final className = _resolveClassName(record);
+        final method = callerInfo.callerMethod;
+        String? methodToShow;
 
-      if (method != '<unknown>' &&
-          (className == null || !method.startsWith('$className.'))) {
-        methodToShow = method;
-      } else if (className != null && method.startsWith('$className.')) {
-        final methodName = method.substring(className.length + 1);
-        if (methodName.isNotEmpty) {
-          methodToShow = methodName;
+        if (method != '<unknown>' &&
+            (className == null || !method.startsWith('$className.'))) {
+          methodToShow = method;
+        } else if (className != null && method.startsWith('$className.')) {
+          final methodName = method.substring(className.length + 1);
+          if (methodName.isNotEmpty) {
+            methodToShow = methodName;
+          }
         }
-      }
 
-      if (methodToShow != null) {
-        spans.addAll([
-          Whitespace(),
-          MethodName(methodToShow),
-        ]);
+        if (methodToShow != null) {
+          spans.addAll([
+            Whitespace(),
+            MethodName(methodToShow),
+          ]);
+        }
       }
     }
   }
@@ -121,10 +146,8 @@ LogSpan _buildSimpleLogSpan({
     if (className != null) {
       final instanceHash =
           record.instanceHash?.toRadixString(16).padLeft(8, '0');
-      spans.addAll([
-        Whitespace(),
-        ClassName(className, instanceHash: instanceHash),
-      ]);
+      if (spans.isNotEmpty) spans.add(Whitespace());
+      spans.add(ClassName(className, instanceHash: instanceHash));
     }
   }
 
@@ -132,17 +155,15 @@ LogSpan _buildSimpleLogSpan({
   if (showLoggerName &&
       record.loggerName != null &&
       record.loggerName != 'root') {
-    spans.addAll([
-      Whitespace(),
-      BracketedLoggerName(record.loggerName!),
-    ]);
+    if (spans.isNotEmpty) spans.add(Whitespace());
+    spans.add(BracketedLoggerName(record.loggerName!));
   }
 
   // Message separator and text
-  spans.addAll([
-    PlainText(' - '),
-    LogMessage(record.message),
-  ]);
+  if (spans.isNotEmpty) {
+    spans.add(PlainText(' - '));
+  }
+  spans.add(LogMessage(record.message));
 
   // Structured data on separate line (key=value format)
   if (showData && record.data != null && record.data!.isNotEmpty) {

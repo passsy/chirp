@@ -16,7 +16,7 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -39,7 +39,7 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -63,7 +63,7 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -87,7 +87,7 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -114,7 +114,7 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -135,7 +135,7 @@ void main() {
         data: {'userId': 'user_123'},
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -158,7 +158,7 @@ void main() {
         formatOptions: const [],
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -184,7 +184,7 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 

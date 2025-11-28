@@ -5,21 +5,35 @@ import 'dart:io' show Platform, stdout;
 /// Detected via the presence of `dart.library.ui`.
 const bool _isFlutter = bool.fromEnvironment('dart.library.ui');
 
-/// Returns the recommended max chunk length for the current platform.
+/// Returns the recommended max chunk length for [print()] on the current platform.
 ///
-/// - **iOS**: 800 (to stay safely under the 1024 byte limit)
-/// - **Android**: 3500 (to stay safely under the ~4000 char limit)
+/// The limit comes from Android's `liblog/logger_write.cpp`:
+/// ```c
+/// #define LOG_BUF_SIZE 1024
+/// ```
+/// which is used in `__android_log_print()` via `vsnprintf(buf, LOG_BUF_SIZE, ...)`.
+///
+/// - **Android**: 1024 - 100 chars (`LOG_BUF_SIZE` minus "I/flutter (" prefix)
+/// - **iOS**: 1024 bytes (os_log limit)
 /// - **Other platforms**: null (no chunking needed)
-int? get platformMaxChunkLength {
-  if (Platform.isIOS) {
-    return 800;
-  }
+///
+/// See: https://cs.android.com/android/platform/superproject/main/+/main:system/logging/liblog/logger_write.cpp;l=62
+int? get platformPrintMaxChunkLength {
   if (Platform.isAndroid) {
-    return 3500;
+    // Android's __android_log_print uses LOG_BUF_SIZE=1024 buffer
+    // Leave margin for "I/flutter (" prefix added by Flutter engine
+    return 1024 - 100;
+  }
+  if (Platform.isIOS) {
+    // iOS os_log has 1024 byte limit
+    return 1024;
   }
   // Desktop and other platforms don't have log truncation issues
   return null;
 }
+
+/// @Deprecated('Use platformPrintMaxChunkLength instead')
+int? get platformMaxChunkLength => platformPrintMaxChunkLength;
 
 /// Whether the console supports ANSI escape codes for colors.
 ///

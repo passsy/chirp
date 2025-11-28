@@ -6,7 +6,7 @@ void main() {
     test('ConsoleChirpMessageWriter writes to output', () {
       final messages = <String>[];
 
-      final writer = ConsoleWriter(
+      final writer = PrintConsoleWriter(
         formatter: CompactChirpMessageFormatter(),
         output: messages.add,
       );
@@ -21,7 +21,7 @@ void main() {
 
     test('ConsoleChirpMessageWriter uses print by default', () {
       // Can't easily test print, but we can verify the constructor accepts null
-      final writer = ConsoleWriter();
+      final writer = PrintConsoleWriter();
       expect(writer, isNotNull);
     });
   });

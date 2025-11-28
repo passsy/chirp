@@ -18,7 +18,7 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -42,7 +42,7 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -56,7 +56,7 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -75,7 +75,7 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -99,7 +99,7 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -122,7 +122,7 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -142,7 +142,7 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -164,7 +164,7 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -187,7 +187,7 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -212,7 +212,7 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -232,7 +232,7 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: true);
+      final buffer = ConsoleMessageBuffer(supportsColors: true);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -249,7 +249,7 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -266,7 +266,7 @@ void main() {
         loggerName: 'TestLogger',
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -292,7 +292,7 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -316,7 +316,7 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -337,7 +337,7 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -360,7 +360,7 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -378,7 +378,7 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -396,7 +396,7 @@ void main() {
         instance: instance,
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -425,7 +425,7 @@ void main() {
         instance: instance,
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -447,7 +447,7 @@ void main() {
         error: Exception('Something went wrong'),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -468,7 +468,7 @@ void main() {
             '#0      main (file.dart:10:5)\n#1      test (file.dart:20:3)'),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: false);
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(entry, buffer);
       final result = buffer.toString();
 

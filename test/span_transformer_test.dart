@@ -11,7 +11,7 @@ void main() {
         child: PlainText('line1\nline2\nline3'),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: true);
+      final buffer = ConsoleMessageBuffer(supportsColors: true);
       renderSpan(span, buffer);
       final result = buffer.toString();
 
@@ -40,7 +40,7 @@ void main() {
         ]),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: true);
+      final buffer = ConsoleMessageBuffer(supportsColors: true);
       renderSpan(span, buffer);
       final result = buffer.toString();
 
@@ -63,7 +63,7 @@ void main() {
         child: PlainText('text\n'),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: true);
+      final buffer = ConsoleMessageBuffer(supportsColors: true);
       renderSpan(span, buffer);
       final result = buffer.toString();
 
@@ -91,7 +91,7 @@ void main() {
         ]),
       );
 
-      final buffer = ConsoleMessageBuffer(useColors: true);
+      final buffer = ConsoleMessageBuffer(supportsColors: true);
       renderSpan(span, buffer);
       final result = buffer.toString();
 
@@ -126,7 +126,7 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -154,7 +154,7 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -177,7 +177,7 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -217,7 +217,7 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer();
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -244,7 +244,7 @@ void main() {
         final target = sequence.children[1];
         target.replaceWith(PlainText('replaced'));
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'beforereplacedafter');
       });
@@ -258,7 +258,7 @@ void main() {
 
         outer.child!.replaceWith(PlainText('replaced'));
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'replaced');
       });
@@ -288,7 +288,7 @@ void main() {
 
         sequence.children[1].remove();
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'ac');
       });
@@ -328,7 +328,7 @@ void main() {
         child.wrap(
             (c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'hello');
       });
@@ -464,7 +464,7 @@ void main() {
         final sequence = SpanSequence([PlainText('a')]);
         sequence.addChild(PlainText('b'));
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'ab');
       });
@@ -473,7 +473,7 @@ void main() {
         final sequence = SpanSequence([PlainText('a'), PlainText('c')]);
         sequence.insertChild(1, PlainText('b'));
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'abc');
       });
@@ -557,7 +557,7 @@ void main() {
           suffix: PlainText(']'),
         );
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(surrounded, buffer);
         expect(buffer.toString(), '[content]');
       });
@@ -568,7 +568,7 @@ void main() {
           suffix: PlainText(']'),
         );
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(surrounded, buffer);
         expect(buffer.toString(), isEmpty);
       });
@@ -595,7 +595,7 @@ void main() {
         }
 
         // Verify output
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(sequence, buffer);
         expect(buffer.toString(), '0abc');
       });
@@ -806,7 +806,7 @@ void main() {
 
         expect(surrounded.prefix, isA<AnsiColored>());
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(surrounded, buffer);
         expect(buffer.toString(), '[content');
       });
@@ -819,7 +819,7 @@ void main() {
         final date = DateTime(2024, 1, 15, 10, 23, 45, 123);
         final fancyTimestamp = _FancyTimestamp(date);
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(fancyTimestamp, buffer);
 
         // Should render as ">>> 10:23:45.123 <<<"
@@ -830,7 +830,7 @@ void main() {
         // Chain: Level3 -> Level2 -> Level1 -> PlainText
         final span = _Level3Span('hello');
 
-        final buffer = ConsoleMessageBuffer();
+        final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(span, buffer);
 
         expect(buffer.toString(), '<<<[[[hello]]]>>>');

@@ -828,21 +828,46 @@ class ChirpLogger {
     return [...parentWriters, ..._writers];
   }
 
-  /// Convenient shorthand to add a [ConsoleWriter] with optional formatter.
+  /// Adds a [PrintConsoleWriter] - logs via `print()` to logcat/os_log.
   ///
-  /// This is the most common writer configuration. If no [formatter] is
-  /// provided, uses [RainbowMessageFormatter] by default.
+  /// This is the most common writer for mobile development. Logs are visible
+  /// in `adb logcat`, Xcode console, and `flutter logs`.
   ///
-  /// Parameters:
-  /// - [formatter]: Custom formatter (defaults to [RainbowMessageFormatter])
-  /// - [output]: Custom output function (defaults to [print])
+  /// **Platform limits (auto-chunked):**
+  /// - Android: 1024 chars (NDK's `LOG_BUF_SIZE` in `__android_log_print`)
+  /// - iOS: ~1024 bytes (os_log limit)
   ///
-  /// Example:
+  /// **For unlimited length**, use [DeveloperLogConsoleWriter] instead:
   /// ```dart
-  /// final logger = ChirpLogger(name: 'API')
-  ///   ..addConsoleWriter(); // Uses RainbowMessageFormatter
+  /// logger.addWriter(DeveloperLogConsoleWriter(name: 'myapp'));
+  /// ```
+  /// Note: `developer.log()` requires debugger attachment and won't show
+  /// in `adb logcat` - only in Flutter DevTools and IDE debug consoles.
   ///
-  /// // With custom formatter
+  /// ## Parameters
+  /// - [formatter]: How to format log records (default: [RainbowMessageFormatter])
+  /// - [output]: Custom output function (default: `print()`)
+  /// - [useColors]: Whether to emit ANSI color escape codes in the output.
+  ///   When `true`, log levels, timestamps, and other elements are colorized.
+  ///   When `false`, plain text is output without escape codes.
+  ///   Default: `null` (uses [platformSupportsAnsiColors] - `true` for Flutter,
+  ///   checks `stdout.supportsAnsiEscapes` for pure Dart, `false` for web).
+  ///
+  /// ## Examples
+  /// ```dart
+  /// // Default setup with colors (auto-detected)
+  /// final logger = ChirpLogger(name: 'API')
+  ///   ..addConsoleWriter();
+  ///
+  /// // Force colors off (useful for file output or CI logs)
+  /// final noColorLogger = ChirpLogger(name: 'CI')
+  ///   ..addConsoleWriter(useColors: false);
+  ///
+  /// // Force colors on (useful when piping to a terminal that supports colors)
+  /// final colorLogger = ChirpLogger(name: 'Term')
+  ///   ..addConsoleWriter(useColors: true);
+  ///
+  /// // JSON format for structured logging
   /// final jsonLogger = ChirpLogger(name: 'JSON')
   ///   ..addConsoleWriter(formatter: JsonMessageFormatter());
   ///
@@ -850,18 +875,24 @@ class ChirpLogger {
   /// final messages = <String>[];
   /// final testLogger = ChirpLogger(name: 'Test')
   ///   ..addConsoleWriter(output: messages.add);
+  ///
+  /// // Use both writers for maximum compatibility
+  /// final logger = ChirpLogger()
+  ///   ..addConsoleWriter()  // Always works, visible in logcat
+  ///   ..addWriter(DeveloperLogConsoleWriter());  // Unlimited when debugger attached
   /// ```
   ///
   /// See also:
-  /// - [addWriter] for adding custom writers
-  /// - [ConsoleWriter] for more configuration options
+  /// - [PrintConsoleWriter] for more configuration (throttling, chunk size)
+  /// - [DeveloperLogConsoleWriter] for unlimited length via `developer.log()`
+  /// - [addWriter] for adding any custom [ChirpWriter]
   void addConsoleWriter({
     ConsoleMessageFormatter? formatter,
     void Function(String)? output,
     bool? useColors,
   }) {
     addWriter(
-      ConsoleWriter(
+      PrintConsoleWriter(
         formatter: formatter ?? RainbowMessageFormatter(),
         output: output,
         useColors: useColors,
