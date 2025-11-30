@@ -1,7 +1,6 @@
 import 'dart:developer' as developer;
 import 'dart:io';
 
-import 'package:chirp/chirp.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -294,7 +293,11 @@ class _PrintLimitsPageState extends State<PrintLimitsPage> {
   }
 }
 
-/// Test page for throttling with different KB/s rates and message sizes
+/// Test page for rate limiting - sends bursts of messages to check for
+/// Android's "chatty" log collapsing behavior.
+///
+/// Testing showed no observable rate limiting even when sending 4MB of log
+/// data without any throttling on modern Android devices.
 class ThrottlingTestPage extends StatefulWidget {
   const ThrottlingTestPage({super.key});
 
@@ -303,80 +306,44 @@ class ThrottlingTestPage extends StatefulWidget {
 }
 
 class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
-  // Throttle rates in KB/s
-  static const _throttleRates = [null, 4, 8, 12, 16, 24, 48];
-
   // Message sizes in bytes
   static const _messageSizes = [100, 500, 1000, 2000, 4000];
 
   // Number of messages to send
-  static const _messageCounts = [10, 50, 100, 500];
+  static const _messageCounts = [10, 50, 100, 500, 1000];
 
-  int? _selectedThrottleRate = 12; // KB/s, null = no throttling
-  int _selectedMessageSize = 500;
+  int _selectedMessageSize = 1000;
   int _selectedMessageCount = 100;
 
-  PrintConsoleWriter? _writer;
   bool _isRunning = false;
-  int _messagesSent = 0;
-  int _totalBytes = 0;
-  Stopwatch? _stopwatch;
-  String _status = 'Ready';
-
-  @override
-  void dispose() {
-    _writer?.dispose();
-    super.dispose();
-  }
+  String _status = 'Ready\n\nWatch logcat for "chatty" messages indicating rate limiting.';
 
   void _startTest() {
-    _writer?.dispose();
-
-    final throttleRate = _selectedThrottleRate;
-    _writer = PrintConsoleWriter(
-      maxChunkLength: null, // No chunking for this test
-      maxBytesPerSecond: throttleRate != null ? throttleRate * 1024 : null,
-      useColors: false,
-    );
-
     setState(() {
       _isRunning = true;
-      _messagesSent = 0;
-      _totalBytes = 0;
       _status = 'Running...';
     });
 
-    _stopwatch = Stopwatch()..start();
+    final stopwatch = Stopwatch()..start();
+    var totalBytes = 0;
 
-    // Send messages
+    // Send messages using plain print() to test raw Android rate limiting
     for (int i = 0; i < _selectedMessageCount; i++) {
       final message = _generateTestMessage(i, _selectedMessageSize);
-      _writer!.write(LogRecord(
-        message: message,
-        level: ChirpLogLevel.info,
-        date: DateTime.now(),
-      ));
-      _messagesSent++;
-      _totalBytes += message.length;
+      // ignore: avoid_print
+      print(message);
+      totalBytes += message.length;
     }
 
-    _stopwatch!.stop();
+    stopwatch.stop();
 
     setState(() {
       _isRunning = false;
-      final elapsed = _stopwatch!.elapsedMilliseconds;
-      final rate = _totalBytes / (elapsed / 1000);
-      _status = 'Sent $_messagesSent messages ($_totalBytes bytes) in ${elapsed}ms\n'
-          'Effective rate: ${(rate / 1024).toStringAsFixed(1)} KB/s\n'
-          'Throttle: ${throttleRate != null ? "$throttleRate KB/s" : "disabled"}';
-    });
-  }
-
-  void _stopAndFlush() {
-    _writer?.dispose();
-    _writer = null;
-    setState(() {
-      _status = 'Flushed and disposed';
+      final elapsed = stopwatch.elapsedMilliseconds;
+      final rate = elapsed > 0 ? totalBytes / (elapsed / 1000) : double.infinity;
+      _status = 'Sent $_selectedMessageCount messages ($totalBytes bytes) in ${elapsed}ms\n'
+          'Rate: ${(rate / 1024).toStringAsFixed(1)} KB/s\n\n'
+          'Check logcat for "chatty" messages. If none appear, rate limiting is not active.';
     });
   }
 
@@ -396,7 +363,7 @@ class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Throttling Test'),
+        title: const Text('Rate Limit Test'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -404,37 +371,16 @@ class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Test Throttling',
+              'Test Android Rate Limiting',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
-              'Configure throttle rate, message size, and count to test '
-              'how PrintConsoleWriter handles rate limiting. Watch logcat '
-              'for dropped or "chatty" messages.',
+              'Send bursts of log messages to test if Android\'s logd daemon '
+              'triggers "chatty" log collapsing. Testing showed no rate limiting '
+              'even with 4MB of data on modern Android devices.',
             ),
             const SizedBox(height: 24),
-
-            // Throttle rate selector
-            const Text('Throttle Rate (KB/s):', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final rate in _throttleRates)
-                  ChoiceChip(
-                    label: Text(rate == null ? 'Off' : '$rate'),
-                    selected: _selectedThrottleRate == rate,
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() => _selectedThrottleRate = rate);
-                      }
-                    },
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
 
             // Message size selector
             const Text('Message Size (bytes):', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -482,44 +428,19 @@ class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total data: ${(_selectedMessageSize * _selectedMessageCount / 1024).toStringAsFixed(1)} KB',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    if (_selectedThrottleRate != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Expected time: ${(_selectedMessageSize * _selectedMessageCount / (_selectedThrottleRate! * 1024)).toStringAsFixed(1)}s',
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  'Total data: ${(_selectedMessageSize * _selectedMessageCount / 1024).toStringAsFixed(1)} KB',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ),
             const SizedBox(height: 24),
 
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isRunning ? null : _startTest,
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Start Test'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _stopAndFlush,
-                    icon: const Icon(Icons.stop),
-                    label: const Text('Flush & Stop'),
-                  ),
-                ),
-              ],
+            // Action button
+            ElevatedButton.icon(
+              onPressed: _isRunning ? null : _startTest,
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Start Burst Test'),
             ),
             const SizedBox(height: 16),
 
@@ -537,39 +458,27 @@ class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
             const Text('Quick Tests:', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             ElevatedButton(
-              onPressed: () {
-                // Burst test: send 100KB as fast as possible with no throttle
-                _selectedThrottleRate = null;
-                _selectedMessageSize = 4000;
-                _selectedMessageCount = 1000;
-                setState(() {});
-                _startTest();
-              },
-              child: const Text('Burst: 4000KB no throttle'),
+              onPressed: _isRunning
+                  ? null
+                  : () {
+                      _selectedMessageSize = 1000;
+                      _selectedMessageCount = 100;
+                      setState(() {});
+                      _startTest();
+                    },
+              child: const Text('100KB burst (100 × 1KB)'),
             ),
             const SizedBox(height: 8),
             ElevatedButton(
-              onPressed: () {
-                // Throttled test: send 100KB at 12KB/s
-                _selectedThrottleRate = 12;
-                _selectedMessageSize = 1000;
-                _selectedMessageCount = 100;
-                setState(() {});
-                _startTest();
-              },
-              child: const Text('Throttled: 100KB @ 12KB/s'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () {
-                // Stress test: send 500KB at 48KB/s
-                _selectedThrottleRate = 48;
-                _selectedMessageSize = 2000;
-                _selectedMessageCount = 250;
-                setState(() {});
-                _startTest();
-              },
-              child: const Text('Stress: 500KB @ 48KB/s'),
+              onPressed: _isRunning
+                  ? null
+                  : () {
+                      _selectedMessageSize = 4000;
+                      _selectedMessageCount = 1000;
+                      setState(() {});
+                      _startTest();
+                    },
+              child: const Text('4MB burst (1000 × 4KB)'),
             ),
           ],
         ),

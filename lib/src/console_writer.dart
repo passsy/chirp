@@ -1,18 +1,20 @@
 // ignore_for_file: avoid_print
 
 import 'dart:developer' as developer;
+
 import 'package:chirp/chirp.dart';
 
 export 'package:chirp/src/platform/platform_info.dart';
 
-/// Writes to console using [print()].
+/// Writes to console using dart:core [print].
 ///
-/// **Supports ANSI colors** in terminals and IDEs that render them.
+/// **Supports ANSI colors**, supported by almost all terminals and IDEs for Flutter/Dart.
+/// Use ANSI colors for local development.
 ///
 /// ## Android Truncation (1024 characters)
 ///
 /// On Android, `print()` is truncated at **1024 characters**. This limit comes
-/// from the NDK's `liblog` library, not the kernel.
+/// from the NDK's `liblog` library, which is smaller than logcats 4068 byte limit.
 ///
 /// **The truncation path:**
 /// ```text
@@ -22,23 +24,18 @@ export 'package:chirp/src/platform/platform_info.dart';
 ///       → kernel logger (LOGGER_ENTRY_MAX_PAYLOAD ≈ 4068, never reached)
 /// ```
 ///
-/// The Flutter engine calls `__android_log_print()` which formats the message
-/// into a **1024-byte stack buffer** before sending to the kernel. The kernel's
-/// larger limit (~4068 bytes) is never reached because truncation happens first
-/// in userspace.
-///
 /// **Why Java's `Log.d()` allows ~4000 chars but Flutter doesn't:**
 /// Java's `android.util.Log` calls `__android_log_buf_write()` directly,
 /// bypassing the 1024-byte formatting buffer. Flutter uses the NDK path which
 /// goes through `__android_log_print()` with its smaller buffer.
 ///
 /// **Source code references:**
-/// - [LOG_BUF_SIZE = 1024](https://cs.android.com/android/platform/superproject/main/+/main:system/logging/liblog/logger_write.cpp;l=62)
-/// - [vsnprintf truncation](https://cs.android.com/android/platform/superproject/main/+/main:system/logging/liblog/logger_write.cpp;l=75)
-/// - [Flutter engine log callback](https://github.com/flutter/engine/blob/main/shell/platform/android/flutter_main.cc)
-/// - [LOGGER_ENTRY_MAX_PAYLOAD (kernel limit)](https://cs.android.com/android/platform/superproject/main/+/main:system/logging/liblog/include/log/log.h;l=34)
+/// - [LOG_BUF_SIZE = 1024](https://cs.android.com/android/platform/superproject/main/+/main:system/logging/liblog/logger_write.cpp;l=67)
+/// - [vsnprintf truncation](https://cs.android.com/android/platform/superproject/main/+/main:system/logging/liblog/logger_write.cpp;l=426)
+/// - [Flutter engine log callback](https://github.com/flutter/flutter/blob/9bdd5efdd239db16f2693a2b9ec1a3d13f306304/engine/src/flutter/shell/platform/android/flutter_main.cc#L184)
+/// - [LOGGER_ENTRY_MAX_PAYLOAD (kernel limit)](https://cs.android.com/android/platform/superproject/main/+/main:system/logging/liblog/include/log/log.h;l=71)
 ///
-/// ## iOS/macOS Truncation (1024 bytes)
+/// ## iOS Truncation (1024 bytes)
 ///
 /// On iOS 10+ and macOS 10.12+, Apple's **Unified Logging** system (`os_log`)
 /// truncates messages at **1024 bytes** for dynamic content.
@@ -65,14 +62,23 @@ export 'package:chirp/src/platform/platform_info.dart';
 /// - The limit is hard-coded in `libsystem_trace.dylib` and cannot be changed
 ///
 /// **Source code references:**
-/// - [os/log.h header (iOS SDK)](https://github.com/xybp888/iOS-SDKs/blob/master/iPhoneOS13.0.sdk/usr/include/os/log.h)
+/// - [os/log.h header (iOS SDK)](https://github.com/xybp888/iOS-SDKs/blob/a18d5334788b97e586d1afebd3cb0006af6a1416/iPhoneOS13.0.sdk/usr/include/os/log.h#L202)
 /// - [Apple Developer Forums - NSLog 1024 limit](https://developer.apple.com/forums/thread/63537)
 /// - [Stack Overflow - iOS 10 NSLog truncation](https://stackoverflow.com/questions/39538320)
 ///
 /// ## Rate Limiting
 ///
-/// Android's kernel may drop log messages when too many are sent quickly.
-/// Use [throttleDelay] (default 2ms) to avoid dropped messages when chunking.
+/// Android's logd daemon can mark apps as "chatty" and collapse logs when
+/// they exceed ~5 messages per second. However, testing with the
+/// `example/print_limits` app showed **no observable rate limiting** even
+/// when sending 4MB of log data without any throttling. The "chatty"
+/// behavior appears to be disabled or very lenient on modern Android
+/// versions.
+///
+/// Flutter's `debugPrintThrottled` uses 12KB/s throttling as a precaution,
+/// but our testing suggests this may be unnecessary. If you experience
+/// dropped logs on specific devices, consider using `debugPrintThrottled` as [output]
+/// or implementing custom throttling.
 ///
 /// ## Platform Summary
 ///
@@ -104,61 +110,35 @@ class PrintConsoleWriter implements ChirpWriter {
   /// Defaults to [platformSupportsAnsiColors].
   final bool useColors;
 
-  /// Delay between chunks to avoid Android logcat rate limiting.
-  ///
-  /// Android's kernel may drop log messages when too many are sent quickly.
-  /// Set to [Duration.zero] to disable throttling.
-  ///
-  /// Only applies when [maxChunkLength] causes message splitting.
-  final Duration throttleDelay;
-
   /// Custom output function for testing or alternative output destinations.
-  final void Function(String)? output;
+  final void Function(String) output;
 
   PrintConsoleWriter({
     ConsoleMessageFormatter? formatter,
     int? maxChunkLength,
     bool? useColors,
-    this.throttleDelay = const Duration(milliseconds: 2),
-    this.output,
+    void Function(String)? output,
   })  : formatter = formatter ?? RainbowMessageFormatter(),
         maxChunkLength = maxChunkLength ?? platformPrintMaxChunkLength,
-        useColors = useColors ?? platformSupportsAnsiColors;
-
-  DateTime? _lastPrintTime;
+        useColors = useColors ?? platformSupportsAnsiColors,
+        output = output ?? print;
 
   @override
   void write(LogRecord record) {
+    // Format
     final buffer = ConsoleMessageBuffer(supportsColors: useColors);
     formatter.format(record, buffer);
     final text = buffer.toString();
 
-    final chunks = maxChunkLength != null
-        ? splitIntoChunks(text, maxChunkLength!)
-        : [text];
-
-    for (final chunk in chunks) {
-      _throttleIfNeeded();
-      if (output != null) {
-        output!(chunk);
-      } else {
-        print(chunk);
-      }
-      _lastPrintTime = DateTime.now();
+    // No chunking needed (default on desktop/web)
+    if (maxChunkLength == null) {
+      output(text);
+      return;
     }
-  }
 
-  void _throttleIfNeeded() {
-    if (throttleDelay == Duration.zero || _lastPrintTime == null) return;
-
-    final elapsed = DateTime.now().difference(_lastPrintTime!);
-    if (elapsed < throttleDelay) {
-      final remaining = throttleDelay - elapsed;
-      // Busy-wait for short delays (sleep would require dart:io)
-      final end = DateTime.now().add(remaining);
-      while (DateTime.now().isBefore(end)) {
-        // Spin
-      }
+    // Chunking needed (mobile platforms)
+    for (final chunk in splitIntoChunks(text, maxChunkLength!)) {
+      output(chunk);
     }
   }
 }
@@ -245,7 +225,6 @@ class DeveloperLogConsoleWriter implements ChirpWriter {
     };
   }
 }
-
 
 /// Formats a [LogRecord] into a string for console output.
 ///
