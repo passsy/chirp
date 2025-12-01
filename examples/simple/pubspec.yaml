@@ -1,0 +1,13 @@
+name: simple_example
+description: Simple examples demonstrating chirp logging features
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  chirp:
+    path: ../../packages/chirp
+
+dev_dependencies:
+  lint: ^2.0.0
