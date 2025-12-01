@@ -8,7 +8,6 @@ import 'package:sidekick_core/sidekick_core.dart';
 
 Future<void> runChrp(List<String> args) async {
   final runner = initializeSidekick(
-    mainProjectPath: '.',
     flutterSdkPath: flutterSdkSymlink(),
   );
   addSdkInitializer(initializePuro);
