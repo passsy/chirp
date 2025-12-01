@@ -63,8 +63,10 @@ void allLogLevelsExample() {
   Chirp.debug('Debug information', data: {'cache': 'miss'});
   Chirp.info('Application started info');
   Chirp.notice('Device connected', data: {'id': '32168', 'name': 'DPE 2'});
-  Chirp.log('Application started custom level 600',
-      level: const ChirpLogLevel('myAlert', 600));
+  Chirp.log(
+    'Application started custom level 600',
+    level: const ChirpLogLevel('myAlert', 600),
+  );
   Chirp.warning('Deprecated API used warning', data: {'api': 'v1'});
   Chirp.error('Operation failed error', error: Exception('Timeout'));
   Chirp.critical('Database connection lost (critical)');
@@ -95,21 +97,25 @@ void namedLoggerExample() {
 /// Child loggers inherit parent configuration
 void childLoggerExample() {
   // Create request-scoped logger
-  final requestLogger = Chirp.root.child(context: {
-    'requestId': 'REQ-123',
-    'userId': 'user_456',
-  });
+  final requestLogger = Chirp.root.child(
+    context: {
+      'requestId': 'REQ-123',
+      'userId': 'user_456',
+    },
+  );
 
   requestLogger.info('Request received');
   requestLogger.info('Processing data');
 
   // Nest children for transaction scope
-  final txLogger = requestLogger.child(context: {
-    'transactionId': 'TXN-789',
-    'action': 'login',
-    'plainObject': Object(),
-    'cool package': 'https://pub.dev/packages/spot',
-  });
+  final txLogger = requestLogger.child(
+    context: {
+      'transactionId': 'TXN-789',
+      'action': 'login',
+      'plainObject': Object(),
+      'cool package': 'https://pub.dev/packages/spot',
+    },
+  );
 
   // Includes requestId, userId, AND transactionId
   txLogger.info('Transaction started');
@@ -159,26 +165,29 @@ void formatOptionsExample() {
       ),
     );
 
-  Chirp.info('User logged in', data: {
-    'userId': 'user_123',
-    'email': 'user@example.com',
-    'loginMethod': 'oauth',
-    'metadata': {
-      'browser': 'Chrome',
-      'platform': 'macOS',
-      'version': 25,
+  Chirp.info(
+    'User logged in',
+    data: {
+      'userId': 'user_123',
+      'email': 'user@example.com',
+      'loginMethod': 'oauth',
+      'metadata': {
+        'browser': 'Chrome',
+        'platform': 'macOS',
+        'version': 25,
+      },
+      'roles': {'admin', 'user'},
+      'a record': ("value", "more", "data"),
+      'escapedStrings': [
+        'Sting"With"Quotes',
+        '\\wi\\th\\s\\paces',
+        null,
+        "null",
+        true,
+        'true',
+      ],
     },
-    'roles': {'admin', 'user'},
-    'a record': ("value", "more", "data"),
-    'escapedStrings': [
-      'Sting"With"Quotes',
-      '\\wi\\th\\s\\paces',
-      null,
-      "null",
-      true,
-      'true'
-    ],
-  });
+  );
 
   // Force inline
   Chirp.info(

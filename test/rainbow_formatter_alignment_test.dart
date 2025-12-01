@@ -108,7 +108,9 @@ void main() {
         startsWith('10:23:45.123 device_manager:809 _TestClass@'),
       );
       expect(
-          result, contains(' _startAutoConnectScanning [info] Test message'));
+        result,
+        contains(' _startAutoConnectScanning [info] Test message'),
+      );
       expect(result, isNot(contains('.<anonymous closure>')));
     });
 
@@ -306,7 +308,8 @@ void main() {
 
     test('writes data inline when formatOptions contains dataInline', () {
       final formatter = RainbowMessageFormatter(
-          options: const RainbowFormatOptions(data: DataPresentation.inline));
+        options: const RainbowFormatOptions(data: DataPresentation.inline),
+      );
       final entry = LogRecord(
         message: 'Test message',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
@@ -328,7 +331,8 @@ void main() {
 
     test('inline data appears on same line as message', () {
       final formatter = RainbowMessageFormatter(
-          options: const RainbowFormatOptions(data: DataPresentation.inline));
+        options: const RainbowFormatOptions(data: DataPresentation.inline),
+      );
       final entry = LogRecord(
         message: 'User action',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
@@ -349,7 +353,8 @@ void main() {
 
     test('inline data works with multiple properties', () {
       final formatter = RainbowMessageFormatter(
-          options: const RainbowFormatOptions(data: DataPresentation.inline));
+        options: const RainbowFormatOptions(data: DataPresentation.inline),
+      );
       final entry = LogRecord(
         message: 'Request',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
@@ -372,7 +377,8 @@ void main() {
 
     test('inline data with no data produces no inline annotation', () {
       final formatter = RainbowMessageFormatter(
-          options: const RainbowFormatOptions(data: DataPresentation.inline));
+        options: const RainbowFormatOptions(data: DataPresentation.inline),
+      );
       final entry = LogRecord(
         message: 'Test message',
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
@@ -433,8 +439,11 @@ void main() {
       final hashMatch = RegExp('_TestClass@([0-9a-f]+)').firstMatch(result);
       expect(hashMatch, isNotNull);
       final extractedHash = hashMatch!.group(1)!;
-      expect(extractedHash.length, 4,
-          reason: 'Instance hash should be exactly 4 hex characters');
+      expect(
+        extractedHash.length,
+        4,
+        reason: 'Instance hash should be exactly 4 hex characters',
+      );
     });
   });
 
@@ -465,7 +474,8 @@ void main() {
         date: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Test error'),
         stackTrace: StackTrace.fromString(
-            '#0      main (file.dart:10:5)\n#1      test (file.dart:20:3)'),
+          '#0      main (file.dart:10:5)\n#1      test (file.dart:20:3)',
+        ),
       );
 
       final buffer = ConsoleMessageBuffer(supportsColors: false);

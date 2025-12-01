@@ -102,10 +102,14 @@ void main() {
       // "!" should be red - red must be restored after blue ends
       final exclamationIndex = result.indexOf('!');
       final beforeExclamation = result.substring(
-          result.lastIndexOf('\x1B', exclamationIndex), exclamationIndex);
-      expect(beforeExclamation, contains('[38;5;196m'),
-          reason:
-              '"!" should be red (parent color restored after nested blue)');
+        result.lastIndexOf('\x1B', exclamationIndex),
+        exclamationIndex,
+      );
+      expect(
+        beforeExclamation,
+        contains('[38;5;196m'),
+        reason: '"!" should be red (parent color restored after nested blue)',
+      );
     });
   });
 
@@ -314,11 +318,14 @@ void main() {
         final child = sequence.children.first;
 
         child.wrap(
-            (c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
+          (c) => AnsiColored(foreground: XtermColor.red1_196, child: c),
+        );
 
         expect(sequence.children.first, isA<AnsiColored>());
-        expect((sequence.children.first as SingleChildSpan).child,
-            isA<PlainText>());
+        expect(
+          (sequence.children.first as SingleChildSpan).child,
+          isA<PlainText>(),
+        );
       });
 
       test('preserves rendering after wrap', () {
@@ -326,7 +333,8 @@ void main() {
         final child = sequence.children.first;
 
         child.wrap(
-            (c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
+          (c) => AnsiColored(foreground: XtermColor.red1_196, child: c),
+        );
 
         final buffer = ConsoleMessageBuffer(supportsColors: false);
         renderSpan(sequence, buffer);
@@ -590,8 +598,11 @@ void main() {
 
         // Verify all parents
         for (final child in sequence.children) {
-          expect(child.parent, sequence,
-              reason: 'child $child should have sequence as parent');
+          expect(
+            child.parent,
+            sequence,
+            reason: 'child $child should have sequence as parent',
+          );
         }
 
         // Verify output
@@ -787,7 +798,8 @@ void main() {
         final surrounded = Surrounded(child: child);
 
         child.wrap(
-            (c) => AnsiColored(foreground: XtermColor.red1_196, child: c));
+          (c) => AnsiColored(foreground: XtermColor.red1_196, child: c),
+        );
 
         expect(surrounded.child, isA<AnsiColored>());
         expect((surrounded.child! as AnsiColored).child, isA<PlainText>());
@@ -802,7 +814,8 @@ void main() {
         );
 
         prefix.wrap(
-            (c) => AnsiColored(foreground: XtermColor.blue1_21, child: c));
+          (c) => AnsiColored(foreground: XtermColor.blue1_21, child: c),
+        );
 
         expect(surrounded.prefix, isA<AnsiColored>());
 

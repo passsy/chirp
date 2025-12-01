@@ -396,8 +396,11 @@ void main() {
 
         // With a limit that visible passes but actual fails, we should split
         final chunks = splitIntoChunks(coloredText, 300);
-        expect(chunks.length, greaterThan(1),
-            reason: 'Should split because actual length ($actualLen) > 300');
+        expect(
+          chunks.length,
+          greaterThan(1),
+          reason: 'Should split because actual length ($actualLen) > 300',
+        );
 
         // Verify content is preserved (minus newlines consumed at split points)
         final combined = chunks.join();
@@ -407,8 +410,11 @@ void main() {
 
         // Also verify each chunk respects the byte limit
         for (final chunk in chunks) {
-          expect(chunk.length, lessThanOrEqualTo(300),
-              reason: 'Chunk should be <= 300 bytes');
+          expect(
+            chunk.length,
+            lessThanOrEqualTo(300),
+            reason: 'Chunk should be <= 300 bytes',
+          );
         }
       });
 
@@ -581,8 +587,11 @@ void main() {
           // Each ESC should have a corresponding 'm' terminator
           // (simplified check - real ANSI can be more complex)
           if (escCount > 0) {
-            expect(mCount, greaterThanOrEqualTo(escCount),
-                reason: 'Chunk "$chunk" has incomplete ANSI sequence');
+            expect(
+              mCount,
+              greaterThanOrEqualTo(escCount),
+              reason: 'Chunk "$chunk" has incomplete ANSI sequence',
+            );
           }
         }
       });
@@ -722,11 +731,13 @@ void main() {
         maxChunkLength: 100,
       );
 
-      writer.write(LogRecord(
-        message: 'ignored',
-        level: ChirpLogLevel.info,
-        date: DateTime(2024),
-      ));
+      writer.write(
+        LogRecord(
+          message: 'ignored',
+          level: ChirpLogLevel.info,
+          date: DateTime(2024),
+        ),
+      );
 
       expect(outputs, ['short message']);
     });
@@ -740,11 +751,13 @@ void main() {
         maxChunkLength: 6,
       );
 
-      writer.write(LogRecord(
-        message: 'ignored',
-        level: ChirpLogLevel.info,
-        date: DateTime(2024),
-      ));
+      writer.write(
+        LogRecord(
+          message: 'ignored',
+          level: ChirpLogLevel.info,
+          date: DateTime(2024),
+        ),
+      );
 
       expect(outputs, ['line1', 'line2', 'line3']);
     });
@@ -758,11 +771,13 @@ void main() {
         maxChunkLength: null, // disabled
       );
 
-      writer.write(LogRecord(
-        message: 'ignored',
-        level: ChirpLogLevel.info,
-        date: DateTime(2024),
-      ));
+      writer.write(
+        LogRecord(
+          message: 'ignored',
+          level: ChirpLogLevel.info,
+          date: DateTime(2024),
+        ),
+      );
 
       expect(outputs.length, 1);
       expect(outputs[0].length, 1000);

@@ -38,13 +38,21 @@ void main() {
 
       expect(trace.severity < ChirpLogLevel.debug.severity, isTrue);
       expect(
-          ChirpLogLevel.debug.severity < ChirpLogLevel.info.severity, isTrue);
+        ChirpLogLevel.debug.severity < ChirpLogLevel.info.severity,
+        isTrue,
+      );
       expect(
-          ChirpLogLevel.info.severity < ChirpLogLevel.warning.severity, isTrue);
-      expect(ChirpLogLevel.warning.severity < ChirpLogLevel.error.severity,
-          isTrue);
-      expect(ChirpLogLevel.error.severity < ChirpLogLevel.critical.severity,
-          isTrue);
+        ChirpLogLevel.info.severity < ChirpLogLevel.warning.severity,
+        isTrue,
+      );
+      expect(
+        ChirpLogLevel.warning.severity < ChirpLogLevel.error.severity,
+        isTrue,
+      );
+      expect(
+        ChirpLogLevel.error.severity < ChirpLogLevel.critical.severity,
+        isTrue,
+      );
       expect(ChirpLogLevel.critical.severity < fatal.severity, isTrue);
     });
 
