@@ -14,6 +14,7 @@ enum AppPage {
   throttling('Throttling');
 
   const AppPage(this.label);
+
   final String label;
 }
 
@@ -24,6 +25,7 @@ enum PrintMethod {
   stdout('stdout.writeln()');
 
   const PrintMethod(this.label);
+
   final String label;
 }
 
