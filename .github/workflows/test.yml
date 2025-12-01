@@ -1,0 +1,35 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        version: [
+          # absolute minimum version, it is a breaking change when it doesn't work here anymore
+          "3.0",
+          # Minimum version that can be executed on Apple Silicon
+          "3.3",
+          # Latest known working version
+          "3.10",
+          # We absolutely have to support that
+          "stable",
+          # We should be informed about compatability, but it is not enforced
+          "beta",
+        ]
+
+    container:
+      image: dart:${{ matrix.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: dart pub get
+      - run: dart test

@@ -1,0 +1,26 @@
+name: Analyze
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  analyze:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./chrp deps
+      - run: ./chrp analyze
+
+  format:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./chrp deps
+      - run: ./chrp format --verify

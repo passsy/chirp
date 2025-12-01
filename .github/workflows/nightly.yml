@@ -1,0 +1,33 @@
+name: Nightly
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 12 * * *'
+
+jobs:
+  stable:
+    runs-on: ubuntu-latest
+    container:
+      image: dart:stable
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dart version
+        run: dart --version
+      - name: Download dependencies
+        run: dart pub get
+      - name: Test
+        run: dart test
+
+  beta:
+    runs-on: ubuntu-latest
+    container:
+      image: dart:beta
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dart version
+        run: dart --version
+      - name: Download dependencies
+        run: dart pub get
+      - name: Test
+        run: dart test
