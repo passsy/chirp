@@ -1,0 +1,41 @@
+/// Stable logging API for libraries.
+///
+/// This package provides the core logging interfaces and types that libraries
+/// should depend on. For a full logging implementation with writers and
+/// formatters, depend on `chirp` instead.
+///
+/// ## For Library Authors
+///
+/// Depend on `chirp_protocol` to use logging without pulling in implementations:
+///
+/// ```yaml
+/// dependencies:
+///   chirp_protocol: ^0.5.0
+/// ```
+///
+/// Then use the logging API:
+///
+/// ```dart
+/// import 'package:chirp_protocol/chirp_protocol.dart';
+///
+/// class MyLibraryService {
+///   void doWork() {
+///     Chirp.info('Doing work', data: {'step': 1});
+///   }
+/// }
+/// ```
+///
+/// ## For App Developers
+///
+/// Depend on `chirp` instead, which re-exports this package and provides
+/// writers and formatters:
+///
+/// ```yaml
+/// dependencies:
+///   chirp: ^0.5.0
+/// ```
+export 'src/chirp_logger.dart';
+export 'src/chirp_writer.dart';
+export 'src/format_option.dart';
+export 'src/log_level.dart';
+export 'src/log_record.dart';

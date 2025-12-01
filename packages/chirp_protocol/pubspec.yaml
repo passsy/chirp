@@ -1,0 +1,13 @@
+name: chirp_protocol
+description: Stable logging API for libraries. Use chirp for implementation.
+version: 0.5.0
+repository: https://github.com/passsy/chirp
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  clock: ^1.0.0
+
+dev_dependencies:
+  lint: ^2.0.0
