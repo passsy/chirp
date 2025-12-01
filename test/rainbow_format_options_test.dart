@@ -193,5 +193,32 @@ void main() {
         '10:23:45.000 [info] Test message (userId: "user_123")',
       );
     });
+
+    test('per-message showTime false hides timestamp for that entry only', () {
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(),
+      );
+
+      final entry = LogRecord(
+        message: 'Test message',
+        date: DateTime(2024, 1, 15, 10, 23, 45),
+        formatOptions: const [
+          RainbowFormatOptions(
+            showTime: false,
+            showLocation: false,
+            showLogger: false,
+            showClass: false,
+            showMethod: false,
+          ),
+        ],
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(entry, buffer);
+      final result = buffer.toString();
+
+      // No timestamp prefix, just level and message
+      expect(result.trimLeft(), '[info] Test message');
+    });
   });
 }

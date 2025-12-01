@@ -837,6 +837,258 @@ void main() {
       });
     });
   });
+
+  group('SpanFormatOptions', () {
+    test('applies spanTransformers from formatOptions', () {
+      final record = LogRecord(
+        message: 'Hello',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        level: ChirpLogLevel.info,
+        formatOptions: [
+          SpanFormatOptions(
+            spanTransformers: [
+              (span, record) {
+                span.findFirst<Timestamp>()?.replaceWith(PlainText('CUSTOM'));
+              },
+            ],
+          ),
+        ],
+      );
+
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(
+          showLocation: false,
+          showLogger: false,
+          showClass: false,
+          showMethod: false,
+        ),
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      expect(result, 'CUSTOM [info] Hello');
+    });
+
+    test('per-log transformers run after formatter transformers', () {
+      final transformerOrder = <String>[];
+
+      final record = LogRecord(
+        message: 'Hello',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        level: ChirpLogLevel.info,
+        formatOptions: [
+          SpanFormatOptions(
+            spanTransformers: [
+              (span, record) {
+                transformerOrder.add('per-log');
+              },
+            ],
+          ),
+        ],
+      );
+
+      final formatter = RainbowMessageFormatter(
+        spanTransformers: [
+          (span, record) {
+            transformerOrder.add('formatter');
+          },
+        ],
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+
+      expect(transformerOrder, ['formatter', 'per-log']);
+    });
+
+    test('multiple SpanFormatOptions are all applied', () {
+      final record = LogRecord(
+        message: 'Hello',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        level: ChirpLogLevel.info,
+        formatOptions: [
+          SpanFormatOptions(
+            spanTransformers: [
+              (span, record) {
+                span.findFirst<Timestamp>()?.remove();
+              },
+            ],
+          ),
+          SpanFormatOptions(
+            spanTransformers: [
+              (span, record) {
+                span.findFirst<BracketedLogLevel>()?.remove();
+              },
+            ],
+          ),
+        ],
+      );
+
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(
+          showLocation: false,
+          showLogger: false,
+          showClass: false,
+          showMethod: false,
+        ),
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      // Both timestamp and level should be removed
+      expect(result.trim(), 'Hello');
+    });
+
+    test('wraps entire message with Bordered via per-log transformer', () {
+      final record = LogRecord(
+        message: 'Important',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        level: ChirpLogLevel.warning,
+        formatOptions: [
+          SpanFormatOptions(
+            spanTransformers: [
+              (span, record) {
+                span.wrap(
+                  (child) => Bordered(
+                    child: child,
+                    style: BoxBorderStyle.rounded,
+                  ),
+                );
+              },
+            ],
+          ),
+        ],
+      );
+
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(
+          showTime: false,
+          showLocation: false,
+          showLogger: false,
+          showClass: false,
+          showMethod: false,
+          showLogLevel: false,
+        ),
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      expect(
+        result,
+        '╭────────────╮\n'
+        '│  Important │\n'
+        '╰────────────╯',
+      );
+    });
+
+    test('empty formatOptions list does not affect output', () {
+      final record = LogRecord(
+        message: 'Hello',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        level: ChirpLogLevel.info,
+        formatOptions: const [],
+      );
+
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(
+          showLocation: false,
+          showLogger: false,
+          showClass: false,
+          showMethod: false,
+        ),
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      expect(result, '10:23:45.123 [info] Hello');
+    });
+
+    test('null formatOptions does not affect output', () {
+      final record = LogRecord(
+        message: 'Hello',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        level: ChirpLogLevel.info,
+      );
+
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(
+          showLocation: false,
+          showLogger: false,
+          showClass: false,
+          showMethod: false,
+        ),
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      expect(result, '10:23:45.123 [info] Hello');
+    });
+
+    test('non-SpanFormatOptions in formatOptions are ignored', () {
+      final record = LogRecord(
+        message: 'Hello',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        level: ChirpLogLevel.info,
+        formatOptions: const [
+          FormatOptions(), // Not SpanFormatOptions
+          RainbowFormatOptions(showTime: false), // Different type
+        ],
+      );
+
+      final formatter = RainbowMessageFormatter(
+        options: const RainbowFormatOptions(
+          showLocation: false,
+          showLogger: false,
+          showClass: false,
+          showMethod: false,
+        ),
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      // RainbowFormatOptions should still work (showTime: false)
+      // The leading space is from the Surrounded span that wraps the timestamp
+      expect(result.trimLeft(), '[info] Hello');
+    });
+
+    test('works with CompactChirpMessageFormatter', () {
+      final record = LogRecord(
+        message: 'Hello',
+        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        level: ChirpLogLevel.info,
+        formatOptions: [
+          SpanFormatOptions(
+            spanTransformers: [
+              (span, record) {
+                span.findFirst<LogMessage>()?.replaceWith(PlainText('REPLACED'));
+              },
+            ],
+          ),
+        ],
+      );
+
+      final formatter = CompactChirpMessageFormatter();
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      expect(result, contains('REPLACED'));
+      expect(result, isNot(contains('Hello')));
+    });
+  });
 }
 
 /// Builds to Timestamp (which builds to PlainText).

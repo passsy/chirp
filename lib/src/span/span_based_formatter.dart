@@ -42,9 +42,19 @@ abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
   void format(LogRecord record, ConsoleMessageBuffer buffer) {
     final span = buildSpan(record);
 
-    // Apply transformers directly to the mutable span tree
+    // Apply formatter's default transformers
     for (final transformer in spanTransformers) {
       transformer(span, record);
+    }
+
+    // Apply per-log transformers from formatOptions
+    final perLogTransformers = record.formatOptions
+        ?.whereType<SpanFormatOptions>()
+        .expand((options) => options.spanTransformers);
+    if (perLogTransformers != null) {
+      for (final transformer in perLogTransformers) {
+        transformer(span, record);
+      }
     }
 
     // Transformers may wrap the original root in a new parent span.
@@ -70,3 +80,35 @@ typedef SpanTransformer = void Function(
   LogSpan span,
   LogRecord record,
 );
+
+/// Format options that include span transformers for [SpanBasedFormatter].
+///
+/// This allows per-log customization of the span tree, enabling features like:
+/// - Wrapping specific logs in borders
+/// - Adding custom decorations to important messages
+/// - Removing or replacing spans for specific log entries
+///
+/// ## Example
+///
+/// ```dart
+/// Chirp.info(
+///   'Important message',
+///   formatOptions: [
+///     SpanFormatOptions(
+///       spanTransformers: [
+///         (span, record) => span.wrap(Bordered()),
+///       ],
+///     ),
+///   ],
+/// );
+/// ```
+class SpanFormatOptions extends FormatOptions {
+  const SpanFormatOptions({
+    this.spanTransformers = const [],
+  });
+
+  /// Additional span transformers to apply for this specific log entry.
+  ///
+  /// These transformers are applied after the formatter's default transformers.
+  final List<SpanTransformer> spanTransformers;
+}
