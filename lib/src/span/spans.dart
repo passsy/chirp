@@ -219,6 +219,53 @@ class ClassName extends LeafSpan {
 
   ClassName(this.name, {this.instanceHash});
 
+  /// Creates a [ClassName] from a [LogRecord].
+  ///
+  /// Resolution logic:
+  /// 1. If the record has an instance with a hash, uses the instance's runtime type
+  ///    and includes the hash (formatted as hex digits with [hashLength])
+  /// 2. Otherwise, if the record has caller info with a class name, uses that
+  ///    without a hash
+  /// 3. Otherwise, if the record has an instance (without hash), uses the instance's
+  ///    runtime type without a hash
+  /// 4. Returns null if no class name can be resolved
+  ///
+  /// The [hashLength] parameter controls how many hex characters to use for the
+  /// instance hash (default: 8).
+  ///
+  /// This ensures that:
+  /// - Instance type always matches the hash when both are present
+  /// - Caller class names are shown without hash when no instance is present
+  static ClassName? fromRecord(LogRecord record, {int hashLength = 8}) {
+    // When we have an instance hash, prioritize the instance's type
+    // to ensure the class name matches the hash
+    if (record.instanceHash != null && record.instance != null) {
+      final className = record.instance!.runtimeType.toString();
+      final hashHex = record.instanceHash!.toRadixString(16).padLeft(hashLength, '0');
+      // Take the last hashLength characters (handles overflow gracefully)
+      final hash = hashHex.length > hashLength
+          ? hashHex.substring(hashHex.length - hashLength)
+          : hashHex;
+      return ClassName(className, instanceHash: hash);
+    }
+
+    // Otherwise, try to get class name from caller (without hash)
+    if (record.caller != null) {
+      final callerInfo = getCallerInfo(record.caller!);
+      if (callerInfo?.callerClassName != null) {
+        return ClassName(callerInfo!.callerClassName!);
+      }
+    }
+
+    // Fall back to instance type if available (without hash)
+    if (record.instance != null) {
+      final className = record.instance!.runtimeType.toString();
+      return ClassName(className);
+    }
+
+    return null;
+  }
+
   @override
   LogSpan build() {
     if (instanceHash != null) {

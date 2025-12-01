@@ -116,15 +116,15 @@ LogSpan _buildSimpleLogSpan({
 
       // Method name (only if showMethod is true)
       if (showMethod) {
-        final className = _resolveClassName(record);
+        final classNameSpan = ClassName.fromRecord(record);
         final method = callerInfo.callerMethod;
         String? methodToShow;
 
         if (method != '<unknown>' &&
-            (className == null || !method.startsWith('$className.'))) {
+            (classNameSpan == null || !method.startsWith('${classNameSpan.name}.'))) {
           methodToShow = method;
-        } else if (className != null && method.startsWith('$className.')) {
-          final methodName = method.substring(className.length + 1);
+        } else if (classNameSpan != null && method.startsWith('${classNameSpan.name}.')) {
+          final methodName = method.substring(classNameSpan.name.length + 1);
           if (methodName.isNotEmpty) {
             methodToShow = methodName;
           }
@@ -142,12 +142,10 @@ LogSpan _buildSimpleLogSpan({
 
   // Class and instance information
   if (showInstance) {
-    final className = _resolveClassName(record);
-    if (className != null) {
-      final instanceHash =
-          record.instanceHash?.toRadixString(16).padLeft(8, '0');
+    final classNameSpan = ClassName.fromRecord(record);
+    if (classNameSpan != null) {
       if (spans.isNotEmpty) spans.add(Whitespace());
-      spans.add(ClassName(className, instanceHash: instanceHash));
+      spans.add(classNameSpan);
     }
   }
 
@@ -193,18 +191,6 @@ LogSpan _buildSimpleLogSpan({
   return SpanSequence(spans);
 }
 
-String? _resolveClassName(LogRecord record) {
-  if (record.caller != null) {
-    final callerInfo = getCallerInfo(record.caller!);
-    if (callerInfo?.callerClassName != null) {
-      return callerInfo!.callerClassName;
-    }
-  }
-  if (record.instance != null) {
-    return record.instance!.runtimeType.toString();
-  }
-  return null;
-}
 
 /// Full timestamp with date: 2024-01-10 10:30:45.123
 class FullTimestamp extends LeafSpan {

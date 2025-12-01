@@ -41,7 +41,6 @@ class RainbowMessageFormatter extends SpanBasedFormatter {
     return _buildRainbowLogSpan(
       record: record,
       options: effectiveOptions,
-      classNameResolver: resolveClassName,
     );
   }
 }
@@ -50,10 +49,8 @@ class RainbowMessageFormatter extends SpanBasedFormatter {
 LogSpan _buildRainbowLogSpan({
   required LogRecord record,
   required RainbowFormatOptions options,
-  required String Function(Object) classNameResolver,
 }) {
   final callerInfo = record.callerInfo;
-  final instanceLabel = record.instanceLabel(classNameResolver);
 
   final levelColor = switch (record.level.severity) {
     > 500 => XtermColor.indianRed1_203,
@@ -100,17 +97,12 @@ LogSpan _buildRainbowLogSpan({
 
   // Class name
   if (options.showClass) {
+    final classNameSpan = ClassName.fromRecord(record, hashLength: 4);
     LogSpan? className;
-    if (instanceLabel != null) {
+    if (classNameSpan != null) {
       className = AnsiColored(
-        foreground: hashColor(instanceLabel, readableColorsLowSaturation),
-        child: ClassName(instanceLabel),
-      );
-    } else if (callerInfo?.callerClassName != null) {
-      final cn = callerInfo!.callerClassName!;
-      className = AnsiColored(
-        foreground: hashColor(cn, readableColorsLowSaturation),
-        child: ClassName(cn),
+        foreground: hashColor(classNameSpan.name, readableColorsLowSaturation),
+        child: classNameSpan,
       );
     }
     spans.add(Surrounded(prefix: Whitespace(), child: className));

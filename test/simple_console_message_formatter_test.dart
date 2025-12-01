@@ -296,6 +296,67 @@ void main() {
 
       expect(result, '10:30:45.123 [info] - TRANSFORMED');
     });
+
+    test('shows caller class name without hash when no instance', () {
+      final formatter = SimpleConsoleMessageFormatter();
+      final record = LogRecord(
+        message: 'Test',
+        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        level: ChirpLogLevel.info,
+        caller: StackTrace.fromString(
+          '#0      CallerClass.method (file:///main.dart:42:5)',
+        ),
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      expect(result, contains('CallerClass'));
+      expect(result, isNot(contains('@')));
+    });
+
+    test('shows instance type with hash when instance present', () {
+      final instance = _TestClass();
+      final formatter = SimpleConsoleMessageFormatter();
+      final record = LogRecord(
+        message: 'Test',
+        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        level: ChirpLogLevel.info,
+        instance: instance,
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      final hash = identityHashCode(instance).toRadixString(16).padLeft(8, '0');
+      expect(result, contains('_TestClass@$hash'));
+    });
+
+    test('prioritizes instance type over caller class when both present', () {
+      final instance = _TestClass();
+      final formatter = SimpleConsoleMessageFormatter();
+      final record = LogRecord(
+        message: 'Test',
+        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        level: ChirpLogLevel.info,
+        instance: instance,
+        caller: StackTrace.fromString(
+          '#0      DifferentClass.method (file:///main.dart:42:5)',
+        ),
+      );
+
+      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      formatter.format(record, buffer);
+      final result = buffer.toString();
+
+      final hash = identityHashCode(instance).toRadixString(16).padLeft(8, '0');
+      // Should show _TestClass (instance) with hash, not DifferentClass (caller)
+      expect(result, contains('_TestClass@$hash'));
+      expect(result, isNot(contains('DifferentClass@')));
+    });
+
   });
 
   group('FullTimestamp', () {
