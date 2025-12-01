@@ -118,12 +118,15 @@ class Surrounded extends SlottedSpan {
   static const suffixSlot = 'suffix';
 
   LogSpan? get prefix => getSlot(prefixSlot);
+
   set prefix(LogSpan? v) => setSlot(prefixSlot, v);
 
   LogSpan? get child => getSlot(childSlot);
+
   set child(LogSpan? v) => setSlot(childSlot, v);
 
   LogSpan? get suffix => getSlot(suffixSlot);
+
   set suffix(LogSpan? v) => setSlot(suffixSlot, v);
 
   Surrounded({LogSpan? prefix, LogSpan? child, LogSpan? suffix}) {

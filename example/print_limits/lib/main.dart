@@ -132,7 +132,9 @@ class _PrintLimitsAppState extends State<PrintLimitsApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Print Limits Test',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue)),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+      ),
       home: Scaffold(
         body: switch (_currentPage) {
           AppPage.printLimits => const PrintLimitsPage(),
@@ -148,7 +150,9 @@ class _PrintLimitsAppState extends State<PrintLimitsApp> {
           destinations: [
             for (final page in AppPage.values)
               NavigationDestination(
-                icon: Icon(page == AppPage.printLimits ? Icons.text_fields : Icons.speed),
+                icon: Icon(
+                  page == AppPage.printLimits ? Icons.text_fields : Icons.speed,
+                ),
                 label: page.label,
               ),
           ],
@@ -185,7 +189,9 @@ class _PrintLimitsPageState extends State<PrintLimitsPage> {
 
   void _printString(int length, String Function(int) generator, String name) {
     final testString = generator(length);
-    _doPrint('--- START $name ($length bytes) via ${_selectedMethod.label} ---');
+    _doPrint(
+      '--- START $name ($length bytes) via ${_selectedMethod.label} ---',
+    );
     _doPrint(testString);
     _doPrint('--- END $name ---');
 
@@ -209,7 +215,10 @@ class _PrintLimitsPageState extends State<PrintLimitsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Test Console Print Limits', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text(
+              'Test Console Print Limits',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             const Text(
               'Each button prints a marked string to the console. '
@@ -217,11 +226,15 @@ class _PrintLimitsPageState extends State<PrintLimitsPage> {
               'where truncation occurs.',
             ),
             const SizedBox(height: 16),
-            const Text('Print Method:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Print Method:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             SegmentedButton<PrintMethod>(
               segments: [
-                for (final method in PrintMethod.values) ButtonSegment(value: method, label: Text(method.label)),
+                for (final method in PrintMethod.values)
+                  ButtonSegment(value: method, label: Text(method.label)),
               ],
               selected: {_selectedMethod},
               onSelectionChanged: (selected) {
@@ -232,10 +245,16 @@ class _PrintLimitsPageState extends State<PrintLimitsPage> {
             ),
             const SizedBox(height: 16),
             Card(
-              child: Padding(padding: const EdgeInsets.all(12), child: Text(_lastPrintedInfo)),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(_lastPrintedInfo),
+              ),
             ),
             const SizedBox(height: 24),
-            const Text('Compact Format:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Compact Format:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -243,13 +262,20 @@ class _PrintLimitsPageState extends State<PrintLimitsPage> {
               children: [
                 for (final size in [512, 1024, 2048, 4096, 8192, 16384])
                   ElevatedButton(
-                    onPressed: () => _printString(size, generateCompactMarkedString, 'Compact $size'),
+                    onPressed: () => _printString(
+                      size,
+                      generateCompactMarkedString,
+                      'Compact $size',
+                    ),
                     child: Text('$size'),
                   ),
               ],
             ),
             const SizedBox(height: 24),
-            const Text('Detailed Format:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Detailed Format:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -257,13 +283,20 @@ class _PrintLimitsPageState extends State<PrintLimitsPage> {
               children: [
                 for (final size in [512, 1024, 2048, 4096, 8192, 16384])
                   ElevatedButton(
-                    onPressed: () => _printString(size, generateMarkedString, 'Detailed $size'),
+                    onPressed: () => _printString(
+                      size,
+                      generateMarkedString,
+                      'Detailed $size',
+                    ),
                     child: Text('$size'),
                   ),
               ],
             ),
             const SizedBox(height: 24),
-            const Text('Quick Tests:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Quick Tests:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             ElevatedButton(
               onPressed: () {
@@ -316,7 +349,8 @@ class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
   int _selectedMessageCount = 100;
 
   bool _isRunning = false;
-  String _status = 'Ready\n\nWatch logcat for "chatty" messages indicating rate limiting.';
+  String _status =
+      'Ready\n\nWatch logcat for "chatty" messages indicating rate limiting.';
 
   void _startTest() {
     setState(() {
@@ -340,8 +374,11 @@ class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
     setState(() {
       _isRunning = false;
       final elapsed = stopwatch.elapsedMilliseconds;
-      final rate = elapsed > 0 ? totalBytes / (elapsed / 1000) : double.infinity;
-      _status = 'Sent $_selectedMessageCount messages ($totalBytes bytes) in ${elapsed}ms\n'
+      final rate = elapsed > 0
+          ? totalBytes / (elapsed / 1000)
+          : double.infinity;
+      _status =
+          'Sent $_selectedMessageCount messages ($totalBytes bytes) in ${elapsed}ms\n'
           'Rate: ${(rate / 1024).toStringAsFixed(1)} KB/s\n\n'
           'Check logcat for "chatty" messages. If none appear, rate limiting is not active.';
     });
@@ -383,7 +420,10 @@ class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
             const SizedBox(height: 24),
 
             // Message size selector
-            const Text('Message Size (bytes):', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Message Size (bytes):',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -404,7 +444,10 @@ class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
             const SizedBox(height: 16),
 
             // Message count selector
-            const Text('Message Count:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Message Count:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -455,7 +498,10 @@ class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
             const SizedBox(height: 24),
 
             // Quick tests
-            const Text('Quick Tests:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Quick Tests:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             ElevatedButton(
               onPressed: _isRunning

@@ -5,7 +5,6 @@ import 'dart:math' as math;
 
 /// Represents an xterm ANSI color with contrast information.
 enum XtermColor {
-
   /// Black (#000000)
   black_0(
     code: 0,
@@ -2821,7 +2820,7 @@ enum XtermColor {
     contrastOnWhite: 1.16,
     contrastOnBlack: 18.10,
   ),
-;
+  ;
 
   final int code;
   final int r;
@@ -2855,8 +2854,11 @@ enum XtermColor {
     // RGB to XYZ
     double pivotRgb(double n) {
       final v = n / 255.0;
-      return v > 0.04045 ? math.pow((v + 0.055) / 1.055, 2.4).toDouble() : v / 12.92;
+      return v > 0.04045
+          ? math.pow((v + 0.055) / 1.055, 2.4).toDouble()
+          : v / 12.92;
     }
+
     final rLinear = pivotRgb(r.toDouble()) * 100;
     final gLinear = pivotRgb(g.toDouble()) * 100;
     final bLinear = pivotRgb(b.toDouble()) * 100;
@@ -2872,7 +2874,9 @@ enum XtermColor {
     const refZ = 108.883;
 
     double pivotXyz(double n) {
-      return n > 0.008856 ? math.pow(n, 1.0 / 3.0).toDouble() : (7.787 * n) + (16.0 / 116.0);
+      return n > 0.008856
+          ? math.pow(n, 1.0 / 3.0).toDouble()
+          : (7.787 * n) + (16.0 / 116.0);
     }
 
     final xPivot = pivotXyz(x / refX);
@@ -2963,8 +2967,13 @@ enum XtermColor {
     final deltaTheta =
         30 * math.exp(-((hBarPrime - 275) / 25) * ((hBarPrime - 275) / 25));
 
-    final cBarPrime7 =
-        cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime;
+    final cBarPrime7 = cBarPrime *
+        cBarPrime *
+        cBarPrime *
+        cBarPrime *
+        cBarPrime *
+        cBarPrime *
+        cBarPrime;
     final rc = 2 * math.sqrt(cBarPrime7 / (cBarPrime7 + 6103515625));
 
     final lBarPrimeMinus50Sq = (lBarPrime - 50) * (lBarPrime - 50);

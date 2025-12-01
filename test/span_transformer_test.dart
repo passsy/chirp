@@ -1072,7 +1072,9 @@ void main() {
           SpanFormatOptions(
             spanTransformers: [
               (span, record) {
-                span.findFirst<LogMessage>()?.replaceWith(PlainText('REPLACED'));
+                span
+                    .findFirst<LogMessage>()
+                    ?.replaceWith(PlainText('REPLACED'));
               },
             ],
           ),

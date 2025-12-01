@@ -44,8 +44,7 @@ void main() {
 
       test('strips combined styles', () {
         expect(
-          stripAnsiCodes(
-              '\x1B[1;4;31mbold underline red\x1B[0m'),
+          stripAnsiCodes('\x1B[1;4;31mbold underline red\x1B[0m'),
           'bold underline red',
         );
       });
@@ -126,8 +125,7 @@ void main() {
 
       test('strips private mode set (e.g., hide cursor)', () {
         expect(
-          stripAnsiCodes(
-              '\x1B[?25lhidden cursor\x1B[?25h'),
+          stripAnsiCodes('\x1B[?25lhidden cursor\x1B[?25h'),
           'hidden cursor',
         );
       });
@@ -419,8 +417,7 @@ void main() {
             '\x1B[31mred\x1B[0m \x1B[32mgreen\x1B[0m \x1B[34mblue\x1B[0m';
         final result = splitIntoChunks(text, 100);
         expect(result, [text]);
-        expect(
-            stripAnsiCodes(result[0]), 'red green blue');
+        expect(stripAnsiCodes(result[0]), 'red green blue');
       });
     });
 

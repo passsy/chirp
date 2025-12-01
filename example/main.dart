@@ -275,7 +275,6 @@ class UserService {
   }
 }
 
-
 // Logger for section headers with newline prefix and no level
 final sectionLogger = ChirpLogger()
   ..addConsoleWriter(

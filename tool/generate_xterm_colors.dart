@@ -233,7 +233,8 @@ class _ColorInfo {
   final int g;
   final int b;
 
-  const _ColorInfo(this.name, this.displayName, this.hex, this.r, this.g, this.b);
+  const _ColorInfo(
+      this.name, this.displayName, this.hex, this.r, this.g, this.b);
 }
 
 /// All 256 xterm color names and hex values.
@@ -535,8 +536,8 @@ _ColorInfo _getXtermColor(int code) {
     enumName = '${_standardColorNames[code]}_$code';
   } else {
     // Extended colors: use xterm name (camelCase) + code
-    final camelName = displayName.substring(0, 1).toLowerCase() +
-        displayName.substring(1);
+    final camelName =
+        displayName.substring(0, 1).toLowerCase() + displayName.substring(1);
     enumName = '${camelName}_$code';
   }
 

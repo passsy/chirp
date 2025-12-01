@@ -222,7 +222,8 @@ void main() {
 
     test('returns false when writer not found', () {
       final logger = ChirpLogger(name: 'TestLogger');
-      final writer = PrintConsoleWriter(formatter: CompactChirpMessageFormatter());
+      final writer =
+          PrintConsoleWriter(formatter: CompactChirpMessageFormatter());
 
       // Writer was never added
       final removed = logger.removeWriter(writer);
