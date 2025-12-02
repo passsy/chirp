@@ -1,27 +1,15 @@
+import 'package:chirp_protocol/src/chirp_logger.dart';
+import 'package:chirp_protocol/src/chirp_writer.dart';
 import 'package:chirp_protocol/src/format_option.dart';
 import 'package:chirp_protocol/src/log_level.dart';
 
-/// A single log entry containing the message and associated metadata.
+/// An immutable snapshot of a log event passed to [ChirpWriter]s.
 ///
-/// LogRecord is an immutable snapshot of a log event. It captures:
-/// - The log [message] and [level]
-/// - When the log was created ([date])
-/// - Optional [error] and [stackTrace] for error logging
-/// - The [instance] that created the log (for instance tracking)
-/// - The [caller] stack trace (for source location)
-/// - Structured [data] for machine-readable logging
-/// - Per-log [formatOptions] to override formatter defaults
+/// You typically don't create LogRecords directly. They are created by
+/// [ChirpLogger] when you call logging methods like `Chirp.info()`.
 ///
-/// ## Example
-///
-/// ```dart
-/// final record = LogRecord(
-///   message: 'User logged in',
-///   date: DateTime.now(),
-///   level: ChirpLogLevel.info,
-///   data: {'userId': '123', 'method': 'oauth'},
-/// );
-/// ```
+/// LogRecord is primarily consumed when implementing custom [ChirpWriter]s
+/// or formatters that need to access the full log context.
 class LogRecord {
   /// The log message
   final Object? message;

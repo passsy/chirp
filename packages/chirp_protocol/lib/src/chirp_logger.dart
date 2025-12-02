@@ -754,9 +754,8 @@ class ChirpLogger {
   ///
   /// Unlike [child], this logger looks up [Chirp.root] on each log call,
   /// ensuring it always uses the current global configuration.
-  ChirpLogger._instanceLogger(Object instance)
+  ChirpLogger._instanceLogger(Object this.instance)
       : name = null,
-        instance = instance,
         parent = null,
         context = {};
 
