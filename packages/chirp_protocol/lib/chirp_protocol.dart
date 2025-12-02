@@ -13,14 +13,16 @@
 ///   chirp_protocol: ^0.5.0
 /// ```
 ///
-/// Then use the logging API:
+/// Then create a logger for your package:
 ///
 /// ```dart
 /// import 'package:chirp_protocol/chirp_protocol.dart';
 ///
+/// final logger = ChirpLogger('my_library');
+///
 /// class MyLibraryService {
 ///   void doWork() {
-///     Chirp.info('Doing work', data: {'step': 1});
+///     logger.info('Doing work', data: {'step': 1});
 ///   }
 /// }
 /// ```
@@ -34,6 +36,8 @@
 /// dependencies:
 ///   chirp: ^0.5.0
 /// ```
+library;
+
 export 'src/chirp_logger.dart';
 export 'src/chirp_writer.dart';
 export 'src/format_option.dart';

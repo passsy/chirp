@@ -11,8 +11,7 @@ sidekick:
     useDartSdk: '3.10.0'
 
 dependencies:
-  chirp_protocol:
-    path: ../chirp_protocol
+  chirp_protocol: ^1.0.0
   clock: ^1.0.0
 
 dev_dependencies:
