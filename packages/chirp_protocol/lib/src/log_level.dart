@@ -26,6 +26,21 @@ class ChirpLogLevel {
   /// Higher values indicate higher severity.
   final int severity;
 
+  /// Creates a custom log level with the given [name] and [severity].
+  ///
+  /// Use this to define application-specific log levels that fit between
+  /// or extend the standard levels.
+  ///
+  /// ```dart
+  /// // A level between trace and debug for verbose output
+  /// const verbose = ChirpLogLevel('verbose', 50);
+  ///
+  /// // A level between warning and error for recoverable failures
+  /// const alert = ChirpLogLevel('alert', 450);
+  ///
+  /// // Use custom levels like standard ones
+  /// Chirp.log('Detailed trace info', level: verbose);
+  /// ```
   const ChirpLogLevel(this.name, this.severity);
 
   /// **Trace** - Most detailed, fine-grained information

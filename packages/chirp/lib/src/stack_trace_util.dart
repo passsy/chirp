@@ -89,6 +89,7 @@ StackFrameInfo? getCallerInfo(StackTrace stackTrace, {int skipFrames = 0}) {
 
     // Skip chirp library frames
     if (line.contains('package:chirp/')) continue;
+    if (line.contains('package:chirp_protocol/')) continue;
     if (line.contains('dart:core')) continue;
     if (line.contains('dart:async')) continue;
 

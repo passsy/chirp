@@ -241,7 +241,8 @@ class ClassName extends LeafSpan {
     // to ensure the class name matches the hash
     if (record.instanceHash != null && record.instance != null) {
       final className = record.instance!.runtimeType.toString();
-      final hashHex = record.instanceHash!.toRadixString(16).padLeft(hashLength, '0');
+      final hashHex =
+          record.instanceHash!.toRadixString(16).padLeft(hashLength, '0');
       // Take the last hashLength characters (handles overflow gracefully)
       final hash = hashHex.length > hashLength
           ? hashHex.substring(hashHex.length - hashLength)

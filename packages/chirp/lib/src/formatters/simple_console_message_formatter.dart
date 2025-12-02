@@ -121,9 +121,11 @@ LogSpan _buildSimpleLogSpan({
         String? methodToShow;
 
         if (method != '<unknown>' &&
-            (classNameSpan == null || !method.startsWith('${classNameSpan.name}.'))) {
+            (classNameSpan == null ||
+                !method.startsWith('${classNameSpan.name}.'))) {
           methodToShow = method;
-        } else if (classNameSpan != null && method.startsWith('${classNameSpan.name}.')) {
+        } else if (classNameSpan != null &&
+            method.startsWith('${classNameSpan.name}.')) {
           final methodName = method.substring(classNameSpan.name.length + 1);
           if (methodName.isNotEmpty) {
             methodToShow = methodName;
@@ -190,7 +192,6 @@ LogSpan _buildSimpleLogSpan({
 
   return SpanSequence(spans);
 }
-
 
 /// Full timestamp with date: 2024-01-10 10:30:45.123
 class FullTimestamp extends LeafSpan {

@@ -1,0 +1,4 @@
+dependency_overrides:
+  chirp_protocol:
+    path: ../chirp_protocol
+

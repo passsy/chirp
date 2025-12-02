@@ -1,0 +1,22 @@
+name: simple
+description: Simple examples demonstrating chirp logging features
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  chirp:
+
+dependency_overrides:
+  chirp:
+    path: ../../packages/chirp
+  chirp_protocol:
+    path: ../../packages/chirp_protocol
+
+dev_dependencies:
+  lint: ^2.0.0
+
+sidekick:
+  puro:
+    useDartSdk: '3.10.0'
