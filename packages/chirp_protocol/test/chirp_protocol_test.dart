@@ -136,17 +136,14 @@ void main() {
     test('logs via global root logger', () {
       final records = <LogRecord>[];
       final originalRoot = Chirp.root;
+      addTearDown(() => Chirp.root = originalRoot);
 
-      try {
-        Chirp.root = ChirpLogger()..addWriter(_TestWriter(records.add));
+      Chirp.root = ChirpLogger()..addWriter(_TestWriter(records.add));
 
-        Chirp.info('global message');
+      Chirp.info('global message');
 
-        expect(records.length, 1);
-        expect(records[0].message, 'global message');
-      } finally {
-        Chirp.root = originalRoot;
-      }
+      expect(records.length, 1);
+      expect(records[0].message, 'global message');
     });
   });
 
@@ -154,18 +151,39 @@ void main() {
     test('provides chirp getter for any object', () {
       final records = <LogRecord>[];
       final originalRoot = Chirp.root;
+      addTearDown(() => Chirp.root = originalRoot);
 
-      try {
-        Chirp.root = ChirpLogger()..addWriter(_TestWriter(records.add));
+      Chirp.root = ChirpLogger()..addWriter(_TestWriter(records.add));
 
-        final myObject = _TestClass();
-        myObject.doWork();
+      final myObject = _TestClass();
+      myObject.doWork();
 
-        expect(records.length, 1);
-        expect(records[0].instance, myObject);
-      } finally {
-        Chirp.root = originalRoot;
-      }
+      expect(records.length, 1);
+      expect(records[0].instance, myObject);
+    });
+
+    test('uses new Chirp.root when root is replaced after first log', () {
+      final recordsOld = <LogRecord>[];
+      final recordsNew = <LogRecord>[];
+      final originalRoot = Chirp.root;
+      addTearDown(() => Chirp.root = originalRoot);
+
+      // Set up initial root
+      Chirp.root = ChirpLogger()..addWriter(_TestWriter(recordsOld.add));
+
+      // Create object and log - this caches the instance logger
+      final myObject = _TestClass();
+      myObject.doWork();
+      expect(recordsOld.length, 1);
+      expect(recordsNew.length, 0);
+
+      // Replace root with new logger
+      Chirp.root = ChirpLogger()..addWriter(_TestWriter(recordsNew.add));
+
+      // Log again - should use new root, not the cached old one
+      myObject.doWork();
+      expect(recordsOld.length, 1); // Should NOT increase
+      expect(recordsNew.length, 1); // Should use new root
     });
   });
 }

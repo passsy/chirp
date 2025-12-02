@@ -462,16 +462,6 @@ class ChirpLogger {
     return _writers.remove(writer);
   }
 
-  /// Get all effective writers for this logger (own + inherited from parents).
-  List<ChirpWriter> get _effectiveWriters {
-    final p = parent;
-    if (p == null) return _writers;
-    final parentWriters = p._effectiveWriters;
-    if (_writers.isEmpty) return parentWriters;
-    if (parentWriters.isEmpty) return _writers;
-    return [...parentWriters, ..._writers];
-  }
-
   /// Contextual data automatically included in all log entries.
   final Map<String, Object?> context;
 
@@ -753,8 +743,36 @@ class ChirpLogger {
   static final Expando<ChirpLogger> _instanceCache = Expando();
 
   /// Creates or retrieves a cached logger for a specific object instance.
+  ///
+  /// The returned logger dynamically delegates to [Chirp.root], so changes
+  /// to the global root logger are automatically reflected.
   factory ChirpLogger.forInstance(Object object) {
-    return _instanceCache[object] ??= Chirp.root.child(instance: object);
+    return _instanceCache[object] ??= ChirpLogger._instanceLogger(object);
+  }
+
+  /// Creates a logger that dynamically delegates to [Chirp.root].
+  ///
+  /// Unlike [child], this logger looks up [Chirp.root] on each log call,
+  /// ensuring it always uses the current global configuration.
+  ChirpLogger._instanceLogger(Object instance)
+      : name = null,
+        instance = instance,
+        parent = null,
+        context = {};
+
+  /// Get all effective writers for this logger (own + inherited from parents).
+  List<ChirpWriter> get _effectiveWriters {
+    // Instance loggers created via forInstance() dynamically delegate to root
+    if (instance != null && parent == null) {
+      if (_writers.isEmpty) return Chirp.root._effectiveWriters;
+      return [...Chirp.root._effectiveWriters, ..._writers];
+    }
+    final p = parent;
+    if (p == null) return _writers;
+    final parentWriters = p._effectiveWriters;
+    if (_writers.isEmpty) return parentWriters;
+    if (parentWriters.isEmpty) return _writers;
+    return [...parentWriters, ..._writers];
   }
 }
 
