@@ -799,7 +799,23 @@ class ChirpLogger {
 /// - [ChirpLogger] for manual logger creation
 /// - [Chirp] for static logging methods
 extension ChirpObjectExt<T extends Object> on T {
-  /// Gets a logger instance for this object with automatic instance tracking.
+  /// Returns an implicit logger for this object instance.
+  ///
+  /// Every object automatically has its own logger available via this property.
+  /// The logger is lazily created on first access and cached for the lifetime
+  /// of the object, so repeated calls return the same logger instance.
+  ///
+  /// Log messages include the object's class name and identity hash code,
+  /// making it easy to trace logs back to specific instances when multiple
+  /// objects of the same type exist.
+  ///
+  /// ```dart
+  /// class MyService {
+  ///   void doWork() {
+  ///     chirp.info('Starting work');  // Logs as "MyService@a1b2: Starting work"
+  ///   }
+  /// }
+  /// ```
   ChirpLogger get chirp => ChirpLogger.forInstance(this);
 }
 
