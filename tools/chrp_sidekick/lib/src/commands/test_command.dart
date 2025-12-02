@@ -14,7 +14,11 @@ class TestCommand extends Command {
   TestCommand() {
     argParser
       ..addFlag('all', hide: true, help: 'deprecated')
-      ..addOption('package', abbr: 'p', help: 'Run tests for a specific package')
+      ..addOption(
+        'package',
+        abbr: 'p',
+        help: 'Run tests for a specific package',
+      )
       ..addOption(
         'name',
         abbr: 'n',
@@ -45,7 +49,8 @@ class TestCommand extends Command {
 
     // outside of package, fallback to all packages
     for (final package in findAllPackages(SidekickContext.projectRoot)) {
-      collector.add(await _test(package, requireTests: false, testName: testName));
+      collector
+          .add(await _test(package, requireTests: false, testName: testName));
       print('\n');
     }
 

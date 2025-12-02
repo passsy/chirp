@@ -37,7 +37,7 @@ void main() {
       );
 
       // This ensures the signature matches exactly
-      void Function(LogRecord) writeMethod = writer.write;
+      final void Function(LogRecord) writeMethod = writer.write;
       writeMethod(record);
 
       expect(writer.writtenRecords, hasLength(1));
@@ -134,11 +134,13 @@ void main() {
       ];
 
       for (final level in levels) {
-        writer.write(LogRecord(
-          message: 'Message at ${level.name}',
-          date: DateTime.now(),
-          level: level,
-        ));
+        writer.write(
+          LogRecord(
+            message: 'Message at ${level.name}',
+            date: DateTime.now(),
+            level: level,
+          ),
+        );
       }
 
       expect(writer.writtenRecords, hasLength(8));
@@ -208,26 +210,33 @@ void main() {
     test('implementation can filter by log level', () {
       final writer = FilteringWriter(minimumLevel: ChirpLogLevel.warning);
 
-      writer.write(LogRecord(
-        message: 'Debug',
-        date: DateTime.now(),
-        level: ChirpLogLevel.debug,
-      ));
-      writer.write(LogRecord(
-        message: 'Info',
-        date: DateTime.now(),
-        level: ChirpLogLevel.info,
-      ));
-      writer.write(LogRecord(
-        message: 'Warning',
-        date: DateTime.now(),
-        level: ChirpLogLevel.warning,
-      ));
-      writer.write(LogRecord(
-        message: 'Error',
-        date: DateTime.now(),
-        level: ChirpLogLevel.error,
-      ));
+      writer.write(
+        LogRecord(
+          message: 'Debug',
+          date: DateTime.now(),
+          level: ChirpLogLevel.debug,
+        ),
+      );
+      writer.write(
+        LogRecord(
+          message: 'Info',
+          date: DateTime.now(),
+        ),
+      );
+      writer.write(
+        LogRecord(
+          message: 'Warning',
+          date: DateTime.now(),
+          level: ChirpLogLevel.warning,
+        ),
+      );
+      writer.write(
+        LogRecord(
+          message: 'Error',
+          date: DateTime.now(),
+          level: ChirpLogLevel.error,
+        ),
+      );
 
       expect(writer.writtenRecords, hasLength(2));
       expect(writer.writtenRecords[0].message, 'Warning');
@@ -238,11 +247,12 @@ void main() {
       final writer = FormattingWriter();
 
       final now = DateTime(2024, 1, 15, 10, 30, 45);
-      writer.write(LogRecord(
-        message: 'Test message',
-        date: now,
-        level: ChirpLogLevel.info,
-      ));
+      writer.write(
+        LogRecord(
+          message: 'Test message',
+          date: now,
+        ),
+      );
 
       expect(writer.formattedLines, hasLength(1));
       expect(

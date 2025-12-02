@@ -58,7 +58,7 @@ void main() {
 
     test('subclass instances with different values are not identical', () {
       const custom1 = _CustomFormatOptions(uppercase: true);
-      const custom2 = _CustomFormatOptions(uppercase: false);
+      const custom2 = _CustomFormatOptions();
       expect(identical(custom1, custom2), isFalse);
     });
 

@@ -356,7 +356,6 @@ void main() {
       expect(result, contains('_TestClass@$hash'));
       expect(result, isNot(contains('DifferentClass@')));
     });
-
   });
 
   group('FullTimestamp', () {

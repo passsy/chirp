@@ -1,5 +1,10 @@
 # Chirp
 
+[![Pub](https://img.shields.io/pub/v/chirp)](https://pub.dev/packages/chirp)
+[![Pub Likes](https://img.shields.io/pub/likes/chirp)](https://pub.dev/packages/chirp/score)
+![License](https://img.shields.io/github/license/passsy/chirp)
+[![style: lint](https://img.shields.io/badge/style-lint-4BC0F5.svg)](https://pub.dev/packages/lint)
+
 A lightweight, flexible logging library for Dart with instance tracking, child loggers, and multiple output formats.
 
 ## Features

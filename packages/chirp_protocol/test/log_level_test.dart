@@ -45,13 +45,34 @@ void main() {
       });
 
       test('severity levels are in ascending order', () {
-        expect(ChirpLogLevel.trace.severity, lessThan(ChirpLogLevel.debug.severity));
-        expect(ChirpLogLevel.debug.severity, lessThan(ChirpLogLevel.info.severity));
-        expect(ChirpLogLevel.info.severity, lessThan(ChirpLogLevel.notice.severity));
-        expect(ChirpLogLevel.notice.severity, lessThan(ChirpLogLevel.warning.severity));
-        expect(ChirpLogLevel.warning.severity, lessThan(ChirpLogLevel.error.severity));
-        expect(ChirpLogLevel.error.severity, lessThan(ChirpLogLevel.critical.severity));
-        expect(ChirpLogLevel.critical.severity, lessThan(ChirpLogLevel.wtf.severity));
+        expect(
+          ChirpLogLevel.trace.severity,
+          lessThan(ChirpLogLevel.debug.severity),
+        );
+        expect(
+          ChirpLogLevel.debug.severity,
+          lessThan(ChirpLogLevel.info.severity),
+        );
+        expect(
+          ChirpLogLevel.info.severity,
+          lessThan(ChirpLogLevel.notice.severity),
+        );
+        expect(
+          ChirpLogLevel.notice.severity,
+          lessThan(ChirpLogLevel.warning.severity),
+        );
+        expect(
+          ChirpLogLevel.warning.severity,
+          lessThan(ChirpLogLevel.error.severity),
+        );
+        expect(
+          ChirpLogLevel.error.severity,
+          lessThan(ChirpLogLevel.critical.severity),
+        );
+        expect(
+          ChirpLogLevel.critical.severity,
+          lessThan(ChirpLogLevel.wtf.severity),
+        );
       });
     });
 
@@ -184,8 +205,11 @@ void main() {
       });
 
       test('level is not equal to non-ChirpLogLevel object', () {
+        // ignore: unrelated_type_equality_checks
         expect(ChirpLogLevel.info == 'info', isFalse);
+        // ignore: unrelated_type_equality_checks
         expect(ChirpLogLevel.info == 200, isFalse);
+        // ignore: unnecessary_null_comparison
         expect(ChirpLogLevel.info == null, isFalse);
       });
     });
@@ -273,8 +297,8 @@ void main() {
       });
 
       test('all comparison operators are available', () {
-        final level1 = ChirpLogLevel.info;
-        final level2 = ChirpLogLevel.warning;
+        const level1 = ChirpLogLevel.info;
+        const level2 = ChirpLogLevel.warning;
 
         // Ensure all operators are callable (compile-time check)
         expect(level1 < level2, isTrue);

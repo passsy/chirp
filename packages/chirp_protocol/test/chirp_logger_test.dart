@@ -697,6 +697,7 @@ void main() {
       final childRecords = <LogRecord>[];
 
       final parent = ChirpLogger()..addWriter(FakeWriter(parentRecords));
+      // ignore: unused_local_variable
       final child = parent.child()..addWriter(FakeWriter(childRecords));
 
       parent.info('parent message');

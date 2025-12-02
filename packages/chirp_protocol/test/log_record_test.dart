@@ -104,7 +104,7 @@ void main() {
       });
 
       test('date is stored exactly', () {
-        final date1 = DateTime(2025, 1, 1, 12, 0, 0);
+        final date1 = DateTime(2025, 1, 1, 12);
         final record1 = LogRecord(message: 'test', date: date1);
         expect(record1.date, same(date1));
 
@@ -124,28 +124,38 @@ void main() {
       test('level can be set to any ChirpLogLevel', () {
         final now = DateTime.now();
 
-        final trace = LogRecord(message: 'test', date: now, level: ChirpLogLevel.trace);
+        final trace =
+            LogRecord(message: 'test', date: now, level: ChirpLogLevel.trace);
         expect(trace.level, equals(ChirpLogLevel.trace));
 
-        final debug = LogRecord(message: 'test', date: now, level: ChirpLogLevel.debug);
+        final debug =
+            LogRecord(message: 'test', date: now, level: ChirpLogLevel.debug);
         expect(debug.level, equals(ChirpLogLevel.debug));
 
-        final info = LogRecord(message: 'test', date: now, level: ChirpLogLevel.info);
+        final info = LogRecord(message: 'test', date: now);
         expect(info.level, equals(ChirpLogLevel.info));
 
-        final notice = LogRecord(message: 'test', date: now, level: ChirpLogLevel.notice);
+        final notice =
+            LogRecord(message: 'test', date: now, level: ChirpLogLevel.notice);
         expect(notice.level, equals(ChirpLogLevel.notice));
 
-        final warning = LogRecord(message: 'test', date: now, level: ChirpLogLevel.warning);
+        final warning =
+            LogRecord(message: 'test', date: now, level: ChirpLogLevel.warning);
         expect(warning.level, equals(ChirpLogLevel.warning));
 
-        final error = LogRecord(message: 'test', date: now, level: ChirpLogLevel.error);
+        final error =
+            LogRecord(message: 'test', date: now, level: ChirpLogLevel.error);
         expect(error.level, equals(ChirpLogLevel.error));
 
-        final critical = LogRecord(message: 'test', date: now, level: ChirpLogLevel.critical);
+        final critical = LogRecord(
+          message: 'test',
+          date: now,
+          level: ChirpLogLevel.critical,
+        );
         expect(critical.level, equals(ChirpLogLevel.critical));
 
-        final wtf = LogRecord(message: 'test', date: now, level: ChirpLogLevel.wtf);
+        final wtf =
+            LogRecord(message: 'test', date: now, level: ChirpLogLevel.wtf);
         expect(wtf.level, equals(ChirpLogLevel.wtf));
       });
 
@@ -176,7 +186,7 @@ void main() {
         );
         expect(stringRecord.error, equals('string error'));
 
-        final nullRecord = LogRecord(message: 'test', date: now, error: null);
+        final nullRecord = LogRecord(message: 'test', date: now);
         expect(nullRecord.error, isNull);
       });
 
@@ -209,10 +219,11 @@ void main() {
         final someFrames = LogRecord(message: 'test', date: now, skipFrames: 5);
         expect(someFrames.skipFrames, equals(5));
 
-        final manyFrames = LogRecord(message: 'test', date: now, skipFrames: 100);
+        final manyFrames =
+            LogRecord(message: 'test', date: now, skipFrames: 100);
         expect(manyFrames.skipFrames, equals(100));
 
-        final nullFrames = LogRecord(message: 'test', date: now, skipFrames: null);
+        final nullFrames = LogRecord(message: 'test', date: now);
         expect(nullFrames.skipFrames, isNull);
       });
 
@@ -252,7 +263,7 @@ void main() {
         );
         expect(empty.loggerName, equals(''));
 
-        final null_ = LogRecord(message: 'test', date: now, loggerName: null);
+        final null_ = LogRecord(message: 'test', date: now);
         expect(null_.loggerName, isNull);
       });
 
@@ -292,7 +303,7 @@ void main() {
         expect(complexData.data?['list'], equals([1, 2, 3]));
         expect(complexData.data?['map'], equals({'nested': 'value'}));
 
-        final nullData = LogRecord(message: 'test', date: now, data: null);
+        final nullData = LogRecord(message: 'test', date: now);
         expect(nullData.data, isNull);
       });
 
@@ -327,7 +338,6 @@ void main() {
         final nullOptions = LogRecord(
           message: 'test',
           date: now,
-          formatOptions: null,
         );
         expect(nullOptions.formatOptions, isNull);
       });
@@ -339,7 +349,6 @@ void main() {
         final record = LogRecord(
           message: 'test',
           date: now,
-          level: ChirpLogLevel.info,
           error: Exception('error'),
           stackTrace: StackTrace.current,
           caller: StackTrace.current,
