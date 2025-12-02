@@ -7,6 +7,9 @@ environment:
 
 dependencies:
   chirp:
+
+dependency_overrides:
+  chirp:
     path: ../../packages/chirp
   chirp_protocol:
     path: ../../packages/chirp_protocol
