@@ -384,20 +384,6 @@ class Chirp {
   }
 }
 
-/// Merges two data maps, with [override] values taking precedence over [base].
-///
-/// Returns `null` if both maps are empty. This optimization avoids creating
-/// empty maps in log records when no data is present.
-Map<String, Object?>? _mergeData(
-  Map<String, Object?> base,
-  Map<String, Object?>? override,
-) {
-  if (base.isEmpty && override == null) return null;
-  if (base.isEmpty) return override;
-  if (override == null || override.isEmpty) return base.isEmpty ? null : base;
-  return {...base, ...override};
-}
-
 /// Flexible logger class supporting named loggers, instance tracking, and child loggers.
 ///
 /// [ChirpLogger] provides instance methods for logging at different severity
@@ -815,4 +801,18 @@ class ChirpLogger {
 extension ChirpObjectExt<T extends Object> on T {
   /// Gets a logger instance for this object with automatic instance tracking.
   ChirpLogger get chirp => ChirpLogger.forInstance(this);
+}
+
+/// Merges two data maps, with [override] values taking precedence over [base].
+///
+/// Returns `null` if both maps are empty. This optimization avoids creating
+/// empty maps in log records when no data is present.
+Map<String, Object?>? _mergeData(
+  Map<String, Object?> base,
+  Map<String, Object?>? override,
+) {
+  if (base.isEmpty && override == null) return null;
+  if (base.isEmpty) return override;
+  if (override == null || override.isEmpty) return base.isEmpty ? null : base;
+  return {...base, ...override};
 }
