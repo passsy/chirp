@@ -106,7 +106,7 @@ extension LogRecordExt on LogRecord {
   /// Extracts caller info from this record's stack trace
   StackFrameInfo? get callerInfo {
     if (caller == null) return null;
-    return getCallerInfo(caller!, skipFrames: skipFrames);
+    return getCallerInfo(caller!, skipFrames: skipFrames ?? 0);
   }
 
   /// Returns formatted time string like "HH:mm:ss.mmm"

@@ -42,7 +42,7 @@ class LogRecord {
   final StackTrace? caller;
 
   /// Number of stack frames to skip when resolving caller info
-  final int skipFrames;
+  final int? skipFrames;
 
   /// Original instance that logged this
   final Object? instance;
@@ -67,7 +67,7 @@ class LogRecord {
     this.stackTrace,
     this.instance,
     this.caller,
-    this.skipFrames = 0,
+    this.skipFrames,
     this.loggerName,
     this.data,
     this.formatOptions,

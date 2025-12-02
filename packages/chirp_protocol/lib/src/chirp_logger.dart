@@ -84,6 +84,7 @@ class Chirp {
   /// ```
   static ChirpLogger root = ChirpLogger();
 
+  /// {@template chirp.log}
   /// Logs a message at a custom severity level.
   ///
   /// Use this when you need a log level not provided by the convenience
@@ -111,6 +112,7 @@ class Chirp {
   /// See also:
   /// - [info], [warning], [error] and other convenience methods
   /// - [ChirpLogLevel] for standard log levels
+  /// {@endtemplate}
   static void log(
     Object? message, {
     Object? error,
@@ -118,6 +120,7 @@ class Chirp {
     Map<String, Object?>? data,
     ChirpLogLevel level = ChirpLogLevel.info,
     List<FormatOptions>? formatOptions,
+    int? skipFrames,
   }) {
     root.log(
       message,
@@ -126,9 +129,11 @@ class Chirp {
       stackTrace: stackTrace,
       data: data,
       formatOptions: formatOptions,
+      skipFrames: skipFrames,
     );
   }
 
+  /// {@template chirp.trace}
   /// Logs a trace message (severity: 0) - most detailed execution information.
   ///
   /// Use trace for:
@@ -142,6 +147,7 @@ class Chirp {
   /// See also:
   /// - [debug] for less verbose diagnostic information
   /// - [ChirpLogLevel.trace] for the log level constant
+  /// {@endtemplate}
   static void trace(
     Object? message, {
     Object? error,
@@ -159,6 +165,7 @@ class Chirp {
     );
   }
 
+  /// {@template chirp.debug}
   /// Logs a debug message (severity: 100) - diagnostic information.
   ///
   /// Use debug for:
@@ -173,6 +180,7 @@ class Chirp {
   /// - [trace] for more detailed debugging
   /// - [info] for production-ready operational messages
   /// - [ChirpLogLevel.debug] for the log level constant
+  /// {@endtemplate}
   static void debug(
     Object? message, {
     Object? error,
@@ -189,6 +197,7 @@ class Chirp {
     );
   }
 
+  /// {@template chirp.info}
   /// Logs an info message (severity: 200) - routine operational messages.
   ///
   /// Use info for:
@@ -203,6 +212,7 @@ class Chirp {
   /// - [debug] for development-time diagnostic messages
   /// - [notice] for more significant operational events
   /// - [ChirpLogLevel.info] for the log level constant
+  /// {@endtemplate}
   static void info(
     Object? message, {
     Object? error,
@@ -219,6 +229,7 @@ class Chirp {
     );
   }
 
+  /// {@template chirp.notice}
   /// Logs a notice message (severity: 300) - normal but significant events.
   ///
   /// Use notice for:
@@ -231,6 +242,7 @@ class Chirp {
   /// - [info] for routine operational messages
   /// - [warning] for potentially problematic situations
   /// - [ChirpLogLevel.notice] for the log level constant
+  /// {@endtemplate}
   static void notice(
     Object? message, {
     Object? error,
@@ -247,6 +259,7 @@ class Chirp {
     );
   }
 
+  /// {@template chirp.warning}
   /// Logs a warning message (severity: 400) - potentially problematic situations.
   ///
   /// Use warning for:
@@ -259,6 +272,7 @@ class Chirp {
   /// - [notice] for significant but normal events
   /// - [error] for actual errors preventing operations
   /// - [ChirpLogLevel.warning] for the log level constant
+  /// {@endtemplate}
   static void warning(
     Object? message, {
     Object? error,
@@ -275,6 +289,7 @@ class Chirp {
     );
   }
 
+  /// {@template chirp.error}
   /// Logs an error message (severity: 500) - errors preventing specific operations.
   ///
   /// Use error for:
@@ -289,6 +304,7 @@ class Chirp {
   /// - [warning] for recoverable issues
   /// - [critical] for severe errors affecting core functionality
   /// - [ChirpLogLevel.error] for the log level constant
+  /// {@endtemplate}
   static void error(
     Object? message, {
     Object? error,
@@ -305,6 +321,7 @@ class Chirp {
     );
   }
 
+  /// {@template chirp.critical}
   /// Logs a critical message (severity: 600) - severe errors affecting core functionality.
   ///
   /// Use critical for:
@@ -317,6 +334,7 @@ class Chirp {
   /// - [error] for errors affecting individual operations
   /// - [wtf] for impossible situations that should never happen
   /// - [ChirpLogLevel.critical] for the log level constant
+  /// {@endtemplate}
   static void critical(
     Object? message, {
     Object? error,
@@ -333,6 +351,7 @@ class Chirp {
     );
   }
 
+  /// {@template chirp.wtf}
   /// Logs a WTF message (severity: 1000) - "What a Terrible Failure" for impossible situations.
   ///
   /// Use wtf for:
@@ -346,6 +365,7 @@ class Chirp {
   /// - [critical] for severe but possible errors
   /// - [error] for expected error conditions
   /// - [ChirpLogLevel.wtf] for the log level constant
+  /// {@endtemplate}
   static void wtf(
     Object? message, {
     Object? error,
@@ -483,7 +503,7 @@ class ChirpLogger {
     Map<String, Object?>? context,
   }) : context = context ?? {};
 
-  /// Logs a message at the specified severity level.
+  /// {@macro chirp.log}
   void log(
     Object? message, {
     ChirpLogLevel level = ChirpLogLevel.info,
@@ -491,7 +511,7 @@ class ChirpLogger {
     StackTrace? stackTrace,
     Map<String, Object?>? data,
     List<FormatOptions>? formatOptions,
-    int skipFrames = 0,
+    int? skipFrames,
   }) {
     final caller = StackTrace.current;
 
@@ -512,7 +532,7 @@ class ChirpLogger {
     _logRecord(entry);
   }
 
-  /// Logs a trace message (severity: 0).
+  /// {@macro chirp.trace}
   void trace(
     Object? message, {
     Object? error,
@@ -538,7 +558,7 @@ class ChirpLogger {
     _logRecord(entry);
   }
 
-  /// Logs a debug message (severity: 100).
+  /// {@macro chirp.debug}
   void debug(
     Object? message, {
     Object? error,
@@ -564,7 +584,7 @@ class ChirpLogger {
     _logRecord(entry);
   }
 
-  /// Logs an info message (severity: 200).
+  /// {@macro chirp.info}
   void info(
     Object? message, {
     Object? error,
@@ -591,7 +611,7 @@ class ChirpLogger {
     _logRecord(entry);
   }
 
-  /// Logs a notice message (severity: 300).
+  /// {@macro chirp.notice}
   void notice(
     Object? message, {
     Object? error,
@@ -617,7 +637,7 @@ class ChirpLogger {
     _logRecord(entry);
   }
 
-  /// Logs a warning message (severity: 400).
+  /// {@macro chirp.warning}
   void warning(
     Object? message, {
     Object? error,
@@ -643,7 +663,7 @@ class ChirpLogger {
     _logRecord(entry);
   }
 
-  /// Logs an error message (severity: 500).
+  /// {@macro chirp.error}
   void error(
     Object? message, {
     Object? error,
@@ -669,7 +689,7 @@ class ChirpLogger {
     _logRecord(entry);
   }
 
-  /// Logs a critical message (severity: 600).
+  /// {@macro chirp.critical}
   void critical(
     Object? message, {
     Object? error,
@@ -695,7 +715,7 @@ class ChirpLogger {
     _logRecord(entry);
   }
 
-  /// Logs a WTF message (severity: 1000) - for impossible situations.
+  /// {@macro chirp.wtf}
   void wtf(
     Object? message, {
     Object? error,
