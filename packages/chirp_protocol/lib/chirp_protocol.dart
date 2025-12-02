@@ -56,8 +56,8 @@
 /// ```
 library;
 
-export 'src/chirp_logger.dart';
-export 'src/chirp_writer.dart';
-export 'src/format_option.dart';
-export 'src/log_level.dart';
-export 'src/log_record.dart';
+export 'src/chirp_logger.dart' show Chirp, ChirpLogger, ChirpObjectExt;
+export 'src/chirp_writer.dart' show ChirpWriter;
+export 'src/format_option.dart' show FormatOptions;
+export 'src/log_level.dart' show ChirpLogLevel;
+export 'src/log_record.dart' show LogRecord;
