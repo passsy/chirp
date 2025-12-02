@@ -1,4 +1,4 @@
-/// Stable logging API for libraries.
+/// The logging interface of Chirp
 ///
 /// This package provides the core logging interfaces and types that libraries
 /// should depend on. For a full logging implementation with writers and
@@ -35,6 +35,24 @@
 /// ```yaml
 /// dependencies:
 ///   chirp: ^0.5.0
+/// ```
+///
+/// To receive logs from libraries that use `chirp_protocol`, add a writer
+/// to the library's logger:
+///
+/// ```dart
+/// import 'package:chirp/chirp.dart';
+/// import 'package:my_library/my_library.dart' as my_library;
+///
+/// void main() {
+///   // Connect the library's logger to your app's logging
+///   my_library.logger.addWriter(
+///     PrintConsoleWriter(formatter: RainbowMessageFormatter()),
+///   );
+///
+///   // Now library logs will appear in your app's output
+///   my_library.doSomething();
+/// }
 /// ```
 library;
 
