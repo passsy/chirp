@@ -1,4 +1,5 @@
 import 'package:chirp/chirp.dart';
+import 'package:meta/meta.dart';
 
 export 'package:chirp/src/span/span_based_formatter.dart';
 export 'package:chirp/src/span/spans.dart';
@@ -59,6 +60,7 @@ export 'package:chirp/src/span/spans.dart';
 ///   root.findFirst<Message>()?.wrap((child) => Bordered(child: child));
 /// }
 /// ```
+@experimental
 abstract class LogSpan {
   LogSpan? _parent;
 
@@ -234,6 +236,7 @@ abstract class LogSpan {
 ///
 /// Leaf spans are the primitive building blocks that render directly
 /// to the buffer. Examples: [PlainText], [Whitespace], [NewLine], [EmptySpan].
+@experimental
 abstract class LeafSpan extends LogSpan {
   @override
   bool replaceWith(LogSpan newSpan) {
@@ -259,6 +262,7 @@ abstract class LeafSpan extends LogSpan {
 /// Base class for spans that have exactly one child.
 ///
 /// Examples: [AnsiColored], [Bordered].
+@experimental
 abstract class SingleChildSpan extends LogSpan {
   LogSpan? _child;
 
@@ -311,6 +315,7 @@ abstract class SingleChildSpan extends LogSpan {
 /// Base class for spans that have multiple ordered children.
 ///
 /// Examples: [SpanSequence].
+@experimental
 abstract class MultiChildSpan extends LogSpan {
   final List<LogSpan> _children = [];
 
@@ -385,6 +390,7 @@ abstract class MultiChildSpan extends LogSpan {
 ///
 /// Unlike [MultiChildSpan], slots have semantic names (e.g., prefix, child, suffix).
 /// Examples: [Surrounded].
+@experimental
 abstract class SlottedSpan extends LogSpan {
   final Map<String, LogSpan> _slots = {};
 
@@ -491,6 +497,7 @@ extension _ParentChildManagement on LogSpan {
 ///
 /// Repeatedly calls [LogSpan.build] until the span returns itself (terminal),
 /// then calls [LogSpan.render] on the terminal span.
+@experimental
 void renderSpan(LogSpan span, ConsoleMessageBuffer buffer) {
   // Build until terminal (span returns itself)
   var current = span;

@@ -1,5 +1,6 @@
 import 'package:chirp/chirp.dart';
 import 'package:chirp/src/formatters/yaml_formatter.dart';
+import 'package:meta/meta.dart';
 
 // =============================================================================
 // Leaf Spans (no children)
@@ -9,6 +10,7 @@ import 'package:chirp/src/formatters/yaml_formatter.dart';
 ///
 /// Use this when a span conditionally has no output, similar to
 /// Flutter's `SizedBox.shrink()`.
+@experimental
 class EmptySpan extends LeafSpan {
   @override
   void render(ConsoleMessageBuffer buffer) {
@@ -20,6 +22,7 @@ class EmptySpan extends LeafSpan {
 }
 
 /// Plain text span.
+@experimental
 class PlainText extends LeafSpan {
   final String value;
 
@@ -35,6 +38,7 @@ class PlainText extends LeafSpan {
 }
 
 /// A single space.
+@experimental
 class Whitespace extends LeafSpan {
   @override
   void render(ConsoleMessageBuffer buffer) {
@@ -46,6 +50,7 @@ class Whitespace extends LeafSpan {
 }
 
 /// A line break.
+@experimental
 class NewLine extends LeafSpan {
   @override
   void render(ConsoleMessageBuffer buffer) {
@@ -61,6 +66,7 @@ class NewLine extends LeafSpan {
 // =============================================================================
 
 /// Applies foreground and/or background color to a child span.
+@experimental
 class AnsiColored extends SingleChildSpan {
   final XtermColor? foreground;
   final XtermColor? background;
@@ -90,6 +96,7 @@ class AnsiColored extends SingleChildSpan {
 // =============================================================================
 
 /// A sequence of spans rendered sequentially.
+@experimental
 class SpanSequence extends MultiChildSpan {
   SpanSequence([List<LogSpan>? children]) : super(children: children);
 
@@ -112,6 +119,7 @@ class SpanSequence extends MultiChildSpan {
 ///
 /// If [child] is null, renders nothing (empty).
 /// If [child] is non-null, renders [prefix], [child], [suffix].
+@experimental
 class Surrounded extends SlottedSpan {
   static const prefixSlot = 'prefix';
   static const childSlot = 'child';
@@ -155,6 +163,7 @@ class Surrounded extends SlottedSpan {
 /// Timestamp when the log was created.
 ///
 /// Builds to [PlainText] with format "HH:mm:ss.mmm".
+@experimental
 class Timestamp extends LeafSpan {
   final DateTime date;
 
@@ -176,6 +185,7 @@ class Timestamp extends LeafSpan {
 /// Source code location (file and line).
 ///
 /// Builds to [PlainText] with format "file:line" or [EmptySpan] if no file.
+@experimental
 class DartSourceCodeLocation extends LeafSpan {
   final String? fileName;
   final int? line;
@@ -198,6 +208,7 @@ class DartSourceCodeLocation extends LeafSpan {
 /// Logger name for named loggers.
 ///
 /// Builds to [PlainText].
+@experimental
 class LoggerName extends LeafSpan {
   final String name;
 
@@ -241,6 +252,7 @@ class LoggerName extends LeafSpan {
 /// )
 /// // "      centered      "
 /// ```
+@experimental
 class Aligned extends SingleChildSpan {
   /// Creates an aligned span with fixed [width].
   ///
@@ -283,11 +295,13 @@ class Aligned extends SingleChildSpan {
 }
 
 /// Horizontal alignment options for [Aligned] spans.
+@experimental
 enum HorizontalAlign { left, right, center }
 
 /// Class or instance name.
 ///
 /// Builds to [PlainText] with format "ClassName" or "ClassName@hash".
+@experimental
 class ClassName extends LeafSpan {
   final String name;
   final String? instanceHash;
@@ -357,6 +371,7 @@ class ClassName extends LeafSpan {
 /// Method name where the log was called.
 ///
 /// Builds to [PlainText].
+@experimental
 class MethodName extends LeafSpan {
   final String name;
 
@@ -372,6 +387,7 @@ class MethodName extends LeafSpan {
 /// Log severity level with brackets.
 ///
 /// Builds to [PlainText] with format "[levelName]".
+@experimental
 class BracketedLogLevel extends LeafSpan {
   final ChirpLogLevel level;
 
@@ -387,6 +403,7 @@ class BracketedLogLevel extends LeafSpan {
 /// The primary log message.
 ///
 /// Builds to [PlainText] or [EmptySpan] if message is null/empty.
+@experimental
 class LogMessage extends LeafSpan {
   final Object? message;
 
@@ -406,6 +423,7 @@ class LogMessage extends LeafSpan {
 /// Structured key-value data rendered inline: ` (key: value, key: value)`.
 ///
 /// Builds to [PlainText] or [EmptySpan] if data is null/empty.
+@experimental
 class InlineData extends LeafSpan {
   final Map<String, Object?>? data;
 
@@ -428,6 +446,7 @@ class InlineData extends LeafSpan {
 /// Structured key-value data rendered as multiline YAML.
 ///
 /// Builds to [PlainText] or [EmptySpan] if data is null/empty.
+@experimental
 class MultilineData extends LeafSpan {
   final Map<String, Object?>? data;
 
@@ -448,6 +467,7 @@ class MultilineData extends LeafSpan {
 /// Error object.
 ///
 /// Builds to [PlainText] or [EmptySpan] if error is null.
+@experimental
 class ErrorSpan extends LeafSpan {
   final Object? error;
 
@@ -466,6 +486,7 @@ class ErrorSpan extends LeafSpan {
 /// Stack trace.
 ///
 /// Builds to [PlainText].
+@experimental
 class StackTraceSpan extends LeafSpan {
   final StackTrace stackTrace;
 
@@ -483,9 +504,11 @@ class StackTraceSpan extends LeafSpan {
 // =============================================================================
 
 /// Border style for box spans.
+@experimental
 enum BoxBorderStyle { single, double, rounded, heavy, ascii }
 
 /// Characters for drawing box borders.
+@experimental
 class BoxBorderChars {
   final String topLeft;
   final String topRight;
@@ -565,6 +588,7 @@ class BoxBorderChars {
 }
 
 /// A span that draws an ASCII box around its content.
+@experimental
 class Bordered extends SingleChildSpan {
   final BoxBorderStyle style;
   final XtermColor? borderColor;
@@ -625,6 +649,7 @@ class Bordered extends SingleChildSpan {
   String toString() => 'Bordered(style: $style, child: $child)';
 }
 
+@experimental
 class ChirpLogo extends LeafSpan {
   @override
   void render(ConsoleMessageBuffer buffer) {
