@@ -6,12 +6,12 @@ repository: https://github.com/passsy/chirp
 environment:
   sdk: ^3.0.0
 
+dependencies:
+  clock: ^1.1.0
+
 sidekick:
   puro:
     useDartSdk: '3.10.0'
-
-dependencies:
-  chirp_protocol: ^1.0.0
 
 dev_dependencies:
   lint: ^2.0.0

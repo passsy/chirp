@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:chirp_protocol/src/chirp_logger.dart';
-import 'package:chirp_protocol/src/chirp_writer.dart';
-import 'package:chirp_protocol/src/format_option.dart';
-import 'package:chirp_protocol/src/log_level.dart';
+import 'package:chirp/src/core/chirp_logger.dart';
+import 'package:chirp/src/core/chirp_writer.dart';
+import 'package:chirp/src/core/format_option.dart';
+import 'package:chirp/src/core/log_level.dart';
 
 /// An immutable snapshot of a log event passed to [ChirpWriter]s.
 ///

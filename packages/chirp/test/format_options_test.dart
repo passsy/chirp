@@ -1,4 +1,4 @@
-import 'package:chirp_protocol/chirp_protocol.dart';
+import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
 void main() {

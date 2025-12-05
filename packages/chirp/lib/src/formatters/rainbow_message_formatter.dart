@@ -151,7 +151,7 @@ LogSpan _buildRainbowLogSpan({
 
   // Data
   final data = record.data;
-  if (data != null && data.isNotEmpty) {
+  if (data.isNotEmpty) {
     final dataSpan = switch (options.data) {
       DataPresentation.inline => InlineData(data),
       DataPresentation.multiline => MultilineData(data),

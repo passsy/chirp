@@ -1,4 +1,4 @@
-import 'package:chirp_protocol/chirp_protocol.dart';
+import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -63,24 +63,24 @@ void main() {
       test('can be created with minimal fields', () {
         final record = LogRecord(
           message: 'Message',
-          timestamp: DateTime(2025, 1, 1),
+          timestamp: DateTime(2025),
         );
 
         expect(record.message, equals('Message'));
-        expect(record.timestamp, equals(DateTime(2025, 1, 1)));
+        expect(record.timestamp, equals(DateTime(2025)));
         expect(record.level, equals(ChirpLogLevel.info));
       });
 
       test('can be created with all fields', () {
         final record = LogRecord(
           message: 'Message',
-          timestamp: DateTime(2025, 1, 1),
+          timestamp: DateTime(2025),
           level: ChirpLogLevel.warning,
           loggerName: 'TestLogger',
         );
 
         expect(record.message, equals('Message'));
-        expect(record.timestamp, equals(DateTime(2025, 1, 1)));
+        expect(record.timestamp, equals(DateTime(2025)));
         expect(record.level, equals(ChirpLogLevel.warning));
         expect(record.loggerName, equals('TestLogger'));
       });
@@ -298,12 +298,12 @@ void main() {
             'map': {'nested': 'value'},
           },
         );
-        expect(complexData.data?['string'], equals('value'));
-        expect(complexData.data?['int'], equals(42));
-        expect(complexData.data?['bool'], isTrue);
-        expect(complexData.data?['null'], isNull);
-        expect(complexData.data?['list'], equals([1, 2, 3]));
-        expect(complexData.data?['map'], equals({'nested': 'value'}));
+        expect(complexData.data['string'], equals('value'));
+        expect(complexData.data['int'], equals(42));
+        expect(complexData.data['bool'], isTrue);
+        expect(complexData.data['null'], isNull);
+        expect(complexData.data['list'], equals([1, 2, 3]));
+        expect(complexData.data['map'], equals({'nested': 'value'}));
 
         final nullData = LogRecord(message: 'test', timestamp: now);
         expect(nullData.data, isEmpty);

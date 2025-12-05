@@ -1,4 +1,4 @@
-import 'package:chirp_protocol/src/log_record.dart';
+import 'package:chirp/src/core/log_record.dart';
 
 /// Intercepts log records before they reach a writer.
 ///

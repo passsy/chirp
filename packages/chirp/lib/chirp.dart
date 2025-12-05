@@ -1,9 +1,20 @@
 import 'package:chirp/src/console_writer.dart';
+import 'package:chirp/src/core/chirp_interceptor.dart';
+import 'package:chirp/src/core/chirp_logger.dart';
+import 'package:chirp/src/core/chirp_writer.dart';
+import 'package:chirp/src/core/format_option.dart';
+import 'package:chirp/src/core/log_level.dart';
+import 'package:chirp/src/core/log_record.dart';
 import 'package:chirp/src/formatters/rainbow_message_formatter.dart';
 import 'package:chirp/src/stack_trace_util.dart';
-import 'package:chirp_protocol/chirp_protocol.dart';
 
 export 'package:chirp/src/console_writer.dart';
+export 'package:chirp/src/core/chirp_interceptor.dart';
+export 'package:chirp/src/core/chirp_logger.dart';
+export 'package:chirp/src/core/chirp_writer.dart';
+export 'package:chirp/src/core/format_option.dart';
+export 'package:chirp/src/core/log_level.dart';
+export 'package:chirp/src/core/log_record.dart';
 export 'package:chirp/src/developer_log_console_writer.dart';
 export 'package:chirp/src/formatters/compact_message_formatter.dart';
 export 'package:chirp/src/formatters/json_message_formatter.dart';
@@ -11,8 +22,6 @@ export 'package:chirp/src/formatters/rainbow_message_formatter.dart';
 export 'package:chirp/src/formatters/simple_console_message_formatter.dart';
 export 'package:chirp/src/stack_trace_util.dart';
 export 'package:chirp/src/xterm_colors.g.dart';
-// Re-export everything from chirp_protocol
-export 'package:chirp_protocol/chirp_protocol.dart';
 
 // ignore: avoid_classes_with_only_static_members
 /// Global static logger with pre-configured console output.

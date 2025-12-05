@@ -35,7 +35,7 @@ class JsonMessageFormatter extends ConsoleMessageFormatter {
     }
 
     final data = record.data;
-    if (data != null && data.isNotEmpty) {
+    if (data.isNotEmpty) {
       map['data'] = data;
     }
 

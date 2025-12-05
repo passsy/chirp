@@ -1,7 +1,7 @@
-import 'package:chirp_protocol/src/chirp_interceptor.dart';
-import 'package:chirp_protocol/src/chirp_logger.dart';
-import 'package:chirp_protocol/src/log_level.dart';
-import 'package:chirp_protocol/src/log_record.dart';
+import 'package:chirp/src/core/chirp_interceptor.dart';
+import 'package:chirp/src/core/chirp_logger.dart';
+import 'package:chirp/src/core/log_level.dart';
+import 'package:chirp/src/core/log_record.dart';
 
 /// Abstract interface for log output destinations.
 ///

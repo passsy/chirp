@@ -1,4 +1,4 @@
-// ignore_for_file: avoid_redundant_argument_values
+// ignore_for_file: avoid_redundant_argument_values, avoid_print
 import 'package:chirp/chirp.dart';
 
 void main() {
@@ -10,7 +10,7 @@ void main() {
         MachineNameInterceptor(),
       ],
       formatter: RainbowMessageFormatter(
-        options: RainbowFormatOptions(
+        options: const RainbowFormatOptions(
           showLocation: false,
         ),
         spanTransformers: [_boxWtfMessages],

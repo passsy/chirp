@@ -1,4 +1,4 @@
-import 'package:chirp_protocol/chirp_protocol.dart';
+import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -113,7 +113,7 @@ void main() {
           .addWriter(writer)
           .setMinLogLevel(ChirpLogLevel.warning);
 
-      logger.log('info level', level: ChirpLogLevel.info);
+      logger.log('info level');
       logger.log('warning level', level: ChirpLogLevel.warning);
 
       expect(records.length, 1);
@@ -342,7 +342,7 @@ void main() {
 
       expect(records.length, 1);
       expect(records[0].message, 'LOG: chained');
-      expect(records[0].data?['env'], 'test');
+      expect(records[0].data['env'], 'test');
     });
 
     test('writer methods can be chained', () {
@@ -385,8 +385,8 @@ void main() {
       logger.addWriter(writer);
       logger.info('test');
 
-      expect(records[0].data?['a'], 3);
-      expect(records[0].data?['b'], 2);
+      expect(records[0].data['a'], 3);
+      expect(records[0].data['b'], 2);
     });
   });
 

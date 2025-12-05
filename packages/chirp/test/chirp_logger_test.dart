@@ -1,6 +1,6 @@
 import 'dart:collection';
 
-import 'package:chirp_protocol/chirp_protocol.dart';
+import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -184,7 +184,7 @@ void main() {
       expect(record.level, customLevel);
       expect(record.error, error);
       expect(record.stackTrace, stackTrace);
-      expect(record.data?['key'], 'value');
+      expect(record.data['key'], 'value');
       expect(record.formatOptions, options);
       expect(record.skipFrames, 2);
       expect(record.loggerName, 'TestLogger');
@@ -287,7 +287,8 @@ void main() {
       expect(records[0].level, ChirpLogLevel.wtf);
     });
 
-    test('all logging methods include caller stacktrace when writer requires it',
+    test(
+        'all logging methods include caller stacktrace when writer requires it',
         () {
       final records = <LogRecord>[];
       final logger =
@@ -329,9 +330,9 @@ void main() {
       logger.info('msg', data: {'local': 'localValue', 'override': 'new'});
 
       expect(records.length, 1);
-      expect(records[0].data?['global'], 'globalValue');
-      expect(records[0].data?['local'], 'localValue');
-      expect(records[0].data?['override'], 'new'); // Override takes precedence
+      expect(records[0].data['global'], 'globalValue');
+      expect(records[0].data['local'], 'localValue');
+      expect(records[0].data['override'], 'new'); // Override takes precedence
     });
 
     test('logging with empty context and no data creates empty data field', () {
@@ -354,7 +355,7 @@ void main() {
 
       expect(records.length, 1);
       expect(records[0].data, isNotNull);
-      expect(records[0].data?['key'], 'value');
+      expect(records[0].data['key'], 'value');
     });
 
     test('multiple writers all receive the log record', () {
@@ -430,7 +431,7 @@ void main() {
 
       // But when logging, parent context is included
       child.info('test');
-      expect(records[0].data?['parentKey'], 'parentValue');
+      expect(records[0].data['parentKey'], 'parentValue');
     });
 
     test('child context can extend parent context at log time', () {
@@ -441,8 +442,8 @@ void main() {
       final child = parent.child(context: {'childKey': 'childValue'});
 
       child.info('test');
-      expect(records[0].data?['parentKey'], 'parentValue');
-      expect(records[0].data?['childKey'], 'childValue');
+      expect(records[0].data['parentKey'], 'parentValue');
+      expect(records[0].data['childKey'], 'childValue');
     });
 
     test('child context can override parent context values', () {
@@ -453,7 +454,7 @@ void main() {
       final child = parent.child(context: {'key': 'childValue'});
 
       child.info('test');
-      expect(records[0].data?['key'], 'childValue');
+      expect(records[0].data['key'], 'childValue');
     });
 
     test('child inherits parent writers', () {
@@ -493,7 +494,7 @@ void main() {
 
       // Child sees the modified value at log time
       child.info('test');
-      expect(records[0].data?['key'], 'modified');
+      expect(records[0].data['key'], 'modified');
     });
 
     test('multi-level child hierarchy inherits correctly', () {
@@ -517,9 +518,9 @@ void main() {
 
       expect(records.length, 1);
       expect(records[0].loggerName, 'C');
-      expect(records[0].data?['gp'], 'gpValue');
-      expect(records[0].data?['p'], 'pValue');
-      expect(records[0].data?['c'], 'cValue');
+      expect(records[0].data['gp'], 'gpValue');
+      expect(records[0].data['p'], 'pValue');
+      expect(records[0].data['c'], 'cValue');
     });
   });
 
@@ -623,7 +624,7 @@ void main() {
 
       expect(records.length, 1);
       expect(records[0].data, isNotNull);
-      expect(records[0].data?['key'], 'value');
+      expect(records[0].data['key'], 'value');
     });
   });
 
@@ -670,8 +671,8 @@ void main() {
       orphan.info('test');
 
       // Adopted logger inherits parent context (same as child())
-      expect(records[0].data?['orphanKey'], 'orphanValue');
-      expect(records[0].data?['parentKey'], 'parentValue');
+      expect(records[0].data['orphanKey'], 'orphanValue');
+      expect(records[0].data['parentKey'], 'parentValue');
     });
 
     test('adopted logger own writers are ignored after adoption', () {
@@ -816,7 +817,8 @@ void main() {
       orphan.info('before adoption');
       expect(orphanRecords, hasLength(1));
       expect(orphanRecords[0].caller, isNotNull,
-          reason: 'Before adoption, orphan uses its own writer which requires caller info');
+          reason:
+              'Before adoption, orphan uses its own writer which requires caller info');
 
       // Adopt the orphan
       parent.adopt(orphan);
@@ -858,6 +860,3 @@ class FakeWriterRequiringCallerInfo extends ChirpWriter {
     records.add(record);
   }
 }
-
-/// Test object for instance logging tests.
-class TestObject {}

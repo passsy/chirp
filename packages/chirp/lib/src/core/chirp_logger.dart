@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:chirp_protocol/src/chirp_interceptor.dart';
-import 'package:chirp_protocol/src/chirp_writer.dart';
-import 'package:chirp_protocol/src/format_option.dart';
-import 'package:chirp_protocol/src/log_level.dart';
-import 'package:chirp_protocol/src/log_record.dart';
+import 'package:chirp/src/core/chirp_interceptor.dart';
+import 'package:chirp/src/core/chirp_writer.dart';
+import 'package:chirp/src/core/format_option.dart';
+import 'package:chirp/src/core/log_level.dart';
+import 'package:chirp/src/core/log_record.dart';
 import 'package:clock/clock.dart';
 
 /// Flexible logger class supporting named loggers, child loggers, and custom writers.

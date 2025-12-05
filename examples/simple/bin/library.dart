@@ -1,4 +1,4 @@
-import 'package:chirp_protocol/chirp_protocol.dart';
+import 'package:chirp/chirp.dart';
 
 /// Library logger with default minimum level.
 ///

@@ -166,11 +166,11 @@ LogSpan _buildSimpleLogSpan({
   spans.add(LogMessage(record.message));
 
   // Structured data on separate line (key=value format)
-  if (showData && record.data != null && record.data!.isNotEmpty) {
+  if (showData && record.data.isNotEmpty) {
     spans.addAll([
       NewLine(),
       PlainText('  '),
-      KeyValueData(record.data!),
+      KeyValueData(record.data),
     ]);
   }
 

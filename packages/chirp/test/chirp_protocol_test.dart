@@ -1,4 +1,4 @@
-import 'package:chirp_protocol/chirp_protocol.dart';
+import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -116,7 +116,7 @@ void main() {
       child.info('child message');
 
       expect(records.length, 1);
-      expect(records[0].data?['requestId'], 'REQ-123');
+      expect(records[0].data['requestId'], 'REQ-123');
     });
 
     test('context is merged into log data', () {
@@ -127,8 +127,8 @@ void main() {
 
       logger.info('message', data: {'extra': 'value'});
 
-      expect(records[0].data?['app'], 'myapp');
-      expect(records[0].data?['extra'], 'value');
+      expect(records[0].data['app'], 'myapp');
+      expect(records[0].data['extra'], 'value');
     });
   });
 }

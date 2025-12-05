@@ -1,4 +1,4 @@
-import 'package:chirp_protocol/chirp_protocol.dart';
+import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -280,7 +280,7 @@ void main() {
       // But the data map itself can be modified if not protected
       // This tests that writers receive the actual record, not a copy
       data['newKey'] = 'newValue';
-      expect(record.data?['newKey'], 'newValue');
+      expect(record.data['newKey'], 'newValue');
     });
   });
 }

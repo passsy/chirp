@@ -16,8 +16,6 @@ dependencies:
 dependency_overrides:
   chirp:
     path: ../../packages/chirp
-  chirp_protocol:
-    path: ../../packages/chirp_protocol
 
 dev_dependencies:
   flutter_test:
