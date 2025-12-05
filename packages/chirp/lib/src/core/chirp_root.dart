@@ -427,13 +427,9 @@ extension LogRecordExt on LogRecord {
   }
 
   /// Returns a formatted instance identifier like "ClassName@a1b2"
-  ///
-  /// Uses [resolveClassName] to get the class name if provided,
-  /// otherwise falls back to runtimeType.
-  String? instanceLabel([String Function(Object)? resolveClassName]) {
+  String? instanceLabel() {
     if (instance == null) return null;
-    final className =
-        resolveClassName?.call(instance!) ?? instance.runtimeType.toString();
+    final className = instance.runtimeType.toString();
     final hash = instanceHash ?? 0;
     final hashHex = hash.toRadixString(16).padLeft(4, '0');
     final shortHash =

@@ -3,9 +3,6 @@ import 'package:chirp/src/ansi/readable_colors.g.dart';
 
 export 'package:chirp/src/span/span_foundation.dart';
 
-/// Function type for transforming an instance into a display name.
-typedef ClassNameTransformer = String? Function(Object instance);
-
 const _subtleColors = [
   ...readableColorsLowSaturation,
   ...readableColorsMediumSaturation,
@@ -14,28 +11,17 @@ const _subtleColors = [
 /// Default colored formatter using the span-based templating system.
 class RainbowMessageFormatter extends SpanBasedFormatter {
   final int metaWidth;
-  final List<ClassNameTransformer> classNameTransformers;
   final RainbowFormatOptions options;
 
   RainbowMessageFormatter({
-    List<ClassNameTransformer>? classNameTransformers,
     this.metaWidth = 80,
     RainbowFormatOptions? options,
     super.spanTransformers,
-  })  : options = options ?? const RainbowFormatOptions(),
-        classNameTransformers = classNameTransformers ?? [];
+  }) : options = options ?? const RainbowFormatOptions();
 
   @override
   bool get requiresCallerInfo =>
       options.showLocation || options.showClass || options.showMethod;
-
-  String resolveClassName(Object instance) {
-    for (final transformer in classNameTransformers) {
-      final result = transformer(instance);
-      if (result != null) return result;
-    }
-    return instance.runtimeType.toString();
-  }
 
   @override
   LogSpan buildSpan(LogRecord record) {

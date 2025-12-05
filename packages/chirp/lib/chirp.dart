@@ -21,7 +21,6 @@ export 'package:chirp/src/formatters/json_message_formatter.dart'
     show JsonMessageFormatter;
 export 'package:chirp/src/formatters/rainbow_message_formatter.dart'
     show
-        ClassNameTransformer,
         DataPresentation,
         RainbowFormatOptions,
         RainbowMessageFormatter,
