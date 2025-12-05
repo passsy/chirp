@@ -1,5 +1,5 @@
 import 'package:chirp/chirp.dart';
-import 'package:chirp/src/readable_colors.g.dart';
+import 'package:chirp/src/ansi/readable_colors.g.dart';
 
 export 'package:chirp/src/span/span_foundation.dart';
 
