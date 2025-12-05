@@ -8,6 +8,7 @@
 /// - debug (100) - Debug information
 /// - info (200) - Routine information
 /// - notice (300) - Normal but significant events
+/// - success (310) - Positive outcome confirmation
 /// - warning (400) - Warning events
 /// - error (500) - Error events
 /// - critical (600) - Critical events
@@ -16,7 +17,7 @@
 /// Users can create custom levels:
 /// ```dart
 /// const verbose = ChirpLogLevel('verbose', 50);
-/// const notice = ChirpLogLevel('notice', 300);
+/// const alert = ChirpLogLevel('alert', 700);
 /// ```
 class ChirpLogLevel {
   /// The name/label of this log level
@@ -95,6 +96,23 @@ class ChirpLogLevel {
   /// GCP Cloud Logging, Syslog, and other logging systems.
   /// Severity: 300
   static const notice = ChirpLogLevel('notice', 300);
+
+  /// **Success** - Positive outcome confirmation
+  ///
+  /// Use for:
+  /// - Operation completed successfully
+  /// - Task finished without errors
+  /// - Deployment succeeded
+  /// - Tests passed
+  /// - Build completed
+  /// - Migration finished
+  /// - Health check passed
+  ///
+  /// Indicates successful completion of an operation. More emphatic than
+  /// info - use when you want to highlight that something went right.
+  /// Popularized by Python's Loguru library.
+  /// Severity: 310
+  static const success = ChirpLogLevel('success', 310);
 
   /// **Warning** - Potentially problematic situations
   ///

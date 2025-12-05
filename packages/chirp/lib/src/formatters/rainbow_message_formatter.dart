@@ -42,13 +42,16 @@ LogSpan _buildRainbowLogSpan({
 }) {
   final callerInfo = record.callerInfo;
 
-  final levelColor = switch (record.level.severity) {
-    > 500 => XtermColor.indianRed1_203,
-    500 => XtermColor.indianRed_167,
-    > 400 => XtermColor.lightSalmon3_173,
-    400 => XtermColor.lightGoldenrod3_179,
-    _ => null,
-  };
+  final levelColor = () {
+    final level = record.level;
+    if (level > ChirpLogLevel.error) return XtermColor.indianRed1_203;
+    if (level >= ChirpLogLevel.error) return XtermColor.indianRed_167;
+    if (level > ChirpLogLevel.warning) return XtermColor.lightSalmon3_173;
+    if (level >= ChirpLogLevel.warning) return XtermColor.lightGoldenrod3_179;
+    if (level == ChirpLogLevel.notice) return XtermColor.brightBlack_8;
+    if (level == ChirpLogLevel.success) return XtermColor.green_2;
+    return null;
+  }();
 
   final spans = <LogSpan>[];
 

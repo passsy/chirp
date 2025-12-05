@@ -24,6 +24,11 @@ void main() {
         expect(ChirpLogLevel.notice.severity, 300);
       });
 
+      test('success has correct name and severity', () {
+        expect(ChirpLogLevel.success.name, 'success');
+        expect(ChirpLogLevel.success.severity, 310);
+      });
+
       test('warning has correct name and severity', () {
         expect(ChirpLogLevel.warning.name, 'warning');
         expect(ChirpLogLevel.warning.severity, 400);
@@ -59,6 +64,10 @@ void main() {
         );
         expect(
           ChirpLogLevel.notice.severity,
+          lessThan(ChirpLogLevel.success.severity),
+        );
+        expect(
+          ChirpLogLevel.success.severity,
           lessThan(ChirpLogLevel.warning.severity),
         );
         expect(
@@ -245,6 +254,7 @@ void main() {
         expect(ChirpLogLevel.debug.toString(), 'debug');
         expect(ChirpLogLevel.info.toString(), 'info');
         expect(ChirpLogLevel.notice.toString(), 'notice');
+        expect(ChirpLogLevel.success.toString(), 'success');
         expect(ChirpLogLevel.warning.toString(), 'warning');
         expect(ChirpLogLevel.error.toString(), 'error');
         expect(ChirpLogLevel.critical.toString(), 'critical');
@@ -268,13 +278,14 @@ void main() {
           ChirpLogLevel.debug,
           ChirpLogLevel.info,
           ChirpLogLevel.notice,
+          ChirpLogLevel.success,
           ChirpLogLevel.warning,
           ChirpLogLevel.error,
           ChirpLogLevel.critical,
           ChirpLogLevel.wtf,
         ];
 
-        expect(levels.length, 8);
+        expect(levels.length, 9);
       });
 
       test('severity values remain stable', () {
@@ -283,6 +294,7 @@ void main() {
         expect(ChirpLogLevel.debug.severity, 100);
         expect(ChirpLogLevel.info.severity, 200);
         expect(ChirpLogLevel.notice.severity, 300);
+        expect(ChirpLogLevel.success.severity, 310);
         expect(ChirpLogLevel.warning.severity, 400);
         expect(ChirpLogLevel.error.severity, 500);
         expect(ChirpLogLevel.critical.severity, 600);

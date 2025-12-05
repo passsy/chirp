@@ -164,6 +164,23 @@ class Chirp {
     );
   }
 
+  /// {@macro chirp.success}
+  static void success(
+    Object? message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
+  }) {
+    _effectiveRootLogger.success(
+      message,
+      error: error,
+      stackTrace: stackTrace,
+      data: data,
+      formatOptions: formatOptions,
+    );
+  }
+
   /// {@macro chirp.warning}
   static void warning(
     Object? message, {

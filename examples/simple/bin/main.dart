@@ -68,7 +68,9 @@ void allLogLevelsExample() {
   Chirp.trace('Detailed execution trace', data: {'step': 1});
   Chirp.debug('Debug information', data: {'cache': 'miss'});
   Chirp.info('Application started info');
-  Chirp.notice('Device connected', data: {'id': '32168', 'name': 'DPE 2'});
+  Chirp.notice('Establishing connection...',
+      data: {'id': '32168', 'name': 'DPE 2'});
+  Chirp.success('Device connected');
   Chirp.log(
     'Application started custom level 600',
     level: const ChirpLogLevel('myAlert', 600),

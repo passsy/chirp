@@ -219,7 +219,7 @@ class TestCommand extends Command {
     final stderr = result.stderr.toString();
 
     if (result.exitCode == 0) {
-      print('${green('✓')} package:${package.name}: All tests passed!');
+      print('${green('✓')} ${green(package.name)} ❭ All tests passed!');
       return _TestResult.success;
     }
 

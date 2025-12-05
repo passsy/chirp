@@ -615,6 +615,52 @@ class ChirpLogger {
     _logRecord(entry);
   }
 
+  /// {@template chirp.success}
+  /// Logs a success message (severity: 310) - positive outcome confirmation.
+  ///
+  /// Use success for:
+  /// - Operation completed successfully
+  /// - Task finished without errors
+  /// - Deployment succeeded
+  /// - Tests passed
+  /// - Build completed
+  /// - Health check passed
+  ///
+  /// See also:
+  /// - [notice] for significant but normal events
+  /// - [info] for routine operational messages
+  /// - [ChirpLogLevel.success] for the log level constant
+  /// {@endtemplate}
+  void success(
+    Object? message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, Object?>? data,
+    List<FormatOptions>? formatOptions,
+  }) {
+    const level = ChirpLogLevel.success;
+    final min = minLogLevel;
+    if (min != null && level.severity < min.severity) return;
+
+    final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
+
+    final entry = LogRecord(
+      message: message,
+      level: level,
+      error: error,
+      stackTrace: stackTrace,
+      caller: caller,
+      timestamp: clock.now(),
+      zone: Zone.current,
+      loggerName: name,
+      instance: instance,
+      data: _mergeData(_effectiveContext, data),
+      formatOptions: formatOptions,
+    );
+
+    _logRecord(entry);
+  }
+
   /// {@template chirp.warning}
   /// Logs a warning message (severity: 400) - potentially problematic situations.
   ///
