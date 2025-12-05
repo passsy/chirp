@@ -12,7 +12,6 @@ sidekick:
 
 dependencies:
   chirp_protocol: ^1.0.0
-  clock: ^1.0.0
 
 dev_dependencies:
   lint: ^2.0.0

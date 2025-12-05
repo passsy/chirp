@@ -11,7 +11,7 @@ void main() {
       );
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
           'endpoint': '/api/profile',
@@ -37,7 +37,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Short',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         loggerName: 'API',
         data: {'key': 'value'},
       );
@@ -53,7 +53,7 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Line 1\nLine 2\nLine 3',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final buffer = ConsoleMessageBuffer(supportsColors: false);
@@ -67,7 +67,7 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         loggerName: 'VeryLongLoggerNameThatExceedsTheDefaultMetaWidth',
         caller: StackTrace.fromString(
           '#0      longMethodName (package:app/file.dart:100:5)',
@@ -92,7 +92,7 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      DeviceManager._startAutoConnectScanning.<anonymous closure>.<anonymous closure> (package:app/device_manager.dart:809:5)',
@@ -118,7 +118,7 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         caller: StackTrace.fromString(
           '#0      UserService.logStatic.<anonymous closure> (package:app/user_service.dart:100:5)',
         ),
@@ -138,7 +138,7 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         caller: StackTrace.fromString(
           '#0      processData.<anonymous closure>.<anonymous closure> (package:app/utils.dart:42:5)',
         ),
@@ -159,7 +159,7 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      MyClass.myMethod.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:app/my_class.dart:50:5)',
@@ -182,7 +182,7 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      MyClass.normalMethod (package:app/my_class.dart:50:5)',
@@ -207,7 +207,7 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      _TestClass.processData.<anonymous closure> (package:app/test_class.dart:100:5)',
@@ -231,7 +231,7 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final buffer = ConsoleMessageBuffer(supportsColors: true);
@@ -248,7 +248,7 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final buffer = ConsoleMessageBuffer(supportsColors: false);
@@ -263,7 +263,7 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         loggerName: 'TestLogger',
       );
@@ -287,7 +287,7 @@ void main() {
       );
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
           'action': 'login',
@@ -312,7 +312,7 @@ void main() {
       );
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
           'action': 'login',
@@ -335,7 +335,7 @@ void main() {
       );
       final entry = LogRecord(
         message: 'User action',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
         },
@@ -357,7 +357,7 @@ void main() {
       );
       final entry = LogRecord(
         message: 'Request',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'method': 'POST',
           'endpoint': '/api/users',
@@ -381,7 +381,7 @@ void main() {
       );
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final buffer = ConsoleMessageBuffer(supportsColors: false);
@@ -398,7 +398,7 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
       );
 
@@ -427,7 +427,7 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
       );
 
@@ -452,7 +452,7 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Operation failed',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Something went wrong'),
       );
 
@@ -471,7 +471,7 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Error occurred',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Test error'),
         stackTrace: StackTrace.fromString(
           '#0      main (file.dart:10:5)\n#1      test (file.dart:20:3)',

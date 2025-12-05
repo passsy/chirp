@@ -31,7 +31,7 @@ void main() {
 LogRecord _createEntry(Object? message) {
   return LogRecord(
     message: message,
-    date: DateTime.now(),
+    timestamp: DateTime.now(),
     loggerName: 'TestClass',
     instance: Object(),
   );

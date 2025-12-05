@@ -9,7 +9,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'User logged in',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         loggerName: 'payment',
       );
@@ -25,7 +25,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         caller: StackTrace.fromString(
           '#0      MyClass.myMethod (file:///main.dart:42:5)\n'
@@ -45,7 +45,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         instance: instance,
       );
@@ -62,7 +62,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'User action',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         data: {'userId': 'user_123', 'action': 'login'},
       );
@@ -82,7 +82,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Payment failed',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.error,
         error: Exception('Payment failed'),
       );
@@ -106,7 +106,7 @@ void main() {
       );
       final record = LogRecord(
         message: 'Error',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.error,
         stackTrace: stackTrace,
       );
@@ -127,7 +127,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         loggerName: 'root',
       );
@@ -143,7 +143,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter(showLoggerName: false);
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         loggerName: 'payment',
       );
@@ -159,7 +159,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter(showCaller: false);
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         caller: StackTrace.fromString(
           '#0      MyClass.myMethod (file:///main.dart:42:5)',
@@ -178,7 +178,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter(showInstance: false);
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         instance: instance,
       );
@@ -194,7 +194,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter(showData: false);
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         data: {'key': 'value'},
       );
@@ -210,7 +210,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         data: {},
       );
@@ -227,7 +227,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
       );
 
@@ -242,7 +242,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         caller: StackTrace.fromString(
           '#0      differentMethod (file:///main.dart:42:5)',
@@ -261,7 +261,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         instance: instance,
         caller: StackTrace.fromString(
@@ -286,7 +286,7 @@ void main() {
       );
       final record = LogRecord(
         message: 'Original',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
       );
 
@@ -301,7 +301,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         caller: StackTrace.fromString(
           '#0      CallerClass.method (file:///main.dart:42:5)',
@@ -321,7 +321,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         instance: instance,
       );
@@ -339,7 +339,7 @@ void main() {
       final formatter = SimpleConsoleMessageFormatter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 10, 10, 30, 45, 123),
+        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
         instance: instance,
         caller: StackTrace.fromString(

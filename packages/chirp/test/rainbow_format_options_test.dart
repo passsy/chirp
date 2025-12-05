@@ -12,7 +12,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
@@ -35,7 +35,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
@@ -56,7 +56,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
         formatOptions: const [
           RainbowFormatOptions(data: DataPresentation.inline),
@@ -80,7 +80,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
         formatOptions: const [
           RainbowFormatOptions(data: DataPresentation.multiline),
@@ -107,7 +107,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
         formatOptions: const [
           FormatOptions(), // Not a RainbowFormatOptions
@@ -131,7 +131,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
       );
 
@@ -153,7 +153,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
         formatOptions: const [],
       );
@@ -175,7 +175,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
         formatOptions: const [
           FormatOptions(),
@@ -201,7 +201,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         formatOptions: const [
           RainbowFormatOptions(
             showTime: false,

@@ -42,11 +42,11 @@ void main() {
       final now = DateTime.now();
       final record = LogRecord(
         message: 'Test message',
-        date: now,
+        timestamp: now,
       );
 
       expect(record.message, 'Test message');
-      expect(record.date, now);
+      expect(record.timestamp, now);
       expect(record.level, ChirpLogLevel.info);
     });
 
@@ -57,7 +57,7 @@ void main() {
 
       final record = LogRecord(
         message: 'Full message',
-        date: now,
+        timestamp: now,
         level: ChirpLogLevel.error,
         error: Exception('test error'),
         stackTrace: stackTrace,
@@ -83,8 +83,8 @@ void main() {
   group('ChirpLogger', () {
     test('logs messages at different levels', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger(name: 'Test')
-        ..addWriter(_TestWriter(records.add));
+      final logger =
+          ChirpLogger(name: 'Test').addWriter(_TestWriter(records.add));
 
       logger.trace('trace msg');
       logger.debug('debug msg');
@@ -108,8 +108,8 @@ void main() {
 
     test('child logger inherits parent writers', () {
       final records = <LogRecord>[];
-      final parent = ChirpLogger(name: 'Parent')
-        ..addWriter(_TestWriter(records.add));
+      final parent =
+          ChirpLogger(name: 'Parent').addWriter(_TestWriter(records.add));
 
       final child = parent.child(context: {'requestId': 'REQ-123'});
 
@@ -121,9 +121,9 @@ void main() {
 
     test('context is merged into log data', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger(name: 'Test')
-        ..context['app'] = 'myapp'
-        ..addWriter(_TestWriter(records.add));
+      final logger = ChirpLogger(name: 'Test');
+      logger.context['app'] = 'myapp';
+      logger.addWriter(_TestWriter(records.add));
 
       logger.info('message', data: {'extra': 'value'});
 
@@ -131,74 +131,13 @@ void main() {
       expect(records[0].data?['extra'], 'value');
     });
   });
-
-  group('Chirp static API', () {
-    test('logs via global root logger', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(_TestWriter(records.add));
-
-      Chirp.info('global message');
-
-      expect(records.length, 1);
-      expect(records[0].message, 'global message');
-    });
-  });
-
-  group('ChirpObjectExt', () {
-    test('provides chirp getter for any object', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(_TestWriter(records.add));
-
-      final myObject = _TestClass();
-      myObject.doWork();
-
-      expect(records.length, 1);
-      expect(records[0].instance, myObject);
-    });
-
-    test('uses new Chirp.root when root is replaced after first log', () {
-      final recordsOld = <LogRecord>[];
-      final recordsNew = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      // Set up initial root
-      Chirp.root = ChirpLogger()..addWriter(_TestWriter(recordsOld.add));
-
-      // Create object and log - this caches the instance logger
-      final myObject = _TestClass();
-      myObject.doWork();
-      expect(recordsOld.length, 1);
-      expect(recordsNew.length, 0);
-
-      // Replace root with new logger
-      Chirp.root = ChirpLogger()..addWriter(_TestWriter(recordsNew.add));
-
-      // Log again - should use new root, not the cached old one
-      myObject.doWork();
-      expect(recordsOld.length, 1); // Should NOT increase
-      expect(recordsNew.length, 1); // Should use new root
-    });
-  });
 }
 
-class _TestWriter implements ChirpWriter {
+class _TestWriter extends ChirpWriter {
   final void Function(LogRecord) onWrite;
 
   _TestWriter(this.onWrite);
 
   @override
   void write(LogRecord record) => onWrite(record);
-}
-
-class _TestClass {
-  void doWork() {
-    chirp.info('working');
-  }
 }

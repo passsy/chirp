@@ -9,7 +9,7 @@ void main() {
       final instance = _MyClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         loggerName: 'MyClass',
         instance: instance,
       );
@@ -35,7 +35,7 @@ void main() {
       final instance = _MyClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Test error'),
         loggerName: 'MyClass',
         instance: instance,
@@ -63,7 +63,7 @@ void main() {
       final instance = _MyClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Test error'),
         stackTrace: StackTrace.fromString('#0      main (file.dart:10:5)'),
         loggerName: 'MyClass',
@@ -93,7 +93,7 @@ void main() {
       final instance = _MyClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         loggerName: 'MyClass',
         instance: instance,
         data: {

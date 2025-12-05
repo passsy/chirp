@@ -1,12 +1,18 @@
-// ignore_for_file: avoid_print, avoid_redundant_argument_values
-
+// ignore_for_file: avoid_redundant_argument_values
 import 'package:chirp/chirp.dart';
 
 void main() {
   Chirp.root = ChirpLogger()
-    // ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
+    ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
     ..addConsoleWriter(
+      useColors: true,
+      interceptors: [
+        MachineNameInterceptor(),
+      ],
       formatter: RainbowMessageFormatter(
+        options: RainbowFormatOptions(
+          showLocation: false,
+        ),
         spanTransformers: [_boxWtfMessages],
       ),
     );
@@ -326,4 +332,12 @@ void _boxWtfMessages(LogSpan tree, LogRecord record) {
       borderColor: XtermColor.red3_160, // red
     ),
   );
+}
+
+class MachineNameInterceptor extends ChirpInterceptor {
+  @override
+  LogRecord? intercept(LogRecord record) {
+    record.data['machineName'] = 'Robin';
+    return record;
+  }
 }

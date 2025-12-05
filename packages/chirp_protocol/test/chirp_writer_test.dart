@@ -12,7 +12,7 @@ void main() {
       final writer = ExtendingWriter();
       expect(writer, isA<ChirpWriter>());
 
-      writer.write(LogRecord(message: 'Test', date: DateTime.now()));
+      writer.write(LogRecord(message: 'Test', timestamp: DateTime.now()));
       expect(writer.writtenRecords, hasLength(1));
     });
 
@@ -20,7 +20,7 @@ void main() {
       final writer = FakeChirpWriter();
       final record = LogRecord(
         message: 'Test message',
-        date: DateTime.now(),
+        timestamp: DateTime.now(),
       );
 
       // Should not throw
@@ -33,7 +33,7 @@ void main() {
       final writer = FakeChirpWriter();
       final record = LogRecord(
         message: 'Test',
-        date: DateTime.now(),
+        timestamp: DateTime.now(),
       );
 
       // This ensures the signature matches exactly
@@ -45,9 +45,9 @@ void main() {
 
     test('can handle multiple write calls', () {
       final writer = FakeChirpWriter();
-      final record1 = LogRecord(message: 'First', date: DateTime.now());
-      final record2 = LogRecord(message: 'Second', date: DateTime.now());
-      final record3 = LogRecord(message: 'Third', date: DateTime.now());
+      final record1 = LogRecord(message: 'First', timestamp: DateTime.now());
+      final record2 = LogRecord(message: 'Second', timestamp: DateTime.now());
+      final record3 = LogRecord(message: 'Third', timestamp: DateTime.now());
 
       writer.write(record1);
       writer.write(record2);
@@ -67,7 +67,7 @@ void main() {
 
       final record = LogRecord(
         message: 'Full record',
-        date: DateTime.now(),
+        timestamp: DateTime.now(),
         level: ChirpLogLevel.error,
         error: Exception('test error'),
         stackTrace: stackTrace,
@@ -100,7 +100,7 @@ void main() {
       final writer = FakeChirpWriter();
       final record = LogRecord(
         message: null,
-        date: DateTime.now(),
+        timestamp: DateTime.now(),
       );
 
       writer.write(record);
@@ -115,7 +115,7 @@ void main() {
       expect(written.skipFrames, isNull);
       expect(written.instance, isNull);
       expect(written.loggerName, isNull);
-      expect(written.data, isNull);
+      expect(written.data, isEmpty);
       expect(written.formatOptions, isNull);
     });
 
@@ -137,7 +137,7 @@ void main() {
         writer.write(
           LogRecord(
             message: 'Message at ${level.name}',
-            date: DateTime.now(),
+            timestamp: DateTime.now(),
             level: level,
           ),
         );
@@ -151,7 +151,7 @@ void main() {
 
     test('can be used as part of ChirpLogger', () {
       final writer = FakeChirpWriter();
-      final logger = ChirpLogger(name: 'Test')..addWriter(writer);
+      final logger = ChirpLogger(name: 'Test').addWriter(writer);
 
       logger.info('Test message');
 
@@ -163,9 +163,8 @@ void main() {
     test('multiple writers can be used together', () {
       final writer1 = FakeChirpWriter();
       final writer2 = FakeChirpWriter();
-      final logger = ChirpLogger(name: 'Test')
-        ..addWriter(writer1)
-        ..addWriter(writer2);
+      final logger =
+          ChirpLogger(name: 'Test').addWriter(writer1).addWriter(writer2);
 
       logger.info('Broadcast message');
 
@@ -181,10 +180,10 @@ void main() {
       // Verify we can access and modify state
       expect(writer.writtenRecords, isEmpty);
 
-      writer.write(LogRecord(message: 'First', date: DateTime.now()));
+      writer.write(LogRecord(message: 'First', timestamp: DateTime.now()));
       expect(writer.writtenRecords, hasLength(1));
 
-      writer.write(LogRecord(message: 'Second', date: DateTime.now()));
+      writer.write(LogRecord(message: 'Second', timestamp: DateTime.now()));
       expect(writer.writtenRecords, hasLength(2));
 
       // Verify we can clear state
@@ -197,13 +196,13 @@ void main() {
 
       expect(writer.writeCount, 0);
 
-      writer.write(LogRecord(message: 'First', date: DateTime.now()));
+      writer.write(LogRecord(message: 'First', timestamp: DateTime.now()));
       expect(writer.writeCount, 1);
 
-      writer.write(LogRecord(message: 'Second', date: DateTime.now()));
+      writer.write(LogRecord(message: 'Second', timestamp: DateTime.now()));
       expect(writer.writeCount, 2);
 
-      writer.write(LogRecord(message: 'Third', date: DateTime.now()));
+      writer.write(LogRecord(message: 'Third', timestamp: DateTime.now()));
       expect(writer.writeCount, 3);
     });
 
@@ -213,27 +212,27 @@ void main() {
       writer.write(
         LogRecord(
           message: 'Debug',
-          date: DateTime.now(),
+          timestamp: DateTime.now(),
           level: ChirpLogLevel.debug,
         ),
       );
       writer.write(
         LogRecord(
           message: 'Info',
-          date: DateTime.now(),
+          timestamp: DateTime.now(),
         ),
       );
       writer.write(
         LogRecord(
           message: 'Warning',
-          date: DateTime.now(),
+          timestamp: DateTime.now(),
           level: ChirpLogLevel.warning,
         ),
       );
       writer.write(
         LogRecord(
           message: 'Error',
-          date: DateTime.now(),
+          timestamp: DateTime.now(),
           level: ChirpLogLevel.error,
         ),
       );
@@ -250,7 +249,7 @@ void main() {
       writer.write(
         LogRecord(
           message: 'Test message',
-          date: now,
+          timestamp: now,
         ),
       );
 
@@ -266,7 +265,7 @@ void main() {
       final data = {'key': 'value'};
       final record = LogRecord(
         message: 'Test',
-        date: DateTime.now(),
+        timestamp: DateTime.now(),
         data: data,
       );
 
@@ -274,7 +273,7 @@ void main() {
 
       // LogRecord fields are final
       expect(() => record.message, returnsNormally);
-      expect(() => record.date, returnsNormally);
+      expect(() => record.timestamp, returnsNormally);
       expect(() => record.level, returnsNormally);
       expect(() => record.data, returnsNormally);
 
@@ -290,7 +289,7 @@ void main() {
 ///
 /// Used for testing to verify that [ChirpWriter] interface can be implemented
 /// and to track what records are written.
-class FakeChirpWriter implements ChirpWriter {
+class FakeChirpWriter extends ChirpWriter {
   final List<LogRecord> writtenRecords = [];
 
   @override
@@ -300,7 +299,7 @@ class FakeChirpWriter implements ChirpWriter {
 }
 
 /// Writer implementation that counts how many times write was called.
-class CountingWriter implements ChirpWriter {
+class CountingWriter extends ChirpWriter {
   int writeCount = 0;
 
   @override
@@ -310,7 +309,7 @@ class CountingWriter implements ChirpWriter {
 }
 
 /// Writer implementation that filters records by minimum log level.
-class FilteringWriter implements ChirpWriter {
+class FilteringWriter extends ChirpWriter {
   final ChirpLogLevel minimumLevel;
   final List<LogRecord> writtenRecords = [];
 
@@ -325,12 +324,12 @@ class FilteringWriter implements ChirpWriter {
 }
 
 /// Writer implementation that formats records as strings.
-class FormattingWriter implements ChirpWriter {
+class FormattingWriter extends ChirpWriter {
   final List<String> formattedLines = [];
 
   @override
   void write(LogRecord record) {
-    final line = '${record.date.toIso8601String()} '
+    final line = '${record.timestamp.toIso8601String()} '
         '[${record.level.name.toUpperCase()}] ${record.message}';
     formattedLines.add(line);
   }

@@ -25,6 +25,10 @@ class RainbowMessageFormatter extends SpanBasedFormatter {
   })  : options = options ?? const RainbowFormatOptions(),
         classNameTransformers = classNameTransformers ?? [];
 
+  @override
+  bool get requiresCallerInfo =>
+      options.showLocation || options.showClass || options.showMethod;
+
   String resolveClassName(Object instance) {
     for (final transformer in classNameTransformers) {
       final result = transformer(instance);
@@ -66,7 +70,7 @@ LogSpan _buildRainbowLogSpan({
   if (options.showTime) {
     spans.add(AnsiColored(
       foreground: XtermColor.brightBlack_8,
-      child: Timestamp(record.date),
+      child: Timestamp(record.timestamp),
     ));
   }
 

@@ -117,7 +117,7 @@ void main() {
     test('replaces Timestamp with level emoji', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
       );
 
@@ -143,7 +143,7 @@ void main() {
     test('wraps Timestamp with custom span', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
       );
 
@@ -169,7 +169,7 @@ void main() {
     test('removes Timestamp entirely', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
       );
 
@@ -193,7 +193,7 @@ void main() {
     test('wraps entire WTF log with Bordered using root.wrap', () {
       final record = LogRecord(
         message: 'WTF error',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.wtf,
       );
 
@@ -855,7 +855,7 @@ void main() {
     test('applies spanTransformers from formatOptions', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: [
           SpanFormatOptions(
@@ -889,7 +889,7 @@ void main() {
 
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: [
           SpanFormatOptions(
@@ -919,7 +919,7 @@ void main() {
     test('multiple SpanFormatOptions are all applied', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: [
           SpanFormatOptions(
@@ -959,7 +959,7 @@ void main() {
     test('wraps entire message with Bordered via per-log transformer', () {
       final record = LogRecord(
         message: 'Important',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.warning,
         formatOptions: [
           SpanFormatOptions(
@@ -1003,7 +1003,7 @@ void main() {
     test('empty formatOptions list does not affect output', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: const [],
       );
@@ -1027,7 +1027,7 @@ void main() {
     test('null formatOptions does not affect output', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
       );
 
@@ -1050,7 +1050,7 @@ void main() {
     test('non-SpanFormatOptions in formatOptions are ignored', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: const [
           FormatOptions(), // Not SpanFormatOptions
@@ -1079,7 +1079,7 @@ void main() {
     test('works with CompactChirpMessageFormatter', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: [
           SpanFormatOptions(

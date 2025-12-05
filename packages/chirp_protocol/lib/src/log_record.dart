@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chirp_protocol/src/chirp_logger.dart';
 import 'package:chirp_protocol/src/chirp_writer.dart';
 import 'package:chirp_protocol/src/format_option.dart';
@@ -15,7 +17,7 @@ class LogRecord {
   final Object? message;
 
   /// When this log was created
-  final DateTime date;
+  final DateTime timestamp;
 
   /// Log severity level
   final ChirpLogLevel level;
@@ -39,7 +41,7 @@ class LogRecord {
   final String? loggerName;
 
   /// Structured data (key-value pairs) for machine-readable logging
-  final Map<String, Object?>? data;
+  final Map<String, Object?> data;
 
   /// Format options for this specific log entry
   ///
@@ -47,9 +49,17 @@ class LogRecord {
   /// Each formatter interprets options specific to its implementation.
   final List<FormatOptions>? formatOptions;
 
-  const LogRecord({
+  /// The Zone that was active when this log was created.
+  ///
+  /// Useful for accessing zone values (e.g., request ID, user ID) that were
+  /// set in the calling context. This is always captured because `Zone.current`
+  /// is essentially free (just a pointer lookup).
+  final Zone zone;
+
+  LogRecord({
     required this.message,
-    required this.date,
+    required this.timestamp,
+    Zone? zone,
     this.level = ChirpLogLevel.info,
     this.error,
     this.stackTrace,
@@ -57,7 +67,8 @@ class LogRecord {
     this.caller,
     this.skipFrames,
     this.loggerName,
-    this.data,
+    Map<String, Object?>? data,
     this.formatOptions,
-  });
+  })  : data = data ?? {},
+        zone = zone ?? Zone.current;
 }

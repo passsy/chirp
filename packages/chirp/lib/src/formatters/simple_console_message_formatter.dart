@@ -92,7 +92,7 @@ LogSpan _buildSimpleLogSpan({
 
   // Timestamp: 10:30:45.123
   if (showTimestamp) {
-    spans.add(Timestamp(record.date));
+    spans.add(Timestamp(record.timestamp));
   }
 
   // Level: [INFO]

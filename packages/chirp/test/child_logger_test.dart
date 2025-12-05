@@ -5,11 +5,10 @@ void main() {
   group('Child Logger', () {
     test("child inherits parent's writers", () {
       final messages = <String>[];
-      final parent = ChirpLogger(name: 'Parent')
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      final parent = ChirpLogger(name: 'Parent').addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final child = parent.child(context: {'childKey': 'childValue'});
 
@@ -20,15 +19,15 @@ void main() {
     });
 
     test('child maintains reference to parent instance', () {
+      addTearDown(() => Chirp.root = null);
       final messages1 = <String>[];
       final messages2 = <String>[];
 
       // Configure root with first writer
-      Chirp.root = ChirpLogger()
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages1.add,
-        );
+      Chirp.root = ChirpLogger().addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages1.add,
+      );
 
       // Create child - gets reference to current root instance
       final child = Chirp.root.child(context: {'requestId': 'REQ-123'});
@@ -38,11 +37,10 @@ void main() {
       expect(messages2.length, 0);
 
       // Reassign Chirp.root to a new logger instance
-      Chirp.root = ChirpLogger()
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages2.add,
-        );
+      Chirp.root = ChirpLogger().addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages2.add,
+      );
 
       // Child still uses original parent (not the new root)
       child.info('Second log');
@@ -53,11 +51,11 @@ void main() {
     test('nested children merge context through the chain', () {
       final messages = <String>[];
       final root = ChirpLogger()
-        ..context['app'] = 'myapp'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'app': 'myapp'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       final requestLogger = root.child(context: {'requestId': 'REQ-123'});
       final userLogger = requestLogger.child(context: {'userId': 'user_456'});
@@ -74,12 +72,11 @@ void main() {
     test('child can override parent context keys', () {
       final messages = <String>[];
       final parent = ChirpLogger()
-        ..context['status'] = 'pending'
-        ..context['app'] = 'myapp'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'status': 'pending', 'app': 'myapp'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       final child = parent.child(context: {'status': 'completed'});
 
@@ -92,11 +89,10 @@ void main() {
 
     test('child with name parameter', () {
       final messages = <String>[];
-      final parent = ChirpLogger()
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      final parent = ChirpLogger().addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final child = parent.child(name: 'PaymentService');
 
@@ -107,11 +103,10 @@ void main() {
 
     test('child inherits parent name if not specified', () {
       final messages = <String>[];
-      final parent = ChirpLogger(name: 'API')
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      final parent = ChirpLogger(name: 'API').addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final child = parent.child(context: {'requestId': 'REQ-123'});
 
@@ -122,11 +117,10 @@ void main() {
 
     test('child can override parent name', () {
       final messages = <String>[];
-      final parent = ChirpLogger(name: 'API')
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      final parent = ChirpLogger(name: 'API').addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final child = parent.child(name: 'PaymentAPI');
 
@@ -138,11 +132,10 @@ void main() {
 
     test('child with instance parameter', () {
       final messages = <String>[];
-      final parent = ChirpLogger()
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      final parent = ChirpLogger().addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final myInstance = Object();
       final child = parent.child(instance: myInstance);
@@ -158,11 +151,10 @@ void main() {
       final messages = <String>[];
       final parentInstance = Object();
       // Use child() from a logger that has an instance set
-      final parent = ChirpLogger()
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      final parent = ChirpLogger().addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
       final parentWithInstance = parent.child(instance: parentInstance);
 
       final child = parentWithInstance.child(context: {'requestId': 'REQ-123'});
@@ -179,11 +171,10 @@ void main() {
       final parentInstance = Object();
       final childInstance = Object();
 
-      final parent = ChirpLogger()
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      final parent = ChirpLogger().addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
       final parentWithInstance = parent.child(instance: parentInstance);
 
       final child = parentWithInstance.child(instance: childInstance);
@@ -200,13 +191,13 @@ void main() {
     });
 
     test('child of Chirp.root inherits root writers', () {
+      addTearDown(() => Chirp.root = null);
       final messages = <String>[];
 
-      Chirp.root = ChirpLogger()
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      Chirp.root = ChirpLogger().addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final child = Chirp.root.child(context: {'requestId': 'REQ-123'});
 
@@ -217,16 +208,16 @@ void main() {
     });
 
     test('instance logger uses root via parent reference', () {
+      addTearDown(() => Chirp.root = null);
       final messages = <String>[];
 
-      Chirp.root = ChirpLogger()
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      Chirp.root = ChirpLogger().addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final instance = Object();
-      final logger = ChirpLogger.forInstance(instance);
+      final logger = instance.chirp;
 
       logger.info('Instance log');
 
@@ -239,11 +230,11 @@ void main() {
     test('child without any parameters is valid', () {
       final messages = <String>[];
       final parent = ChirpLogger(name: 'Parent')
-        ..context['parentKey'] = 'parentValue'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'parentKey': 'parentValue'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       final child = parent.child();
 
@@ -256,11 +247,11 @@ void main() {
     test('deeply nested children maintain context chain', () {
       final messages = <String>[];
       final root = ChirpLogger()
-        ..context['level0'] = 'root'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'level0': 'root'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       var logger = root;
       for (var i = 1; i <= 5; i++) {
@@ -277,14 +268,14 @@ void main() {
       }
     });
 
-    test('child logger context is independent copy', () {
+    test('child logger sees parent context mutations at log time', () {
       final messages = <String>[];
       final parent = ChirpLogger()
-        ..context['shared'] = 'original'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'shared': 'original'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       final child = parent.child(context: {'childKey': 'childValue'});
 
@@ -299,9 +290,10 @@ void main() {
       expect(messages[0], contains('"shared":"modified"'));
       expect(messages[0], contains('"newKey":"newValue"'));
 
-      // Child still has original values (context was copied)
-      expect(messages[1], contains('"shared":"original"'));
-      expect(messages[1], isNot(contains('"newKey"')));
+      // Child sees parent mutations at log time (context resolved dynamically)
+      expect(messages[1], contains('"shared":"modified"'));
+      expect(messages[1], contains('"newKey":"newValue"'));
+      expect(messages[1], contains('"childKey":"childValue"'));
     });
   });
 }

@@ -210,6 +210,81 @@ class LoggerName extends LeafSpan {
   String toString() => 'LoggerName("$name")';
 }
 
+/// Aligns child content within a fixed-width column.
+///
+/// Use [Aligned] to create consistent column widths in formatted output,
+/// useful for aligning log levels, timestamps, or other fixed-width fields.
+///
+/// ## Example
+///
+/// ```dart
+/// // Left-align log level in 8-character column
+/// Aligned(
+///   width: 8,
+///   align: HorizontalAlign.left,
+///   child: BracketedLogLevel(record.level),
+/// )
+/// // "[info]  " (padded to 8 chars)
+///
+/// // Right-align timestamp
+/// Aligned(
+///   width: 12,
+///   align: HorizontalAlign.right,
+///   child: Timestamp(record.date),
+/// )
+///
+/// // Center-align content
+/// Aligned(
+///   width: 20,
+///   align: HorizontalAlign.center,
+///   child: PlainText('centered'),
+/// )
+/// // "      centered      "
+/// ```
+class Aligned extends SingleChildSpan {
+  /// Creates an aligned span with fixed [width].
+  ///
+  /// - [HorizontalAlign.left]: Content is padded on the right with spaces.
+  /// - [HorizontalAlign.right]: Content is padded on the left with spaces.
+  /// - [HorizontalAlign.center]: Content is padded equally on both sides.
+  ///   If the padding is odd, the extra space goes on the right.
+  Aligned({
+    required this.width,
+    required this.align,
+    required super.child,
+  });
+
+  /// The horizontal alignment of the content within the column.
+  final HorizontalAlign align;
+
+  /// The fixed width of the column in characters.
+  final int width;
+
+  @override
+  void render(ConsoleMessageBuffer buffer) {
+    final b = buffer.createChildBuffer();
+    child?.render(b);
+    final content = b.toString();
+    final padded = switch (align) {
+      HorizontalAlign.left => content.padRight(width),
+      HorizontalAlign.right => content.padLeft(width),
+      HorizontalAlign.center => _padCenter(content, width),
+    };
+    buffer.write(padded);
+  }
+
+  static String _padCenter(String content, int width) {
+    if (content.length >= width) return content;
+    final totalPadding = width - content.length;
+    final leftPadding = totalPadding ~/ 2;
+    final rightPadding = totalPadding - leftPadding;
+    return '${' ' * leftPadding}$content${' ' * rightPadding}';
+  }
+}
+
+/// Horizontal alignment options for [Aligned] spans.
+enum HorizontalAlign { left, right, center }
+
 /// Class or instance name.
 ///
 /// Builds to [PlainText] with format "ClassName" or "ClassName@hash".
@@ -548,4 +623,18 @@ class Bordered extends SingleChildSpan {
 
   @override
   String toString() => 'Bordered(style: $style, child: $child)';
+}
+
+class ChirpLogo extends LeafSpan {
+  @override
+  void render(ConsoleMessageBuffer buffer) {
+    buffer.write('''
+ ██████╗██╗  ██╗██╗██████╗ ██████╗ 
+██╔════╝██║  ██║██║██╔══██╗██╔══██╗
+██║     ███████║██║██████╔╝██████╔╝
+██║     ██╔══██║██║██╔══██╗██╔═══╝ 
+╚██████╗██║  ██║██║██║  ██║██║     
+ ╚═════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚═╝     
+''');
+  }
 }

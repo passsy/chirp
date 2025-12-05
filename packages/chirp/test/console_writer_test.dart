@@ -735,7 +735,7 @@ void main() {
         LogRecord(
           message: 'ignored',
           level: ChirpLogLevel.info,
-          date: DateTime(2024),
+          timestamp: DateTime(2024),
         ),
       );
 
@@ -755,7 +755,7 @@ void main() {
         LogRecord(
           message: 'ignored',
           level: ChirpLogLevel.info,
-          date: DateTime(2024),
+          timestamp: DateTime(2024),
         ),
       );
 
@@ -775,7 +775,7 @@ void main() {
         LogRecord(
           message: 'ignored',
           level: ChirpLogLevel.info,
-          date: DateTime(2024),
+          timestamp: DateTime(2024),
         ),
       );
 
@@ -786,7 +786,7 @@ void main() {
 }
 
 /// Test formatter that always outputs the given text.
-class _TestFormatter implements ConsoleMessageFormatter {
+class _TestFormatter extends ConsoleMessageFormatter {
   final String text;
 
   _TestFormatter(this.text);

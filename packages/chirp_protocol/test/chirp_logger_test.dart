@@ -4,246 +4,6 @@ import 'package:chirp_protocol/chirp_protocol.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('Chirp static class', () {
-    setUp(() {
-      // Save original root logger
-    });
-
-    test('root property is mutable and can be reassigned', () {
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      final newRoot = ChirpLogger(name: 'NewRoot');
-      Chirp.root = newRoot;
-
-      expect(Chirp.root, same(newRoot));
-      expect(Chirp.root.name, 'NewRoot');
-    });
-
-    test('root property starts with default ChirpLogger', () {
-      expect(Chirp.root, isA<ChirpLogger>());
-    });
-
-    test('log() delegates to root logger', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      const customLevel = ChirpLogLevel('custom', 250);
-      Chirp.log(
-        'test message',
-        level: customLevel,
-        error: 'test error',
-        data: {'key': 'value'},
-      );
-
-      expect(records.length, 1);
-      expect(records[0].message, 'test message');
-      expect(records[0].level, customLevel);
-      expect(records[0].error, 'test error');
-      expect(records[0].data?['key'], 'value');
-    });
-
-    test('trace() logs at trace level', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      Chirp.trace('trace message', data: {'foo': 'bar'});
-
-      expect(records.length, 1);
-      expect(records[0].message, 'trace message');
-      expect(records[0].level, ChirpLogLevel.trace);
-      expect(records[0].data?['foo'], 'bar');
-    });
-
-    test('debug() logs at debug level', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      Chirp.debug('debug message');
-
-      expect(records.length, 1);
-      expect(records[0].message, 'debug message');
-      expect(records[0].level, ChirpLogLevel.debug);
-    });
-
-    test('info() logs at info level', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      Chirp.info('info message');
-
-      expect(records.length, 1);
-      expect(records[0].message, 'info message');
-      expect(records[0].level, ChirpLogLevel.info);
-    });
-
-    test('notice() logs at notice level', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      Chirp.notice('notice message');
-
-      expect(records.length, 1);
-      expect(records[0].message, 'notice message');
-      expect(records[0].level, ChirpLogLevel.notice);
-    });
-
-    test('warning() logs at warning level', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      Chirp.warning('warning message');
-
-      expect(records.length, 1);
-      expect(records[0].message, 'warning message');
-      expect(records[0].level, ChirpLogLevel.warning);
-    });
-
-    test('error() logs at error level', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      final exception = Exception('test exception');
-      final stackTrace = StackTrace.current;
-
-      Chirp.error(
-        'error message',
-        error: exception,
-        stackTrace: stackTrace,
-      );
-
-      expect(records.length, 1);
-      expect(records[0].message, 'error message');
-      expect(records[0].level, ChirpLogLevel.error);
-      expect(records[0].error, exception);
-      expect(records[0].stackTrace, stackTrace);
-    });
-
-    test('critical() logs at critical level', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      Chirp.critical('critical message');
-
-      expect(records.length, 1);
-      expect(records[0].message, 'critical message');
-      expect(records[0].level, ChirpLogLevel.critical);
-    });
-
-    test('wtf() logs at wtf level', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      Chirp.wtf('wtf message');
-
-      expect(records.length, 1);
-      expect(records[0].message, 'wtf message');
-      expect(records[0].level, ChirpLogLevel.wtf);
-    });
-
-    test('all log methods support error and stackTrace parameters', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      final error = Exception('test');
-      final stackTrace = StackTrace.current;
-
-      Chirp.trace('msg', error: error, stackTrace: stackTrace);
-      Chirp.debug('msg', error: error, stackTrace: stackTrace);
-      Chirp.info('msg', error: error, stackTrace: stackTrace);
-      Chirp.notice('msg', error: error, stackTrace: stackTrace);
-      Chirp.warning('msg', error: error, stackTrace: stackTrace);
-      Chirp.error('msg', error: error, stackTrace: stackTrace);
-      Chirp.critical('msg', error: error, stackTrace: stackTrace);
-      Chirp.wtf('msg', error: error, stackTrace: stackTrace);
-
-      expect(records.length, 8);
-      for (final record in records) {
-        expect(record.error, error);
-        expect(record.stackTrace, stackTrace);
-      }
-    });
-
-    test('all log methods support data parameter', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      final data = {'key': 'value', 'count': 42};
-
-      Chirp.trace('msg', data: data);
-      Chirp.debug('msg', data: data);
-      Chirp.info('msg', data: data);
-      Chirp.notice('msg', data: data);
-      Chirp.warning('msg', data: data);
-      Chirp.error('msg', data: data);
-      Chirp.critical('msg', data: data);
-      Chirp.wtf('msg', data: data);
-
-      expect(records.length, 8);
-      for (final record in records) {
-        expect(record.data?['key'], 'value');
-        expect(record.data?['count'], 42);
-      }
-    });
-
-    test('all log methods support formatOptions parameter', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      const options = [FormatOptions()];
-
-      Chirp.trace('msg', formatOptions: options);
-      Chirp.debug('msg', formatOptions: options);
-      Chirp.info('msg', formatOptions: options);
-      Chirp.notice('msg', formatOptions: options);
-      Chirp.warning('msg', formatOptions: options);
-      Chirp.error('msg', formatOptions: options);
-      Chirp.critical('msg', formatOptions: options);
-      Chirp.wtf('msg', formatOptions: options);
-
-      expect(records.length, 8);
-      for (final record in records) {
-        expect(record.formatOptions, options);
-      }
-    });
-  });
-
   group('ChirpLogger constructor', () {
     test('creates logger with optional name', () {
       final logger = ChirpLogger(name: 'TestLogger');
@@ -290,7 +50,7 @@ void main() {
 
     test('instance property is final', () {
       final instance = Object();
-      final logger = ChirpLogger.forInstance(instance);
+      final logger = ChirpLogger().child(instance: instance);
       expect(logger.instance, same(instance));
       // Cannot reassign final property - would cause compile error
     });
@@ -400,8 +160,8 @@ void main() {
   group('ChirpLogger logging methods', () {
     test('log() creates record with all parameters', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger(name: 'TestLogger')
-        ..addWriter(FakeWriter(records));
+      final logger =
+          ChirpLogger(name: 'TestLogger').addWriter(FakeWriter(records));
 
       const customLevel = ChirpLogLevel('custom', 250);
       final error = Exception('test');
@@ -432,7 +192,7 @@ void main() {
 
     test('log() defaults to info level', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.log('message');
 
@@ -442,7 +202,7 @@ void main() {
 
     test('trace() logs at trace level', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger(name: 'Test')..addWriter(FakeWriter(records));
+      final logger = ChirpLogger(name: 'Test').addWriter(FakeWriter(records));
 
       logger.trace('trace message', data: {'foo': 'bar'});
 
@@ -454,7 +214,7 @@ void main() {
 
     test('debug() logs at debug level', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.debug('debug message');
 
@@ -464,7 +224,7 @@ void main() {
 
     test('info() logs at info level', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.info('info message');
 
@@ -474,7 +234,7 @@ void main() {
 
     test('notice() logs at notice level', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.notice('notice message');
 
@@ -484,7 +244,7 @@ void main() {
 
     test('warning() logs at warning level', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.warning('warning message');
 
@@ -494,7 +254,7 @@ void main() {
 
     test('error() logs at error level', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       final exception = Exception('error');
       final stackTrace = StackTrace.current;
@@ -509,7 +269,7 @@ void main() {
 
     test('critical() logs at critical level', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.critical('critical message');
 
@@ -519,7 +279,7 @@ void main() {
 
     test('wtf() logs at wtf level', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.wtf('wtf message');
 
@@ -527,9 +287,11 @@ void main() {
       expect(records[0].level, ChirpLogLevel.wtf);
     });
 
-    test('all logging methods include caller stacktrace', () {
+    test('all logging methods include caller stacktrace when writer requires it',
+        () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger =
+          ChirpLogger().addWriter(FakeWriterRequiringCallerInfo(records));
 
       logger.trace('msg');
       logger.debug('msg');
@@ -547,12 +309,22 @@ void main() {
       }
     });
 
+    test('caller is null when no writer requires it', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
+
+      logger.info('msg');
+
+      expect(records.length, 1);
+      expect(records[0].caller, isNull);
+    });
+
     test('logging methods merge context with data', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()
-        ..context['global'] = 'globalValue'
-        ..context['override'] = 'original'
-        ..addWriter(FakeWriter(records));
+      final logger = ChirpLogger();
+      logger.context['global'] = 'globalValue';
+      logger.context['override'] = 'original';
+      logger.addWriter(FakeWriter(records));
 
       logger.info('msg', data: {'local': 'localValue', 'override': 'new'});
 
@@ -562,21 +334,21 @@ void main() {
       expect(records[0].data?['override'], 'new'); // Override takes precedence
     });
 
-    test('logging with empty context and no data creates null data field', () {
+    test('logging with empty context and no data creates empty data field', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.info('msg');
 
       expect(records.length, 1);
-      expect(records[0].data, isNull);
+      expect(records[0].data, isEmpty); // LogRecord.data defaults to {}
     });
 
     test('logging with context but no data uses context', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()
-        ..context['key'] = 'value'
-        ..addWriter(FakeWriter(records));
+      final logger = ChirpLogger();
+      logger.context['key'] = 'value';
+      logger.addWriter(FakeWriter(records));
 
       logger.info('msg');
 
@@ -591,9 +363,9 @@ void main() {
       final records3 = <LogRecord>[];
 
       final logger = ChirpLogger()
-        ..addWriter(FakeWriter(records1))
-        ..addWriter(FakeWriter(records2))
-        ..addWriter(FakeWriter(records3));
+          .addWriter(FakeWriter(records1))
+          .addWriter(FakeWriter(records2))
+          .addWriter(FakeWriter(records3));
 
       logger.info('test message');
 
@@ -631,7 +403,7 @@ void main() {
 
     test('child inherits parent instance by default', () {
       final instance = Object();
-      final parent = ChirpLogger.forInstance(instance);
+      final parent = ChirpLogger().child(instance: instance);
       final child = parent.child();
 
       expect(child.instance, same(instance));
@@ -640,37 +412,53 @@ void main() {
     test('child can override parent instance', () {
       final instance1 = Object();
       final instance2 = Object();
-      final parent = ChirpLogger.forInstance(instance1);
+      final parent = ChirpLogger().child(instance: instance1);
       final child = parent.child(instance: instance2);
 
       expect(child.instance, same(instance2));
     });
 
-    test('child inherits parent context', () {
-      final parent = ChirpLogger()..context['parentKey'] = 'parentValue';
+    test('child inherits parent context at log time', () {
+      final records = <LogRecord>[];
+      final parent = ChirpLogger();
+      parent.context['parentKey'] = 'parentValue';
+      parent.addWriter(FakeWriter(records));
       final child = parent.child();
 
-      expect(child.context['parentKey'], 'parentValue');
+      // Child's own context doesn't contain parent key
+      expect(child.context['parentKey'], isNull);
+
+      // But when logging, parent context is included
+      child.info('test');
+      expect(records[0].data?['parentKey'], 'parentValue');
     });
 
-    test('child context can extend parent context', () {
-      final parent = ChirpLogger()..context['parentKey'] = 'parentValue';
+    test('child context can extend parent context at log time', () {
+      final records = <LogRecord>[];
+      final parent = ChirpLogger();
+      parent.context['parentKey'] = 'parentValue';
+      parent.addWriter(FakeWriter(records));
       final child = parent.child(context: {'childKey': 'childValue'});
 
-      expect(child.context['parentKey'], 'parentValue');
-      expect(child.context['childKey'], 'childValue');
+      child.info('test');
+      expect(records[0].data?['parentKey'], 'parentValue');
+      expect(records[0].data?['childKey'], 'childValue');
     });
 
     test('child context can override parent context values', () {
-      final parent = ChirpLogger()..context['key'] = 'parentValue';
+      final records = <LogRecord>[];
+      final parent = ChirpLogger();
+      parent.context['key'] = 'parentValue';
+      parent.addWriter(FakeWriter(records));
       final child = parent.child(context: {'key': 'childValue'});
 
-      expect(child.context['key'], 'childValue');
+      child.info('test');
+      expect(records[0].data?['key'], 'childValue');
     });
 
     test('child inherits parent writers', () {
       final records = <LogRecord>[];
-      final parent = ChirpLogger()..addWriter(FakeWriter(records));
+      final parent = ChirpLogger().addWriter(FakeWriter(records));
       final child = parent.child();
 
       child.info('test message');
@@ -679,49 +467,41 @@ void main() {
       expect(records[0].message, 'test message');
     });
 
-    test('child can have additional writers', () {
+    test('child writers are ignored - only parent writers are used', () {
       final parentRecords = <LogRecord>[];
       final childRecords = <LogRecord>[];
 
-      final parent = ChirpLogger()..addWriter(FakeWriter(parentRecords));
-      final child = parent.child()..addWriter(FakeWriter(childRecords));
+      final parent = ChirpLogger().addWriter(FakeWriter(parentRecords));
+      final child = parent.child().addWriter(FakeWriter(childRecords));
 
       child.info('test message');
 
+      // Only parent's writer receives logs (child's writer is ignored)
       expect(parentRecords.length, 1);
-      expect(childRecords.length, 1);
+      expect(childRecords.length, 0);
     });
 
-    test('parent does not receive child-only writer logs', () {
-      final parentRecords = <LogRecord>[];
-      final childRecords = <LogRecord>[];
-
-      final parent = ChirpLogger()..addWriter(FakeWriter(parentRecords));
-      // ignore: unused_local_variable
-      final child = parent.child()..addWriter(FakeWriter(childRecords));
-
-      parent.info('parent message');
-
-      expect(parentRecords.length, 1);
-      expect(childRecords.length, 0); // Child writer doesn't see parent logs
-    });
-
-    test('child context is isolated from parent mutations', () {
-      final parent = ChirpLogger()..context['key'] = 'original';
+    test('child sees parent context mutations at log time', () {
+      final records = <LogRecord>[];
+      final parent = ChirpLogger();
+      parent.context['key'] = 'original';
+      parent.addWriter(FakeWriter(records));
       final child = parent.child();
 
+      // Mutate parent context after child creation
       parent.context['key'] = 'modified';
 
-      expect(parent.context['key'], 'modified');
-      expect(child.context['key'], 'original');
+      // Child sees the modified value at log time
+      child.info('test');
+      expect(records[0].data?['key'], 'modified');
     });
 
     test('multi-level child hierarchy inherits correctly', () {
       final records = <LogRecord>[];
 
-      final grandparent = ChirpLogger(name: 'GP')
-        ..context['gp'] = 'gpValue'
-        ..addWriter(FakeWriter(records));
+      final grandparent = ChirpLogger(name: 'GP');
+      grandparent.context['gp'] = 'gpValue';
+      grandparent.addWriter(FakeWriter(records));
 
       final parent = grandparent.child(
         name: 'P',
@@ -743,213 +523,11 @@ void main() {
     });
   });
 
-  group('ChirpLogger.forInstance', () {
-    test('creates logger with instance reference', () {
-      final instance = Object();
-      final logger = ChirpLogger.forInstance(instance);
-
-      expect(logger.instance, same(instance));
-    });
-
-    test('caches logger for same instance', () {
-      final instance = Object();
-      final logger1 = ChirpLogger.forInstance(instance);
-      final logger2 = ChirpLogger.forInstance(instance);
-
-      expect(logger1, same(logger2));
-    });
-
-    test('returns different loggers for different instances', () {
-      final instance1 = Object();
-      final instance2 = Object();
-      final logger1 = ChirpLogger.forInstance(instance1);
-      final logger2 = ChirpLogger.forInstance(instance2);
-
-      expect(logger1, isNot(same(logger2)));
-      expect(logger1.instance, same(instance1));
-      expect(logger2.instance, same(instance2));
-    });
-
-    test('instance logger has null name', () {
-      final instance = Object();
-      final logger = ChirpLogger.forInstance(instance);
-
-      expect(logger.name, isNull);
-    });
-
-    test('instance logger has null parent', () {
-      final instance = Object();
-      final logger = ChirpLogger.forInstance(instance);
-
-      expect(logger.parent, isNull);
-    });
-
-    test('instance logger has empty context', () {
-      final instance = Object();
-      final logger = ChirpLogger.forInstance(instance);
-
-      expect(logger.context, isEmpty);
-    });
-
-    test('instance logger dynamically delegates to Chirp.root', () {
-      final records1 = <LogRecord>[];
-      final records2 = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records1));
-
-      final instance = Object();
-      final logger = ChirpLogger.forInstance(instance);
-
-      logger.info('message 1');
-      expect(records1.length, 1);
-      expect(records2.length, 0);
-
-      // Replace root
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records2));
-
-      logger.info('message 2');
-      expect(records1.length, 1); // Old root not called
-      expect(records2.length, 1); // New root called
-    });
-
-    test('instance logger includes instance in log records', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      final instance = TestObject();
-      final logger = ChirpLogger.forInstance(instance);
-
-      logger.info('test message');
-
-      expect(records.length, 1);
-      expect(records[0].instance, same(instance));
-    });
-
-    test('instance logger writers combine with root writers', () {
-      final rootRecords = <LogRecord>[];
-      final instanceRecords = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(rootRecords));
-
-      final instance = Object();
-      final logger = ChirpLogger.forInstance(instance)
-        ..addWriter(FakeWriter(instanceRecords));
-
-      logger.info('test');
-
-      expect(rootRecords.length, 1);
-      expect(instanceRecords.length, 1);
-    });
-  });
-
-  group('ChirpObjectExt', () {
-    test('provides chirp getter on any object', () {
-      final obj = TestObject();
-      expect(obj.chirp, isA<ChirpLogger>());
-    });
-
-    test('chirp getter returns same logger on repeated access', () {
-      final obj = TestObject();
-      final logger1 = obj.chirp;
-      final logger2 = obj.chirp;
-
-      expect(logger1, same(logger2));
-    });
-
-    test('chirp getter returns different loggers for different objects', () {
-      final obj1 = TestObject();
-      final obj2 = TestObject();
-
-      expect(obj1.chirp, isNot(same(obj2.chirp)));
-    });
-
-    test('chirp logger includes instance in log records', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      final obj = TestObject();
-      obj.chirp.info('test message');
-
-      expect(records.length, 1);
-      expect(records[0].instance, same(obj));
-      expect(records[0].message, 'test message');
-    });
-
-    test('chirp logger delegates to current Chirp.root', () {
-      final records1 = <LogRecord>[];
-      final records2 = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records1));
-
-      final obj = TestObject();
-      obj.chirp.info('message 1');
-
-      expect(records1.length, 1);
-      expect(records2.length, 0);
-
-      // Replace root
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records2));
-
-      obj.chirp.info('message 2');
-
-      expect(records1.length, 1);
-      expect(records2.length, 1);
-    });
-
-    test('chirp works with built-in types', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      final list = <int>[1, 2, 3];
-      list.chirp.info('list logging');
-
-      expect(records.length, 1);
-      expect(records[0].instance, same(list));
-    });
-
-    test('chirp extension works in class methods', () {
-      final records = <LogRecord>[];
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      Chirp.root = ChirpLogger()..addWriter(FakeWriter(records));
-
-      final service = TestService();
-      service.doSomething();
-
-      expect(records.length, 1);
-      expect(records[0].message, 'doing something');
-      expect(records[0].instance, same(service));
-    });
-  });
-
   group('ChirpLogger API stability tests', () {
     test('name property is final and cannot be changed', () {
       final logger = ChirpLogger(name: 'Original');
       // This test verifies the API contract - name should be final
       expect(logger.name, 'Original');
-    });
-
-    test('instance property is final and cannot be changed', () {
-      final instance = Object();
-      final logger = ChirpLogger.forInstance(instance);
-      // This test verifies the API contract - instance should be final
-      expect(logger.instance, same(instance));
     });
 
     test('parent property is final and cannot be changed', () {
@@ -967,25 +545,16 @@ void main() {
     });
 
     test('writers getter returns unmodifiable list', () {
-      final logger = ChirpLogger()..addWriter(FakeWriter([]));
+      final logger = ChirpLogger().addWriter(FakeWriter([]));
       // This test verifies the API contract - writers should be read-only
       expect(logger.writers, isA<UnmodifiableListView>());
-    });
-
-    test('Chirp.root is reassignable', () {
-      final originalRoot = Chirp.root;
-      addTearDown(() => Chirp.root = originalRoot);
-
-      final newRoot = ChirpLogger();
-      Chirp.root = newRoot;
-      expect(Chirp.root, same(newRoot));
     });
   });
 
   group('Edge cases', () {
     test('logging null message', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.info(null);
 
@@ -995,7 +564,7 @@ void main() {
 
     test('logging non-string message', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.info(42);
       logger.info(true);
@@ -1024,7 +593,7 @@ void main() {
     test('child of child inherits all writers', () {
       final records = <LogRecord>[];
 
-      final grandparent = ChirpLogger()..addWriter(FakeWriter(records));
+      final grandparent = ChirpLogger().addWriter(FakeWriter(records));
       final parent = grandparent.child();
       final child = parent.child();
 
@@ -1035,7 +604,7 @@ void main() {
 
     test('empty data maps are handled correctly', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+      final logger = ChirpLogger().addWriter(FakeWriter(records));
 
       logger.info('msg', data: {});
 
@@ -1046,9 +615,9 @@ void main() {
 
     test('context with empty override data', () {
       final records = <LogRecord>[];
-      final logger = ChirpLogger()
-        ..context['key'] = 'value'
-        ..addWriter(FakeWriter(records));
+      final logger = ChirpLogger();
+      logger.context['key'] = 'value';
+      logger.addWriter(FakeWriter(records));
 
       logger.info('msg', data: {});
 
@@ -1057,10 +626,214 @@ void main() {
       expect(records[0].data?['key'], 'value');
     });
   });
+
+  group('ChirpLogger adopt()', () {
+    test('adopted logger inherits parent writers', () {
+      final records = <LogRecord>[];
+      final parent = ChirpLogger(name: 'parent').addWriter(FakeWriter(records));
+      final orphan = ChirpLogger(name: 'orphan');
+
+      // Before adoption - orphan is silent
+      orphan.info('before adoption');
+      expect(records, isEmpty);
+
+      // Adopt the orphan
+      parent.adopt(orphan);
+
+      // After adoption - orphan logs through parent's writers
+      orphan.info('after adoption');
+      expect(records, hasLength(1));
+      expect(records[0].message, 'after adoption');
+      expect(records[0].loggerName, 'orphan');
+    });
+
+    test('adopted logger keeps its own name', () {
+      final records = <LogRecord>[];
+      final parent = ChirpLogger(name: 'parent').addWriter(FakeWriter(records));
+      final orphan = ChirpLogger(name: 'library_logger');
+
+      parent.adopt(orphan);
+      orphan.info('test');
+
+      expect(records[0].loggerName, 'library_logger');
+    });
+
+    test('adopted logger inherits parent context at log time', () {
+      final records = <LogRecord>[];
+      final parent = ChirpLogger(name: 'parent');
+      parent.context['parentKey'] = 'parentValue';
+      parent.addWriter(FakeWriter(records));
+      final orphan = ChirpLogger(name: 'orphan');
+      orphan.context['orphanKey'] = 'orphanValue';
+
+      parent.adopt(orphan);
+      orphan.info('test');
+
+      // Adopted logger inherits parent context (same as child())
+      expect(records[0].data?['orphanKey'], 'orphanValue');
+      expect(records[0].data?['parentKey'], 'parentValue');
+    });
+
+    test('adopted logger own writers are ignored after adoption', () {
+      final parentRecords = <LogRecord>[];
+      final orphanRecords = <LogRecord>[];
+
+      final parent = ChirpLogger().addWriter(FakeWriter(parentRecords));
+      final orphan = ChirpLogger().addWriter(FakeWriter(orphanRecords));
+
+      // Before adoption, orphan uses its own writer
+      orphan.info('before');
+      expect(orphanRecords, hasLength(1));
+      expect(parentRecords, hasLength(0));
+
+      parent.adopt(orphan);
+      orphan.info('after');
+
+      // After adoption, only parent's writer is used (orphan's writer ignored)
+      expect(parentRecords, hasLength(1));
+      expect(orphanRecords, hasLength(1)); // Still 1 from before adoption
+    });
+
+    test('throws StateError when adopting logger that already has parent', () {
+      final parent1 = ChirpLogger(name: 'parent1');
+      final parent2 = ChirpLogger(name: 'parent2');
+      final orphan = ChirpLogger(name: 'orphan');
+
+      parent1.adopt(orphan);
+
+      expect(
+        () => parent2.adopt(orphan),
+        throwsA(isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('already has a parent'),
+        )),
+      );
+    });
+
+    test('throws StateError when adopting same logger twice', () {
+      final parent = ChirpLogger(name: 'parent');
+      final orphan = ChirpLogger(name: 'orphan');
+
+      parent.adopt(orphan);
+
+      expect(
+        () => parent.adopt(orphan),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('throws StateError when adopting child logger', () {
+      final parent = ChirpLogger(name: 'parent');
+      final child = parent.child(name: 'child');
+      final adopter = ChirpLogger(name: 'adopter');
+
+      // Child already has a parent, so it cannot be adopted
+      expect(
+        () => adopter.adopt(child),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('adopted logger with children - children also get writers', () {
+      final records = <LogRecord>[];
+      final adopter =
+          ChirpLogger(name: 'adopter').addWriter(FakeWriter(records));
+
+      final libraryLogger = ChirpLogger(name: 'library');
+      final libraryChild = libraryLogger.child(name: 'library.sub');
+
+      // Adopt the library logger
+      adopter.adopt(libraryLogger);
+
+      // Child of adopted logger also gets the writers through the chain
+      libraryChild.info('from child');
+      expect(records, hasLength(1));
+      expect(records[0].loggerName, 'library.sub');
+    });
+
+    test('parent getter returns the adopting parent', () {
+      final parent = ChirpLogger(name: 'parent');
+      final orphan = ChirpLogger(name: 'orphan');
+
+      expect(orphan.parent, isNull);
+
+      parent.adopt(orphan);
+
+      expect(orphan.parent, same(parent));
+    });
+
+    test('effectiveRequiresCallerInfo propagates through adoption', () {
+      final records = <LogRecord>[];
+      final parent =
+          ChirpLogger().addWriter(FakeWriterRequiringCallerInfo(records));
+      final orphan = ChirpLogger();
+
+      parent.adopt(orphan);
+      orphan.info('test');
+
+      // The caller should be captured because parent's writer requires it
+      expect(records[0].caller, isNotNull);
+    });
+
+    test('orphan logger without writers is silent until adopted', () {
+      final records = <LogRecord>[];
+      final orphan = ChirpLogger(name: 'orphan');
+
+      // Silent - no writers
+      orphan.info('silent');
+
+      final parent = ChirpLogger().addWriter(FakeWriter(records));
+      parent.adopt(orphan);
+
+      // Now it logs
+      orphan.info('audible');
+      expect(records, hasLength(1));
+      expect(records[0].message, 'audible');
+    });
+
+    test(
+        'adopted logger should NOT capture caller info when parent writer does not require it',
+        () {
+      // Bug scenario:
+      // 1. Library logger has a writer that requires caller info (for standalone use)
+      // 2. App root has a writer that does NOT require caller info
+      // 3. App adopts the library logger
+      // 4. After adoption, _effectiveWriters uses ONLY parent's writers
+      // 5. So caller info should NOT be captured (parent's writer doesn't need it)
+
+      final parentRecords = <LogRecord>[];
+      final orphanRecords = <LogRecord>[];
+
+      // Parent with simple writer (no caller info needed)
+      final parent = ChirpLogger().addWriter(FakeWriter(parentRecords));
+
+      // Orphan with writer that requires caller info (e.g., for standalone debugging)
+      final orphan =
+          ChirpLogger().addWriter(FakeWriterRequiringCallerInfo(orphanRecords));
+
+      // Before adoption - orphan uses its own writer, caller info IS captured
+      orphan.info('before adoption');
+      expect(orphanRecords, hasLength(1));
+      expect(orphanRecords[0].caller, isNotNull,
+          reason: 'Before adoption, orphan uses its own writer which requires caller info');
+
+      // Adopt the orphan
+      parent.adopt(orphan);
+
+      // After adoption - orphan's writer is IGNORED, only parent's writer is used
+      // Parent's writer does NOT require caller info, so caller should be null
+      orphan.info('after adoption');
+      expect(parentRecords, hasLength(1));
+      expect(parentRecords[0].caller, isNull,
+          reason:
+              'After adoption, only parent writers are used. Parent writer does not require caller info, so StackTrace.current should NOT be captured');
+    });
+  });
 }
 
 /// Fake writer implementation for testing.
-class FakeWriter implements ChirpWriter {
+class FakeWriter extends ChirpWriter {
   final List<LogRecord> records;
 
   FakeWriter(this.records);
@@ -1071,12 +844,20 @@ class FakeWriter implements ChirpWriter {
   }
 }
 
-/// Test object for instance logging tests.
-class TestObject {}
+/// Fake writer that requires caller info for testing.
+class FakeWriterRequiringCallerInfo extends ChirpWriter {
+  final List<LogRecord> records;
 
-/// Test service with chirp usage.
-class TestService {
-  void doSomething() {
-    chirp.info('doing something');
+  FakeWriterRequiringCallerInfo(this.records);
+
+  @override
+  bool get requiresCallerInfo => true;
+
+  @override
+  void write(LogRecord record) {
+    records.add(record);
   }
 }
+
+/// Test object for instance logging tests.
+class TestObject {}

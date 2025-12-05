@@ -6,12 +6,11 @@ void main() {
     test('logger with initial context includes it in logs', () {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API')
-        ..context['requestId'] = 'REQ-123'
-        ..context['userId'] = 'user_456'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'requestId': 'REQ-123', 'userId': 'user_456'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       logger.info('Processing request');
 
@@ -23,11 +22,11 @@ void main() {
     test('context is mutable', () {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API')
-        ..context['requestId'] = 'REQ-123'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'requestId': 'REQ-123'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       logger.info('First log');
       expect(messages[0], contains('"requestId":"REQ-123"'));
@@ -43,11 +42,10 @@ void main() {
 
     test('context.addAll adds multiple entries', () {
       final messages = <String>[];
-      final logger = ChirpLogger(name: 'API')
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      final logger = ChirpLogger(name: 'API').addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       logger.context.addAll({
         'requestId': 'REQ-123',
@@ -65,12 +63,11 @@ void main() {
     test('log-specific data overrides logger context', () {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API')
-        ..context['requestId'] = 'REQ-123'
-        ..context['status'] = 'pending'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'requestId': 'REQ-123', 'status': 'pending'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       logger.info(
         'Request completed',
@@ -85,11 +82,11 @@ void main() {
     test('child() creates new logger with merged context', () {
       final messages = <String>[];
       final baseLogger = ChirpLogger(name: 'API')
-        ..context['app'] = 'myapp'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'app': 'myapp'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       final requestLogger = baseLogger.child(context: {
         'requestId': 'REQ-123',
@@ -106,11 +103,11 @@ void main() {
     test('child() does not mutate original logger', () {
       final messages = <String>[];
       final baseLogger = ChirpLogger(name: 'API')
-        ..context['app'] = 'myapp'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'app': 'myapp'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       final requestLogger = baseLogger.child(context: {'requestId': 'REQ-123'});
 
@@ -125,11 +122,10 @@ void main() {
 
     test('empty context logger does not include data in log', () {
       final messages = <String>[];
-      final logger = ChirpLogger(name: 'API')
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      final logger = ChirpLogger(name: 'API').addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       logger.info('Simple log');
 
@@ -140,12 +136,11 @@ void main() {
     test('context.remove removes a single key', () {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API')
-        ..context['requestId'] = 'REQ-123'
-        ..context['userId'] = 'user_456'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({'requestId': 'REQ-123', 'userId': 'user_456'})
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       logger.info('Before removal');
       expect(messages[0], contains('"requestId":"REQ-123"'));
@@ -162,13 +157,15 @@ void main() {
     test('context.removeWhere removes multiple keys', () {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API')
-        ..context['requestId'] = 'REQ-123'
-        ..context['userId'] = 'user_456'
-        ..context['sessionId'] = 'sess_789'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({
+            'requestId': 'REQ-123',
+            'userId': 'user_456',
+            'sessionId': 'sess_789',
+          })
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       logger.info('Before removal');
       expect(messages[0], contains('"requestId":"REQ-123"'));
@@ -186,13 +183,15 @@ void main() {
     test('context.clear removes all context', () {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API')
-        ..context['requestId'] = 'REQ-123'
-        ..context['userId'] = 'user_456'
-        ..context['sessionId'] = 'sess_789'
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+          .addContext({
+            'requestId': 'REQ-123',
+            'userId': 'user_456',
+            'sessionId': 'sess_789',
+          })
+          .addConsoleWriter(
+            formatter: JsonMessageFormatter(),
+            output: messages.add,
+          );
 
       logger.info('Before clear');
       expect(messages[0], contains('"requestId":"REQ-123"'));
@@ -207,7 +206,7 @@ void main() {
     });
 
     test('context.remove on non-existent key returns null', () {
-      final logger = ChirpLogger(name: 'API')..context['requestId'] = 'REQ-123';
+      final logger = ChirpLogger(name: 'API').addContext({'requestId': 'REQ-123'});
 
       final removed = logger.context.remove('nonExistent');
       expect(removed, isNull);
