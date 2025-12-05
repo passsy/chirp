@@ -61,8 +61,12 @@ class TestCommand extends Command {
     // outside of package, fallback to all packages
     for (final package in findAllPackages(SidekickContext.projectRoot)) {
       collector.add(
-        await _test(package,
-            requireTests: false, testName: testName, fast: fast),
+        await _test(
+          package,
+          requireTests: false,
+          testName: testName,
+          fast: fast,
+        ),
       );
       if (!fast) print('\n');
     }
@@ -141,8 +145,12 @@ class TestCommand extends Command {
         'Please use one of ${packageOptions.joinToString()}',
       );
     }
-    return await _test(package,
-        requireTests: true, testName: testName, fast: fast);
+    return await _test(
+      package,
+      requireTests: true,
+      testName: testName,
+      fast: fast,
+    );
   }
 
   Future<_TestResult> _test(
@@ -189,7 +197,9 @@ class TestCommand extends Command {
   }
 
   Future<_TestResult> _runFastTest(
-      DartPackage package, List<String> args) async {
+    DartPackage package,
+    List<String> args,
+  ) async {
     final concurrency = max(1, Platform.numberOfProcessors - 1);
     final fullArgs = [
       ...args,
@@ -241,11 +251,13 @@ class TestCommand extends Command {
     final failedTests = <String>[];
 
     // Check for non-test-failure errors
-    if (lines.any((line) =>
-        line.trim().startsWith('Failed to load') ||
-        line.trim().endsWith('Does not exist.') ||
-        line.trim().startsWith('No tests ran.') ||
-        line.contains('No tests match regular expression'))) {
+    if (lines.any(
+      (line) =>
+          line.trim().startsWith('Failed to load') ||
+          line.trim().endsWith('Does not exist.') ||
+          line.trim().startsWith('No tests ran.') ||
+          line.contains('No tests match regular expression'),
+    )) {
       return null;
     }
 
