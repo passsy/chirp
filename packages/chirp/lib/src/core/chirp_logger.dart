@@ -336,7 +336,7 @@ class ChirpLogger {
   /// ```
   ///
   /// Throws [StateError] if the logger already has a parent.
-  void adopt(ChirpLogger orphan) {
+  ChirpLogger adopt(ChirpLogger orphan) {
     if (orphan._parent != null) {
       throw StateError(
         'Cannot adopt logger "${orphan.name}" - it already has a parent. '
@@ -344,6 +344,7 @@ class ChirpLogger {
       );
     }
     orphan._parent = this;
+    return this;
   }
 
   /// Removes the parent-child relationship, making this logger an orphan.

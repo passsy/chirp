@@ -5,7 +5,7 @@
 ///
 /// **Note:** This API is experimental and may change in future versions.
 @experimental
-library chirp_spans;
+library;
 
 import 'package:meta/meta.dart';
 

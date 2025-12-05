@@ -343,10 +343,10 @@ void main() {
     test('orphan() allows re-adoption by different parent', () {
       final records1 = <LogRecord>[];
       final records2 = <LogRecord>[];
-      final parent1 = ChirpLogger(name: 'parent1')
-          .addWriter(_TestWriter(records1.add));
-      final parent2 = ChirpLogger(name: 'parent2')
-          .addWriter(_TestWriter(records2.add));
+      final parent1 =
+          ChirpLogger(name: 'parent1').addWriter(_TestWriter(records1.add));
+      final parent2 =
+          ChirpLogger(name: 'parent2').addWriter(_TestWriter(records2.add));
 
       final logger = ChirpLogger(name: 'logger');
       parent1.adopt(logger);
@@ -366,16 +366,17 @@ void main() {
     test('orphaned logger uses own writers after orphan', () {
       final parentRecords = <LogRecord>[];
       final ownRecords = <LogRecord>[];
-      final parent = ChirpLogger(name: 'parent')
-          .addWriter(_TestWriter(parentRecords.add));
+      final parent =
+          ChirpLogger(name: 'parent').addWriter(_TestWriter(parentRecords.add));
 
       // Child with own writer - but while parented, uses parent's writers
-      final child = parent.child(name: 'child')
-          .addWriter(_TestWriter(ownRecords.add));
+      final child =
+          parent.child(name: 'child').addWriter(_TestWriter(ownRecords.add));
 
       child.info('before orphan');
       expect(parentRecords.length, 1); // Goes to parent's writer
-      expect(ownRecords.length, 0); // Child's own writer not used while parented
+      expect(
+          ownRecords.length, 0); // Child's own writer not used while parented
 
       child.orphan();
       child.info('after orphan');
@@ -388,11 +389,12 @@ void main() {
       final childRecords = <LogRecord>[];
 
       // Parent writer requires caller info
-      final parentWriter = _TestWriter(parentRecords.add, requiresCallerInfo: true);
+      final parentWriter =
+          _TestWriter(parentRecords.add, requiresCallerInfo: true);
       final parent = ChirpLogger(name: 'parent').addWriter(parentWriter);
 
       // Child writer does NOT require caller info
-      final childWriter = _TestWriter(childRecords.add, requiresCallerInfo: false);
+      final childWriter = _TestWriter(childRecords.add);
       final child = parent.child(name: 'child').addWriter(childWriter);
 
       // While parented, should capture caller info (parent requires it)
@@ -576,8 +578,9 @@ void main() {
       final records = <LogRecord>[];
       final writer = _TestWriter(records.add);
       final interceptor = _CallerRequiringInterceptor();
-      final logger =
-          ChirpLogger(name: 'test').addWriter(writer).addInterceptor(interceptor);
+      final logger = ChirpLogger(name: 'test')
+          .addWriter(writer)
+          .addInterceptor(interceptor);
 
       // Log with interceptor - has caller info
       logger.info('with interceptor');

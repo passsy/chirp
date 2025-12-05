@@ -50,12 +50,10 @@ void main() {
 
     test('nested children merge context through the chain', () {
       final messages = <String>[];
-      final root = ChirpLogger()
-          .addContext({'app': 'myapp'})
-          .addConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          );
+      final root = ChirpLogger().addContext({'app': 'myapp'}).addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final requestLogger = root.child(context: {'requestId': 'REQ-123'});
       final userLogger = requestLogger.child(context: {'userId': 'user_456'});
@@ -72,11 +70,10 @@ void main() {
     test('child can override parent context keys', () {
       final messages = <String>[];
       final parent = ChirpLogger()
-          .addContext({'status': 'pending', 'app': 'myapp'})
-          .addConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          );
+          .addContext({'status': 'pending', 'app': 'myapp'}).addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final child = parent.child(context: {'status': 'completed'});
 
@@ -230,11 +227,10 @@ void main() {
     test('child without any parameters is valid', () {
       final messages = <String>[];
       final parent = ChirpLogger(name: 'Parent')
-          .addContext({'parentKey': 'parentValue'})
-          .addConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          );
+          .addContext({'parentKey': 'parentValue'}).addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final child = parent.child();
 
@@ -246,12 +242,11 @@ void main() {
 
     test('deeply nested children maintain context chain', () {
       final messages = <String>[];
-      final root = ChirpLogger()
-          .addContext({'level0': 'root'})
-          .addConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          );
+      final root =
+          ChirpLogger().addContext({'level0': 'root'}).addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       var logger = root;
       for (var i = 1; i <= 5; i++) {
@@ -270,12 +265,11 @@ void main() {
 
     test('child logger sees parent context mutations at log time', () {
       final messages = <String>[];
-      final parent = ChirpLogger()
-          .addContext({'shared': 'original'})
-          .addConsoleWriter(
-            formatter: JsonMessageFormatter(),
-            output: messages.add,
-          );
+      final parent =
+          ChirpLogger().addContext({'shared': 'original'}).addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final child = parent.child(context: {'childKey': 'childValue'});
 

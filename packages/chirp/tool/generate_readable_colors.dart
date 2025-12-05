@@ -129,13 +129,17 @@ double _ciede2000(
   final deltaTheta =
       30 * exp(-((hBarPrime - 275) / 25) * ((hBarPrime - 275) / 25));
 
-  final cBarPrime7 =
-      cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime * cBarPrime;
+  final cBarPrime7 = cBarPrime *
+      cBarPrime *
+      cBarPrime *
+      cBarPrime *
+      cBarPrime *
+      cBarPrime *
+      cBarPrime;
   final rc = 2 * sqrt(cBarPrime7 / (cBarPrime7 + 6103515625));
 
   final lBarPrimeMinus50Sq = (lBarPrime - 50) * (lBarPrime - 50);
-  final sl =
-      1 + (0.015 * lBarPrimeMinus50Sq) / sqrt(20 + lBarPrimeMinus50Sq);
+  final sl = 1 + (0.015 * lBarPrimeMinus50Sq) / sqrt(20 + lBarPrimeMinus50Sq);
   final sc = 1 + 0.045 * cBarPrime;
   final sh = 1 + 0.015 * cBarPrime * t;
   final rt = -sin(2 * deltaTheta * piVal / 180) * rc;

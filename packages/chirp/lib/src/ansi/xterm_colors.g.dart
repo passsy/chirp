@@ -3,7 +3,6 @@
 
 /// Represents an xterm ANSI color with contrast information.
 enum XtermColor {
-
   /// Black (#000000)
   black_0(
     code: 0,
@@ -2819,7 +2818,7 @@ enum XtermColor {
     contrastOnWhite: 1.16,
     contrastOnBlack: 18.10,
   ),
-;
+  ;
 
   final int code;
   final int r;

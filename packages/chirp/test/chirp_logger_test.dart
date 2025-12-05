@@ -628,6 +628,202 @@ void main() {
     });
   });
 
+  group('ChirpLogger addInterceptor/removeInterceptor', () {
+    test('addInterceptor adds interceptor to list', () {
+      final logger = ChirpLogger();
+      final interceptor = FakeInterceptor();
+
+      expect(logger.interceptors, isEmpty);
+
+      logger.addInterceptor(interceptor);
+      expect(logger.interceptors, hasLength(1));
+      expect(logger.interceptors, contains(interceptor));
+    });
+
+    test('removeInterceptor removes interceptor from list', () {
+      final logger = ChirpLogger();
+      final interceptor = FakeInterceptor();
+
+      logger.addInterceptor(interceptor);
+      expect(logger.interceptors, hasLength(1));
+
+      final removed = logger.removeInterceptor(interceptor);
+      expect(removed, isTrue);
+      expect(logger.interceptors, isEmpty);
+    });
+
+    test('removeInterceptor returns false when interceptor not found', () {
+      final logger = ChirpLogger();
+      final result = logger.removeInterceptor(FakeInterceptor());
+      expect(result, isFalse);
+    });
+
+    test('interceptors list is unmodifiable', () {
+      final logger = ChirpLogger();
+      expect(
+        () => logger.interceptors.add(FakeInterceptor()),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('interceptor requiresCallerInfo triggers caller capture', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+          .addInterceptor(FakeInterceptorRequiringCallerInfo())
+          .addWriter(FakeWriter(records));
+
+      logger.info('test');
+
+      expect(records, hasLength(1));
+      expect(records[0].caller, isNotNull);
+      expect(records[0].caller.toString(), contains('chirp_logger_test.dart'));
+    });
+
+    test('removing interceptor that requires caller info stops capture', () {
+      final records = <LogRecord>[];
+      final interceptor = FakeInterceptorRequiringCallerInfo();
+      final logger = ChirpLogger()
+          .addInterceptor(interceptor)
+          .addWriter(FakeWriter(records));
+
+      logger.info('with interceptor');
+      expect(records[0].caller, isNotNull);
+
+      logger.removeInterceptor(interceptor);
+      logger.info('without interceptor');
+      expect(records[1].caller, isNull);
+    });
+
+    test('writer interceptor requiresCallerInfo triggers caller capture', () {
+      final records = <LogRecord>[];
+      final writer = FakeWriter(records)
+          .addInterceptor(FakeInterceptorRequiringCallerInfo());
+      final logger = ChirpLogger().addWriter(writer);
+
+      logger.info('test');
+
+      expect(records, hasLength(1));
+      expect(records[0].caller, isNotNull);
+      expect(records[0].caller.toString(), contains('chirp_logger_test.dart'));
+    });
+
+    test('removing writer interceptor that requires caller info stops capture',
+        () {
+      final records = <LogRecord>[];
+      final interceptor = FakeInterceptorRequiringCallerInfo();
+      final writer = FakeWriter(records).addInterceptor(interceptor);
+      final logger = ChirpLogger().addWriter(writer);
+
+      logger.info('with writer interceptor');
+      expect(records[0].caller, isNotNull);
+
+      writer.removeInterceptor(interceptor);
+      logger.info('without writer interceptor');
+      expect(records[1].caller, isNull);
+    });
+  });
+
+  group('ChirpLogger setMinLogLevel', () {
+    test('setMinLogLevel sets minLogLevel', () {
+      final logger = ChirpLogger();
+      expect(logger.minLogLevel, isNull);
+
+      logger.setMinLogLevel(ChirpLogLevel.warning);
+      expect(logger.minLogLevel, ChirpLogLevel.warning);
+
+      logger.setMinLogLevel(null);
+      expect(logger.minLogLevel, isNull);
+    });
+  });
+
+  group('ChirpLogger addContext', () {
+    test('addContext adds entries to context', () {
+      final logger = ChirpLogger();
+      logger.addContext({'key': 'value', 'nullKey': null});
+
+      expect(logger.context['key'], 'value');
+      expect(logger.context.containsKey('nullKey'), isTrue);
+    });
+  });
+
+  group('ChirpLogger orphan()', () {
+    test('orphan removes parent reference', () {
+      final parent = ChirpLogger(name: 'parent');
+      final child = parent.child(name: 'child');
+
+      expect(child.parent, same(parent));
+      child.orphan();
+      expect(child.parent, isNull);
+    });
+
+    test('orphan logger uses own writers again', () {
+      final parentRecords = <LogRecord>[];
+      final ownRecords = <LogRecord>[];
+
+      final parent = ChirpLogger().addWriter(FakeWriter(parentRecords));
+      final orphan = ChirpLogger().addWriter(FakeWriter(ownRecords));
+
+      parent.adopt(orphan);
+      orphan.info('while adopted');
+      expect(parentRecords, hasLength(1));
+      expect(ownRecords, hasLength(0));
+
+      orphan.orphan();
+      orphan.info('after orphan');
+      expect(ownRecords, hasLength(1));
+      expect(ownRecords[0].message, 'after orphan');
+    });
+
+    test('orphan logger loses parent context', () {
+      final ownRecords = <LogRecord>[];
+      final parent = ChirpLogger();
+      parent.context['parentKey'] = 'parentValue';
+      parent.addWriter(FakeWriter([]));
+
+      final orphan = ChirpLogger().addWriter(FakeWriter(ownRecords));
+      orphan.context['orphanKey'] = 'orphanValue';
+
+      parent.adopt(orphan);
+      orphan.orphan();
+      orphan.info('test');
+
+      expect(ownRecords[0].data['orphanKey'], 'orphanValue');
+      expect(ownRecords[0].data.containsKey('parentKey'), isFalse);
+    });
+
+    test('orphan can be adopted by new parent', () {
+      final records = <LogRecord>[];
+
+      final parent1 = ChirpLogger(name: 'parent1');
+      final parent2 =
+          ChirpLogger(name: 'parent2').addWriter(FakeWriter(records));
+
+      final orphan = ChirpLogger(name: 'orphan');
+
+      parent1.adopt(orphan);
+      orphan.orphan();
+      parent2.adopt(orphan);
+
+      orphan.info('adopted by parent2');
+      expect(records, hasLength(1));
+    });
+  });
+
+  test('all chainable methods can be chained together', () {
+    final records = <LogRecord>[];
+    final logger = ChirpLogger(name: 'test')
+        .setMinLogLevel(ChirpLogLevel.trace)
+        .addInterceptor(FakeInterceptor())
+        .addWriter(FakeWriter(records))
+        .addContext({'env': 'test'}).adopt(ChirpLogger(name: 'orphan'));
+
+    expect(logger, isA<ChirpLogger>());
+    expect(logger.minLogLevel, ChirpLogLevel.trace);
+    expect(logger.interceptors.length, 1);
+    expect(logger.writers.length, 1);
+    expect(logger.context['env'], 'test');
+  });
+
   group('ChirpLogger adopt()', () {
     test('adopted logger inherits parent writers', () {
       final records = <LogRecord>[];
@@ -859,4 +1055,22 @@ class FakeWriterRequiringCallerInfo extends ChirpWriter {
   void write(LogRecord record) {
     records.add(record);
   }
+}
+
+/// Fake interceptor for testing.
+class FakeInterceptor extends ChirpInterceptor {
+  @override
+  bool get requiresCallerInfo => false;
+
+  @override
+  LogRecord? intercept(LogRecord record) => record;
+}
+
+/// Fake interceptor that requires caller info for testing.
+class FakeInterceptorRequiringCallerInfo extends ChirpInterceptor {
+  @override
+  bool get requiresCallerInfo => true;
+
+  @override
+  LogRecord? intercept(LogRecord record) => record;
 }
