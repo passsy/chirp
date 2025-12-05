@@ -39,7 +39,8 @@ class TestCommand extends Command {
     final String? packageArg = argResults?['package'] as String?;
     final String? testName = argResults?['name'] as String?;
     // Ignore --fast when filtering by test name (you want verbose output for debugging)
-    final bool fast = testName == null && (argResults?['fast'] as bool? ?? false);
+    final bool fast =
+        testName == null && (argResults?['fast'] as bool? ?? false);
     final List<String> rest = argResults?.rest ?? [];
 
     // If a file path is provided as rest argument
@@ -60,7 +61,8 @@ class TestCommand extends Command {
     // outside of package, fallback to all packages
     for (final package in findAllPackages(SidekickContext.projectRoot)) {
       collector.add(
-        await _test(package, requireTests: false, testName: testName, fast: fast),
+        await _test(package,
+            requireTests: false, testName: testName, fast: fast),
       );
       if (!fast) print('\n');
     }
@@ -96,6 +98,8 @@ class TestCommand extends Command {
     if (!fast) {
       print(yellow('=== package ${package.name} ==='));
       print('Running test: $relativePath');
+    } else {
+      print('Running test for package: ${package.name}');
     }
 
     final args = ['test', relativePath];
@@ -137,7 +141,8 @@ class TestCommand extends Command {
         'Please use one of ${packageOptions.joinToString()}',
       );
     }
-    return await _test(package, requireTests: true, testName: testName, fast: fast);
+    return await _test(package,
+        requireTests: true, testName: testName, fast: fast);
   }
 
   Future<_TestResult> _test(
@@ -183,7 +188,8 @@ class TestCommand extends Command {
     return _TestResult.failed;
   }
 
-  Future<_TestResult> _runFastTest(DartPackage package, List<String> args) async {
+  Future<_TestResult> _runFastTest(
+      DartPackage package, List<String> args) async {
     final concurrency = max(1, Platform.numberOfProcessors - 1);
     final fullArgs = [
       ...args,
@@ -203,7 +209,7 @@ class TestCommand extends Command {
     final stderr = result.stderr.toString();
 
     if (result.exitCode == 0) {
-      print('${green('✓')} ${package.name}');
+      print('${green('✓')} package:${package.name}: All tests passed!');
       return _TestResult.success;
     }
 
