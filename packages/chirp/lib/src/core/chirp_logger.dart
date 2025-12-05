@@ -346,6 +346,29 @@ class ChirpLogger {
     orphan._parent = this;
   }
 
+  /// Removes the parent-child relationship, making this logger an orphan.
+  ///
+  /// After calling orphan:
+  /// - The logger no longer inherits writers or context from its parent
+  /// - The logger becomes silent unless it has its own writers
+  /// - The logger can be adopted by a different parent
+  ///
+  /// This is useful for testing or reconfiguring logger hierarchies.
+  ///
+  /// Example:
+  /// ```dart
+  /// final parent = ChirpLogger(name: 'app').addConsoleWriter();
+  /// final child = parent.child(name: 'module');
+  ///
+  /// child.info('visible'); // Goes through parent's writer
+  ///
+  /// child.orphan();
+  /// child.info('silent'); // No writers, no output
+  /// ```
+  void orphan() {
+    _parent = null;
+  }
+
   /// {@template chirp.log}
   /// Logs a message at a custom severity level.
   ///

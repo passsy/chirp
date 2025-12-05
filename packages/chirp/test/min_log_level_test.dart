@@ -325,6 +325,87 @@ void main() {
       expect(records.length, 1);
       expect(records[0].message, 'PARENT: adopted message');
     });
+
+    test('orphan() removes parent connection and logger becomes silent', () {
+      final records = <LogRecord>[];
+      final writer = _TestWriter(records.add);
+      final parent = ChirpLogger(name: 'parent').addWriter(writer);
+
+      final child = parent.child(name: 'child');
+      child.info('before orphan');
+      expect(records.length, 1);
+
+      child.orphan();
+      child.info('after orphan');
+      expect(records.length, 1); // No new record - logger is silent
+    });
+
+    test('orphan() allows re-adoption by different parent', () {
+      final records1 = <LogRecord>[];
+      final records2 = <LogRecord>[];
+      final parent1 = ChirpLogger(name: 'parent1')
+          .addWriter(_TestWriter(records1.add));
+      final parent2 = ChirpLogger(name: 'parent2')
+          .addWriter(_TestWriter(records2.add));
+
+      final logger = ChirpLogger(name: 'logger');
+      parent1.adopt(logger);
+
+      logger.info('with parent1');
+      expect(records1.length, 1);
+      expect(records2.length, 0);
+
+      logger.orphan();
+      parent2.adopt(logger);
+
+      logger.info('with parent2');
+      expect(records1.length, 1); // No change
+      expect(records2.length, 1); // New record
+    });
+
+    test('orphaned logger uses own writers after orphan', () {
+      final parentRecords = <LogRecord>[];
+      final ownRecords = <LogRecord>[];
+      final parent = ChirpLogger(name: 'parent')
+          .addWriter(_TestWriter(parentRecords.add));
+
+      // Child with own writer - but while parented, uses parent's writers
+      final child = parent.child(name: 'child')
+          .addWriter(_TestWriter(ownRecords.add));
+
+      child.info('before orphan');
+      expect(parentRecords.length, 1); // Goes to parent's writer
+      expect(ownRecords.length, 0); // Child's own writer not used while parented
+
+      child.orphan();
+      child.info('after orphan');
+      expect(parentRecords.length, 1); // No change - disconnected from parent
+      expect(ownRecords.length, 1); // Now uses own writer
+    });
+
+    test('orphan() correctly updates caller info requirement', () {
+      final parentRecords = <LogRecord>[];
+      final childRecords = <LogRecord>[];
+
+      // Parent writer requires caller info
+      final parentWriter = _TestWriter(parentRecords.add, requiresCallerInfo: true);
+      final parent = ChirpLogger(name: 'parent').addWriter(parentWriter);
+
+      // Child writer does NOT require caller info
+      final childWriter = _TestWriter(childRecords.add, requiresCallerInfo: false);
+      final child = parent.child(name: 'child').addWriter(childWriter);
+
+      // While parented, should capture caller info (parent requires it)
+      child.info('with parent');
+      expect(parentRecords.length, 1);
+      expect(parentRecords[0].caller, isNotNull);
+
+      // After orphan, should NOT capture caller info (child doesn't require it)
+      child.orphan();
+      child.info('after orphan');
+      expect(childRecords.length, 1);
+      expect(childRecords[0].caller, isNull);
+    });
   });
 
   group('Chainable API', () {
@@ -514,11 +595,13 @@ void main() {
 
 class _TestWriter extends ChirpWriter {
   final void Function(LogRecord) onWrite;
+  final bool _requiresCallerInfo;
 
-  _TestWriter(this.onWrite);
+  _TestWriter(this.onWrite, {bool requiresCallerInfo = false})
+      : _requiresCallerInfo = requiresCallerInfo;
 
   @override
-  bool get requiresCallerInfo => false;
+  bool get requiresCallerInfo => _requiresCallerInfo;
 
   @override
   void write(LogRecord record) {
