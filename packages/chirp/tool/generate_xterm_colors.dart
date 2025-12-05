@@ -26,7 +26,8 @@ void main() {
     final contrastOnDark = _contrastRatio(luminance, 0.0); // black bg
 
     // Add dartdoc comment with color name and hex value
-    buffer.writeln();
+    // Add blank line separator between entries (but not before first entry)
+    if (i > 0) buffer.writeln();
     buffer.writeln('  /// ${color.displayName} (${color.hex})');
     buffer.writeln('  ${color.name}(');
     buffer.writeln('    code: $i,');
@@ -42,7 +43,7 @@ void main() {
   }
 
   // Add semicolon and fields
-  buffer.writeln(';');
+  buffer.writeln('  ;');
   buffer.writeln();
   buffer.writeln('  final int code;');
   buffer.writeln('  final int r;');
