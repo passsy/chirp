@@ -1,12 +1,6 @@
 import 'package:chirp/chirp.dart';
-import 'package:chirp/src/ansi/readable_colors.g.dart';
 
 export 'package:chirp/src/span/span_foundation.dart';
-
-const _subtleColors = [
-  ...readableColorsLowSaturation,
-  ...readableColorsMediumSaturation,
-];
 
 /// Default colored formatter using the span-based templating system.
 class RainbowMessageFormatter extends SpanBasedFormatter {
@@ -35,6 +29,14 @@ class RainbowMessageFormatter extends SpanBasedFormatter {
   }
 }
 
+LogSpan dimmed(LogSpan span) {
+  return AnsiStyled(
+    dim: true,
+    foreground: Ansi256.white_7,
+    child: span,
+  );
+}
+
 /// Builds a span tree for a [LogRecord] with rainbow colors.
 LogSpan _buildRainbowLogSpan({
   required LogRecord record,
@@ -44,12 +46,11 @@ LogSpan _buildRainbowLogSpan({
 
   final levelColor = () {
     final level = record.level;
-    if (level > ChirpLogLevel.error) return XtermColor.indianRed1_203;
-    if (level >= ChirpLogLevel.error) return XtermColor.indianRed_167;
-    if (level > ChirpLogLevel.warning) return XtermColor.lightSalmon3_173;
-    if (level >= ChirpLogLevel.warning) return XtermColor.lightGoldenrod3_179;
-    if (level == ChirpLogLevel.notice) return XtermColor.brightBlack_8;
-    if (level == ChirpLogLevel.success) return XtermColor.green_2;
+    if (level > ChirpLogLevel.error) return Ansi256.indianRed1_203;
+    if (level >= ChirpLogLevel.error) return Ansi256.indianRed_167;
+    if (level > ChirpLogLevel.warning) return Ansi256.lightSalmon3_173;
+    if (level >= ChirpLogLevel.warning) return Ansi256.lightGoldenrod3_179;
+    if (level == ChirpLogLevel.success) return Ansi256.green_2;
     return null;
   }();
 
@@ -57,10 +58,20 @@ LogSpan _buildRainbowLogSpan({
 
   // Timestamp
   if (options.showTime) {
-    spans.add(AnsiColored(
-      foreground: XtermColor.brightBlack_8,
-      child: Timestamp(record.timestamp),
-    ));
+    spans.addAll([dimmed(Timestamp(record.timestamp))]);
+  }
+
+  // Level
+  if (options.showLogLevel) {
+    spans.addAll([
+      Surrounded(
+        prefix: Whitespace(),
+        child: AnsiStyled(
+          foreground: levelColor ?? Ansi256.white_7,
+          child: BracketedLogLevel(record.level),
+        ),
+      )
+    ]);
   }
 
   // Location
@@ -68,8 +79,8 @@ LogSpan _buildRainbowLogSpan({
     final fileName = callerInfo?.callerFileName;
     final location = fileName == null
         ? null
-        : AnsiColored(
-            foreground: XtermColor.brightBlack_8,
+        : AnsiStyled(
+            foreground: Ansi256.lightSkyBlue3_110,
             child: DartSourceCodeLocation(
                 fileName: fileName, line: callerInfo?.line),
           );
@@ -81,8 +92,8 @@ LogSpan _buildRainbowLogSpan({
     final name = record.loggerName;
     final loggerName = name == null
         ? null
-        : AnsiColored(
-            foreground: hashColor(name, readableColorsHighSaturation),
+        : AnsiStyled(
+            foreground: colorForHash(name, saturation: ColorSaturation.high),
             child: LoggerName(name),
           );
     spans.add(Surrounded(prefix: Whitespace(), child: loggerName));
@@ -93,8 +104,9 @@ LogSpan _buildRainbowLogSpan({
     final classNameSpan = ClassName.fromRecord(record, hashLength: 4);
     LogSpan? className;
     if (classNameSpan != null) {
-      className = AnsiColored(
-        foreground: hashColor(classNameSpan.name, readableColorsLowSaturation),
+      className = AnsiStyled(
+        foreground:
+            colorForHash(classNameSpan.name, saturation: ColorSaturation.low),
         child: classNameSpan,
       );
     }
@@ -110,32 +122,24 @@ LogSpan _buildRainbowLogSpan({
       if (cn != null && name.startsWith('$cn.')) {
         name = name.substring(cn.length + 1);
       }
-      methodName = AnsiColored(
-        foreground: hashColor(name, _subtleColors),
+      methodName = AnsiStyled(
+        foreground: colorForHash(name, saturation: ColorSaturation.low),
         child: MethodName(name),
       );
     }
     spans.add(Surrounded(prefix: Whitespace(), child: methodName));
   }
 
-  // Level
-  if (options.showLogLevel) {
-    spans.addAll([
-      Whitespace(),
-      AnsiColored(
-        foreground: levelColor ?? XtermColor.brightBlack_8,
-        child: BracketedLogLevel(record.level),
-      ),
-    ]);
-  }
-
   // Message
   spans.addAll([
     Whitespace(),
-    AnsiColored(
-      foreground: levelColor ?? XtermColor.brightBlack_8,
-      child: LogMessage(record.message),
-    ),
+    if (levelColor == null)
+      dimmed(LogMessage(record.message))
+    else
+      AnsiStyled(
+        foreground: levelColor,
+        child: LogMessage(record.message),
+      ),
   ]);
 
   // Data
@@ -145,18 +149,22 @@ LogSpan _buildRainbowLogSpan({
       DataPresentation.inline => InlineData(data),
       DataPresentation.multiline => MultilineData(data),
     };
-    spans.add(AnsiColored(
-      foreground: levelColor ?? XtermColor.brightBlack_8,
-      child: dataSpan,
-    ));
+    if (levelColor == null) {
+      spans.add(dimmed(dataSpan));
+    } else {
+      spans.add(AnsiStyled(
+        foreground: levelColor,
+        child: dataSpan,
+      ));
+    }
   }
 
   // Error
   if (record.error != null) {
     spans.addAll([
       NewLine(),
-      AnsiColored(
-        foreground: levelColor ?? XtermColor.brightBlack_8,
+      AnsiStyled(
+        foreground: levelColor ?? Ansi256.grey50_244,
         child: ErrorSpan(record.error),
       ),
     ]);
@@ -166,14 +174,14 @@ LogSpan _buildRainbowLogSpan({
   if (record.stackTrace case final stackTrace?) {
     spans.addAll([
       NewLine(),
-      AnsiColored(
-        foreground: levelColor ?? XtermColor.brightBlack_8,
+      AnsiStyled(
+        foreground: levelColor ?? Ansi256.grey50_244,
         child: StackTraceSpan(stackTrace),
       ),
     ]);
   }
 
-  return SpanSequence(spans);
+  return SpanSequence(children: spans);
 }
 
 class RainbowFormatOptions extends FormatOptions {
@@ -212,10 +220,4 @@ enum DataPresentation { inline, multiline }
 
 extension _FirstWhereTypeOrNull<T> on Iterable<T> {
   R? firstWhereTypeOrNull<R>() => whereType<R>().firstOrNull;
-}
-
-XtermColor hashColor(Object? object, List<XtermColor> colors) {
-  final hash = object.hashCode.abs();
-  if (colors.isEmpty) throw ArgumentError('colors must not be empty');
-  return colors[hash % colors.length];
 }

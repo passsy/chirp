@@ -1,4 +1,9 @@
-export 'package:chirp/src/ansi/xterm_colors.g.dart' show XtermColor;
+export 'package:chirp/src/ansi/ansi16.dart' show Ansi16;
+export 'package:chirp/src/ansi/ansi256.g.dart' show Ansi256;
+export 'package:chirp/src/ansi/console_color.dart'
+    show ConsoleColor, DefaultColor, IndexedColor, RgbColor;
+export 'package:chirp/src/ansi/hash_colors.dart'
+    show ColorSaturation, colorForHash;
 export 'package:chirp/src/core/chirp_interceptor.dart' show ChirpInterceptor;
 export 'package:chirp/src/core/chirp_logger.dart' show ChirpLogger;
 export 'package:chirp/src/core/chirp_root.dart'
@@ -12,19 +17,17 @@ export 'package:chirp/src/formatters/compact_message_formatter.dart'
 export 'package:chirp/src/formatters/json_message_formatter.dart'
     show JsonMessageFormatter;
 export 'package:chirp/src/formatters/rainbow_message_formatter.dart'
-    show
-        DataPresentation,
-        RainbowFormatOptions,
-        RainbowMessageFormatter,
-        hashColor;
+    show DataPresentation, RainbowFormatOptions, RainbowMessageFormatter;
 export 'package:chirp/src/formatters/simple_console_message_formatter.dart'
     show
         BracketedLoggerName,
         FullTimestamp,
         KeyValueData,
         SimpleConsoleMessageFormatter;
-export 'package:chirp/src/platform/platform_info.dart'
-    show platformPrintMaxChunkLength, platformSupportsAnsiColors;
+export 'package:chirp/src/platform/color_support.dart'
+    show TerminalColorSupport;
+export 'package:chirp/src/platform/terminal_capabilities.dart'
+    show TerminalCapabilities;
 export 'package:chirp/src/span/span_based_formatter.dart'
     show SpanBasedFormatter, SpanFormatOptions, SpanTransformer;
 export 'package:chirp/src/span/span_foundation.dart'
@@ -38,7 +41,7 @@ export 'package:chirp/src/span/span_foundation.dart'
 export 'package:chirp/src/span/spans.dart'
     show
         Aligned,
-        AnsiColored,
+        AnsiStyled,
         Bordered,
         BoxBorderChars,
         BoxBorderStyle,

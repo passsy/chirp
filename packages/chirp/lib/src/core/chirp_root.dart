@@ -5,6 +5,7 @@ import 'package:chirp/src/core/format_option.dart';
 import 'package:chirp/src/core/log_level.dart';
 import 'package:chirp/src/core/log_record.dart';
 import 'package:chirp/src/formatters/rainbow_message_formatter.dart';
+import 'package:chirp/src/platform/terminal_capabilities.dart';
 import 'package:chirp/src/utils/stack_trace_util.dart';
 import 'package:chirp/src/writers/console_writer.dart';
 
@@ -274,11 +275,14 @@ extension ChirpLoggerConsoleWriterExt on ChirpLogger {
   /// ## Parameters
   /// - [formatter]: How to format log records (default: [RainbowMessageFormatter])
   /// - [output]: Custom output function (default: `print()`)
-  /// - [useColors]: Whether to emit ANSI color escape codes in the output.
-  ///   When `true`, log levels, timestamps, and other elements are colorized.
-  ///   When `false`, plain text is output without escape codes.
-  ///   Default: `null` (uses [platformSupportsAnsiColors] - `true` for Flutter,
-  ///   checks `stdout.supportsAnsiEscapes` for pure Dart, `false` for web).
+  /// - [capabilities]: Terminal capabilities for output rendering.
+  ///   Controls ANSI color support level:
+  ///   - [TerminalColorSupport.none]: No colors (plain text)
+  ///   - [TerminalColorSupport.ansi16]: Basic 16 colors
+  ///   - [TerminalColorSupport.ansi256]: 256-color palette
+  ///   - [TerminalColorSupport.truecolor]: 24-bit RGB colors
+  ///   Default: `null` (uses [TerminalCapabilities.autoDetect] based on
+  ///   terminal, CI environment, and platform capabilities).
   /// - [minLogLevel]: Minimum log level for this writer. Records below this
   ///   level are skipped. Default: `null` (accepts all levels).
   /// - [interceptors]: List of interceptors to transform/filter records.
@@ -327,14 +331,14 @@ extension ChirpLoggerConsoleWriterExt on ChirpLogger {
   ChirpLogger addConsoleWriter({
     ConsoleMessageFormatter? formatter,
     void Function(String)? output,
-    bool? useColors,
+    TerminalCapabilities? capabilities,
     ChirpLogLevel? minLogLevel,
     List<ChirpInterceptor>? interceptors,
   }) {
     final writer = PrintConsoleWriter(
       formatter: formatter ?? RainbowMessageFormatter(),
       output: output,
-      useColors: useColors,
+      capabilities: capabilities,
     );
     if (minLogLevel != null) {
       writer.setMinLogLevel(minLogLevel);

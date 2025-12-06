@@ -11,7 +11,7 @@ class CompactChirpMessageFormatter extends SpanBasedFormatter {
 
   @override
   LogSpan buildSpan(LogRecord record) {
-    return SpanSequence([
+    return SpanSequence(children: [
       Timestamp(record.timestamp),
       Whitespace(),
       BracketedLogLevel(record.level),

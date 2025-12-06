@@ -4,28 +4,28 @@ A comprehensive collection of logging libraries across 20 programming languages,
 
 ## Languages Covered
 
-| Language | File | Top Recommendation |
-|----------|------|-------------------|
-| [JavaScript/Node.js](./javascript.md) | javascript.md | Consola, Signale |
-| [Python](./python.md) | python.md | Loguru, Rich |
-| [Java](./java.md) | java.md | Logback with colors |
-| [C#/.NET](./csharp.md) | csharp.md | Serilog, Spectre.Console |
-| [Go](./go.md) | go.md | Zerolog, Charm Log |
-| [Rust](./rust.md) | rust.md | pretty_env_logger, tracing |
-| [PHP](./php.md) | php.md | Monolog + Bramus formatter |
-| [Ruby](./ruby.md) | ruby.md | Semantic Logger, TTY::Logger |
-| [Swift](./swift.md) | swift.md | CocoaLumberjack, XCGLogger |
-| [Kotlin](./kotlin.md) | kotlin.md | Timber, Napier |
-| [TypeScript](./typescript.md) | typescript.md | tslog, Consola |
-| [C++](./cpp.md) | cpp.md | spdlog |
-| [Dart/Flutter](./dart.md) | dart.md | logger, talker |
-| [Scala](./scala.md) | scala.md | Airframe-Log, Scribe |
-| [R](./r.md) | r.md | logger + crayon, cli |
-| [Perl](./perl.md) | perl.md | Log::Log4perl |
-| [Shell/Bash](./shell.md) | shell.md | Custom ANSI, Gum |
-| [Objective-C](./objective-c.md) | objective-c.md | CocoaLumberjack |
-| [Elixir](./elixir.md) | elixir.md | Built-in Logger |
-| [Lua](./lua.md) | lua.md | LuaLogging + ansicolors |
+| Language | Top Recommendations |
+|----------|---------------------|
+| [JavaScript/Node.js](./javascript.md) | [Consola](https://www.npmjs.com/package/consola) · [Signale](https://www.npmjs.com/package/signale) · [Pino](https://www.npmjs.com/package/pino) |
+| [Python](./python.md) | [Loguru](https://pypi.org/project/loguru/) · [Rich](https://pypi.org/project/rich/) · [Structlog](https://pypi.org/project/structlog/) |
+| [Java](./java.md) | [Logback](https://logback.qos.ch/) · [Log4j2](https://logging.apache.org/log4j/2.x/) |
+| [C#/.NET](./csharp.md) | [Serilog](https://www.nuget.org/packages/Serilog) · [Spectre.Console](https://www.nuget.org/packages/Spectre.Console) |
+| [Go](./go.md) | [Zerolog](https://pkg.go.dev/github.com/rs/zerolog) · [Charm Log](https://pkg.go.dev/github.com/charmbracelet/log) · [Zap](https://pkg.go.dev/go.uber.org/zap) |
+| [Rust](./rust.md) | [pretty_env_logger](https://crates.io/crates/pretty_env_logger) · [tracing](https://crates.io/crates/tracing) · [env_logger](https://crates.io/crates/env_logger) |
+| [PHP](./php.md) | [Monolog](https://packagist.org/packages/monolog/monolog) |
+| [Ruby](./ruby.md) | [Semantic Logger](https://rubygems.org/gems/semantic_logger) · [TTY::Logger](https://rubygems.org/gems/tty-logger) |
+| [Swift](./swift.md) | [CocoaLumberjack](https://github.com/CocoaLumberjack/CocoaLumberjack) · [XCGLogger](https://github.com/DaveWoodCom/XCGLogger) · [Pulse](https://github.com/kean/Pulse) |
+| [Kotlin](./kotlin.md) | [Timber](https://github.com/JakeWharton/timber) · [Napier](https://github.com/AAkira/Napier) · [Kermit](https://github.com/touchlab/Kermit) |
+| [TypeScript](./typescript.md) | [tslog](https://www.npmjs.com/package/tslog) · [Consola](https://www.npmjs.com/package/consola) |
+| [C++](./cpp.md) | [spdlog](https://github.com/gabime/spdlog) |
+| [Dart/Flutter](./dart.md) | [logger](https://pub.dev/packages/logger) · [talker](https://pub.dev/packages/talker) · [ChalkDart](https://pub.dev/packages/chalkdart) |
+| [Scala](./scala.md) | [Airframe-Log](https://wvlet.org/airframe/docs/airframe-log) · [Scribe](https://github.com/outr/scribe) |
+| [R](./r.md) | [logger](https://cran.r-project.org/package=logger) · [cli](https://cran.r-project.org/package=cli) |
+| [Perl](./perl.md) | [Log::Log4perl](https://metacpan.org/pod/Log::Log4perl) |
+| [Shell/Bash](./shell.md) | [Gum](https://github.com/charmbracelet/gum) |
+| [Objective-C](./objective-c.md) | [CocoaLumberjack](https://github.com/CocoaLumberjack/CocoaLumberjack) |
+| [Elixir](./elixir.md) | [Logger](https://hexdocs.pm/logger/Logger.html) (built-in) |
+| [Lua](./lua.md) | [LuaLogging](https://luarocks.org/modules/lunarmodules/lualogging) · [ansicolors](https://luarocks.org/modules/kikito/ansicolors) |
 
 ## Highlights: Most Beautiful Loggers
 

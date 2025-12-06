@@ -1,8 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'package:chirp/chirp.dart';
-
-export 'package:chirp/src/platform/platform_info.dart';
+import 'package:chirp/src/platform/platform_info.dart';
 
 /// Writes to console using dart:core [print].
 ///
@@ -103,10 +102,10 @@ class PrintConsoleWriter extends ChirpWriter {
   /// - **Desktop/Web**: null (no chunking needed)
   final int? maxChunkLength;
 
-  /// Whether to use ANSI color codes in output.
+  /// Terminal capabilities for output rendering.
   ///
-  /// Defaults to [platformSupportsAnsiColors].
-  final bool useColors;
+  /// Defaults to [TerminalCapabilities.autoDetect].
+  final TerminalCapabilities capabilities;
 
   /// Custom output function for testing or alternative output destinations.
   final void Function(String) output;
@@ -114,11 +113,11 @@ class PrintConsoleWriter extends ChirpWriter {
   PrintConsoleWriter({
     ConsoleMessageFormatter? formatter,
     int? maxChunkLength,
-    bool? useColors,
+    TerminalCapabilities? capabilities,
     void Function(String)? output,
   })  : formatter = formatter ?? RainbowMessageFormatter(),
         maxChunkLength = maxChunkLength ?? platformPrintMaxChunkLength,
-        useColors = useColors ?? platformSupportsAnsiColors,
+        capabilities = capabilities ?? TerminalCapabilities.autoDetect(),
         output = output ?? print;
 
   @override
@@ -127,7 +126,7 @@ class PrintConsoleWriter extends ChirpWriter {
   @override
   void write(LogRecord record) {
     // Format
-    final buffer = ConsoleMessageBuffer(supportsColors: useColors);
+    final buffer = ConsoleMessageBuffer(capabilities: capabilities);
     formatter.format(record, buffer);
     final text = buffer.toString();
 
@@ -169,105 +168,226 @@ abstract class ConsoleMessageFormatter {
   void format(LogRecord record, ConsoleMessageBuffer buffer);
 }
 
-/// A buffer for building console output with optional ANSI color support.
+/// A buffer for building console output with terminal capability awareness.
 ///
-/// Manages a color stack to support nested colors. When a color is pushed,
-/// it becomes active. When popped, the previous color is restored (not reset).
+/// This is the central abstraction between spans and the terminal. Spans declare
+/// their intent (e.g., "render this in red") and the buffer handles the
+/// implementation details based on terminal capabilities.
+///
+/// ## Style Stack
+///
+/// Manages a style stack to support nested colors and text styles. When a style
+/// is pushed, it becomes active. When popped, the previous style is restored.
+/// Styles are automatically re-applied after newlines for terminals that don't
+/// preserve styles across line breaks.
+///
+/// ## Terminal Capabilities
+///
+/// Access via [capabilities]. Currently supports:
+/// - **Color support**: none, 16-color, 256-color, or truecolor
+///
+/// Future capabilities may include:
+/// - **Terminal width**: For text wrapping, alignment, and bordered boxes
+/// - **Unicode support**: Whether to use box-drawing characters (`╭─╮`) or
+///   ASCII fallbacks (`+-+`)
+/// - **Hyperlink support**: OSC 8 sequences for clickable URLs and file paths
+///
+/// The buffer abstracts these capabilities so spans can remain declarative.
+/// For example, colors work transparently today - spans request colors and the
+/// buffer emits appropriate escape codes (or nothing if unsupported).
 ///
 /// ## Example
 ///
 /// ```dart
-/// final buffer = ConsoleMessageBuffer(useColors: true);
-/// buffer.pushColor(foreground: XtermColor.red);
+/// final caps = TerminalCapabilities(colorSupport: TerminalColorSupport.ansi256);
+/// final buffer = ConsoleMessageBuffer(capabilities: caps);
+/// buffer.pushStyle(foreground: Ansi256.red_1);
 /// buffer.write('Hello ');
-/// buffer.pushColor(foreground: XtermColor.blue);
+/// buffer.pushStyle(foreground: Ansi256.blue_4, dim: true);
 /// buffer.write('World');
-/// buffer.popColor(); // restores red
+/// buffer.popStyle(); // restores red, removes dim
 /// buffer.write('!');
-/// buffer.popColor(); // resets to default
-/// print(buffer.toString()); // "Hello " in red, "World" in blue, "!" in red
+/// buffer.popStyle(); // resets to default
+/// print(buffer.toString()); // "Hello " in red, "World" in dim blue, "!" in red
 /// ```
 class ConsoleMessageBuffer {
-  /// Whether to emit ANSI color codes.
-  ///
-  /// When false, all color operations are no-ops and output is plain text.
-  final bool supportsColors;
-
-  final List<(XtermColor?, XtermColor?)> _colorStack = [];
-
   ConsoleMessageBuffer({
-    required this.supportsColors,
+    required this.capabilities,
   });
+
+  /// Terminal capabilities for this buffer.
+  ///
+  /// Use this to query terminal features when making rendering decisions:
+  /// ```dart
+  /// // Choose rendering strategy based on color support
+  /// if (buffer.capabilities.colorSupport.supportsTruecolor) {
+  ///   // render smooth gradient
+  /// } else {
+  ///   // render with 256-color approximation
+  /// }
+  /// ```
+  ///
+  /// Note: You don't need to check capabilities before calling [pushStyle] -
+  /// it handles unsupported terminals gracefully by not emitting escape codes.
+  final TerminalCapabilities capabilities;
+
+  final List<_StyleState> _styleStack = [];
 
   final StringBuffer _buffer = StringBuffer();
 
-  /// Pushes a color onto the stack and writes its ANSI escape code.
+  /// Pushes a style onto the stack and writes its ANSI escape codes.
   ///
-  /// The color remains active until [popColor] is called.
-  /// Nested calls create a color stack - inner colors override outer ones.
-  void pushColor({XtermColor? foreground, XtermColor? background}) {
-    _colorStack.add((foreground, background));
-    if (supportsColors) {
-      _writeColorCode(foreground, background);
+  /// The style remains active until [popStyle] is called.
+  /// Nested calls create a style stack - inner styles override outer ones.
+  ///
+  /// Parameters:
+  /// - [foreground]: Foreground text color
+  /// - [background]: Background color
+  /// - [bold]: Apply bold styling (SGR code 1). Note: many terminals render
+  ///   bold as bright/intense color instead of font weight, especially with
+  ///   basic 16 colors. Takes precedence over [dim] if both are true.
+  /// - [dim]: Apply dim/faint styling (SGR code 2). Support varies by terminal;
+  ///   some ignore it entirely. Ignored if [bold] is also true.
+  /// - [italic]: Apply italic styling (SGR code 3)
+  /// - [underline]: Apply underline styling (SGR code 4)
+  /// - [strikethrough]: Apply strikethrough styling (SGR code 9)
+  void pushStyle({
+    ConsoleColor? foreground,
+    ConsoleColor? background,
+    bool bold = false,
+    bool dim = false,
+    bool italic = false,
+    bool underline = false,
+    bool strikethrough = false,
+  }) {
+    final state = _StyleState(
+      foreground,
+      background,
+      bold: bold,
+      dim: dim,
+      italic: italic,
+      underline: underline,
+      strikethrough: strikethrough,
+    );
+    _styleStack.add(state);
+    if (capabilities.supportsColors) {
+      _writeStyleCode(state);
     }
   }
 
-  /// Pops the current color and restores the previous one.
+  /// Pops the current style and restores the previous one.
   ///
   /// If the stack becomes empty, writes an ANSI reset code.
-  /// Otherwise, writes the ANSI code for the previous color.
-  void popColor() {
-    if (_colorStack.isEmpty) return;
-    _colorStack.removeLast();
-    if (supportsColors) {
-      if (_colorStack.isEmpty) {
+  /// Otherwise, writes the ANSI codes for the previous style.
+  void popStyle() {
+    if (_styleStack.isEmpty) return;
+    _styleStack.removeLast();
+    if (capabilities.supportsColors) {
+      if (_styleStack.isEmpty) {
         _buffer.write('\x1B[0m');
       } else {
-        final (fg, bg) = _colorStack.last;
-        _writeColorCode(fg, bg);
+        _writeStyleCode(_styleStack.last);
       }
     }
   }
 
-  void _writeColorCode(XtermColor? foreground, XtermColor? background) {
-    if (foreground != null) {
-      _buffer.write('\x1B[38;5;${foreground.code}m');
+  void _writeStyleCode(_StyleState state) {
+    if (state.bold) {
+      _buffer.write('\x1B[1m'); // SGR 1: bold
+    } else if (state.dim) {
+      // dim is skipped when bold is true (bold takes precedence)
+      _buffer.write('\x1B[2m'); // SGR 2: dim/faint
     }
-    if (background != null) {
-      _buffer.write('\x1B[48;5;${background.code}m');
+    if (state.italic) {
+      _buffer.write('\x1B[3m'); // SGR 3: italic
     }
+    if (state.underline) {
+      _buffer.write('\x1B[4m'); // SGR 4: underline
+    }
+    if (state.strikethrough) {
+      _buffer.write('\x1B[9m'); // SGR 9: strikethrough
+    }
+    if (state.foreground != null) {
+      _buffer.write(_colorEscapeCode(state.foreground!, isForeground: true));
+    }
+    if (state.background != null) {
+      _buffer.write(_colorEscapeCode(state.background!, isForeground: false));
+    }
+  }
+
+  /// Generates the ANSI escape code for a color based on color support level.
+  String _colorEscapeCode(ConsoleColor color, {required bool isForeground}) {
+    // DefaultColor means "use terminal's default" - output reset code
+    if (color is DefaultColor) {
+      return isForeground ? '\x1B[39m' : '\x1B[49m';
+    }
+
+    final base = isForeground ? 38 : 48;
+    final base16 = isForeground ? 30 : 40;
+
+    return switch (capabilities.colorSupport) {
+      TerminalColorSupport.none => '',
+      TerminalColorSupport.ansi16 => '\x1B[${base16 + _to16Color(color)}m',
+      TerminalColorSupport.ansi256 => switch (color) {
+          final IndexedColor c => '\x1B[$base;5;${c.code}m',
+          final RgbColor c => '\x1B[$base;5;${_rgbTo256(c.r, c.g, c.b)}m',
+          DefaultColor() => throw StateError('unreachable'),
+        },
+      TerminalColorSupport.truecolor =>
+        '\x1B[$base;2;${color.r};${color.g};${color.b}m',
+    };
+  }
+
+  /// Converts RGB to closest 256-color code.
+  int _rgbTo256(int r, int g, int b) {
+    // Check if it's a grayscale color
+    if (r == g && g == b) {
+      if (r < 8) return 16; // black
+      if (r > 248) return 231; // white
+      return ((r - 8) / 247 * 24).round() + 232;
+    }
+    // Map to 6x6x6 color cube
+    final ri = (r / 255 * 5).round();
+    final gi = (g / 255 * 5).round();
+    final bi = (b / 255 * 5).round();
+    return 16 + 36 * ri + 6 * gi + bi;
   }
 
   /// Writes a value to the buffer, optionally with colors.
   ///
-  /// If [foreground] or [background] is provided and [supportsColors] is true,
-  /// the value is wrapped with push/pop color calls.
+  /// If [foreground] or [background] is provided and colors are supported,
+  /// the value is wrapped with push/pop style calls.
   ///
-  /// When colors are active (either from the color stack or from parameters),
-  /// color codes are re-applied after each newline to ensure colors persist
+  /// When styles are active (either from the style stack or from parameters),
+  /// style codes are re-applied after each newline to ensure styles persist
   /// across multiple lines.
-  void write(Object? value, {XtermColor? foreground, XtermColor? background}) {
+  void write(Object? value,
+      {ConsoleColor? foreground, ConsoleColor? background}) {
+    final supportsColors = capabilities.supportsColors;
     if (supportsColors && (foreground != null || background != null)) {
-      pushColor(foreground: foreground, background: background);
-      _writeWithColorReapply(value, foreground, background);
-      popColor();
-    } else if (supportsColors && _colorStack.isNotEmpty) {
-      final (fg, bg) = _colorStack.last;
-      _writeWithColorReapply(value, fg, bg);
+      pushStyle(foreground: foreground, background: background);
+      _writeWithStyleReapply(value, _styleStack.last);
+      popStyle();
+    } else if (supportsColors && _styleStack.isNotEmpty) {
+      _writeWithStyleReapply(value, _styleStack.last);
     } else {
       _buffer.write(value);
     }
   }
 
-  /// Writes value to buffer, re-applying current color after each newline.
-  void _writeWithColorReapply(Object? value, XtermColor? fg, XtermColor? bg) {
+  /// Writes value to buffer, re-applying current style after each newline.
+  ///
+  /// Platforms like github actions and some terminals do not apply the current
+  /// ansi style for the next line
+  /// https://github.com/orgs/community/discussions/40864
+  void _writeWithStyleReapply(Object? value, _StyleState state) {
     final text = value?.toString() ?? 'null';
     final lines = text.split('\n');
     for (var i = 0; i < lines.length; i++) {
       _buffer.write(lines[i]);
       if (i < lines.length - 1) {
         _buffer.write('\n');
-        _writeColorCode(fg, bg);
+        _writeStyleCode(state);
       }
     }
   }
@@ -285,8 +405,64 @@ class ConsoleMessageBuffer {
   ///
   /// Useful for spans that need to pre-render children to measure them.
   ConsoleMessageBuffer createChildBuffer() {
-    return ConsoleMessageBuffer(supportsColors: supportsColors);
+    return ConsoleMessageBuffer(capabilities: capabilities);
   }
+}
+
+/// Internal state for style stack entries.
+class _StyleState {
+  final ConsoleColor? foreground;
+  final ConsoleColor? background;
+  final bool bold;
+  final bool dim;
+  final bool italic;
+  final bool underline;
+  final bool strikethrough;
+
+  _StyleState(
+    this.foreground,
+    this.background, {
+    this.bold = false,
+    this.dim = false,
+    this.italic = false,
+    this.underline = false,
+    this.strikethrough = false,
+  });
+}
+
+/// Converts a [ConsoleColor] to the closest 16-color ANSI index.
+///
+/// Returns an offset (0-15) to add to base code 30 (fg) or 40 (bg).
+/// For bright colors (8-15), caller should use codes 90-97/100-107.
+int _to16Color(ConsoleColor color) {
+  // For indexed colors with code 0-15, use directly
+  if (color is IndexedColor && color.code < 16) {
+    final code = color.code;
+    return code < 8 ? code : (code - 8 + 60);
+  }
+
+  // Convert RGB to 16-color approximation
+  final r = color.r;
+  final g = color.g;
+  final b = color.b;
+
+  // Check for grayscale
+  if (r == g && g == b) {
+    if (r < 64) return 0; // black
+    if (r < 192) return 60; // bright black (gray)
+    return 7; // white
+  }
+
+  // Map RGB to on/off channels (threshold at 128)
+  final r1 = r >= 128 ? 1 : 0;
+  final g1 = g >= 128 ? 1 : 0;
+  final b1 = b >= 128 ? 1 : 0;
+
+  // Bright if any channel is high (>= 192)
+  final bright = (r >= 192 || g >= 192 || b >= 192) ? 60 : 0;
+
+  // ANSI: 0=black, 1=red, 2=green, 3=yellow, 4=blue, 5=magenta, 6=cyan, 7=white
+  return bright + (r1 * 1) + (g1 * 2) + (b1 * 4);
 }
 
 /// Strips ANSI escape codes from a string.

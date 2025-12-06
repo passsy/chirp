@@ -16,7 +16,10 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -39,7 +42,10 @@ void main() {
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -63,7 +69,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -87,7 +96,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -114,7 +126,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -135,7 +150,10 @@ void main() {
         data: {'userId': 'user_123'},
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -158,7 +176,10 @@ void main() {
         formatOptions: const [],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -184,7 +205,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -213,7 +237,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 

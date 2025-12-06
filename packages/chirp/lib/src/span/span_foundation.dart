@@ -23,7 +23,7 @@ export 'package:chirp/src/span/spans.dart';
 /// │   ├── NewLine
 /// │   └── EmptySpan
 /// ├── SingleChildSpan (one child)
-/// │   ├── AnsiColored
+/// │   ├── AnsiStyled
 /// │   └── Bordered
 /// ├── MultiChildSpan (ordered children)
 /// │   └── SpanSequence
@@ -96,7 +96,7 @@ abstract class LogSpan {
   ///
   /// Example:
   /// ```dart
-  /// span.wrap((child) => AnsiColored(foreground: XtermColor.red, child: child));
+  /// span.wrap((child) => AnsiStyled(foreground: Ansi16.red, child: child));
   /// ```
   void wrap(LogSpan Function(LogSpan child) wrapper) {
     final originalParent = _parent;
@@ -167,7 +167,7 @@ abstract class LogSpan {
 
   /// Renders this span to the [buffer].
   ///
-  /// For primitive spans (PlainText, AnsiColored, etc.), override this to
+  /// For primitive spans (PlainText, AnsiStyled, etc.), override this to
   /// write directly to the buffer.
   ///
   /// For composite spans that override [build], the default implementation
@@ -261,7 +261,7 @@ abstract class LeafSpan extends LogSpan {
 
 /// Base class for spans that have exactly one child.
 ///
-/// Examples: [AnsiColored], [Bordered].
+/// Examples: [AnsiStyled], [Bordered].
 @experimental
 abstract class SingleChildSpan extends LogSpan {
   LogSpan? _child;

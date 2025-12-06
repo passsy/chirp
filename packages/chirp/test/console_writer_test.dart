@@ -221,16 +221,22 @@ void main() {
 
   group('ConsoleMessageBuffer.visibleLength', () {
     test('returns visible length of buffer contents', () {
-      final buffer = ConsoleMessageBuffer(supportsColors: true);
-      buffer.pushColor(foreground: XtermColor.red1_196);
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+            colorSupport: TerminalColorSupport.ansi256),
+      );
+      buffer.pushStyle(foreground: Ansi256.red1_196);
       buffer.write('hello');
-      buffer.popColor();
+      buffer.popStyle();
 
       expect(buffer.visibleLength, 5);
     });
 
     test('returns 0 for empty buffer', () {
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       expect(buffer.visibleLength, 0);
     });
   });
@@ -375,13 +381,16 @@ void main() {
         // Simulates the user's issue: text with many newlines and colors
         // where visible length is under limit but actual length exceeds it
         // due to ANSI codes being re-applied after each newline
-        final buffer = ConsoleMessageBuffer(supportsColors: true);
-        buffer.pushColor(foreground: XtermColor.red_1);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.ansi256),
+        );
+        buffer.pushStyle(foreground: Ansi256.red_1);
         // 50 lines of "test" = 250 visible chars, but with color re-application
         // after each newline, actual length is much higher
         final lines = List.generate(50, (_) => 'test').join('\n');
         buffer.write(lines);
-        buffer.popColor();
+        buffer.popStyle();
         final coloredText = buffer.toString();
 
         final visibleLen = stripAnsiCodes(coloredText).length;

@@ -21,8 +21,7 @@ void main() {
   libraryLogger.warning('This warning is visible from the library');
 
   // Adopt the library logger to use app's writers/formatting
-  Chirp.root = ChirpLogger().addConsoleWriter(useColors: true)
-    ..adopt(libraryLogger);
+  Chirp.root = ChirpLogger().addConsoleWriter().adopt(libraryLogger);
   libraryLogger.warning('Now using Chirp.root writers (printed once)');
 
   // Library's minLogLevel still applies - info is filtered

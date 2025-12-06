@@ -65,30 +65,103 @@ class NewLine extends LeafSpan {
 // Single Child Spans
 // =============================================================================
 
-/// Applies foreground and/or background color to a child span.
+/// Applies foreground and/or background color and text styles to a child span.
+///
+/// Supports all common ANSI SGR text attributes:
+/// - [foreground] and [background] colors
+/// - [bold] (SGR 1) - increased intensity
+/// - [dim] (SGR 2) - decreased intensity
+/// - [italic] (SGR 3) - italic text
+/// - [underline] (SGR 4) - underlined text
+/// - [strikethrough] (SGR 9) - crossed-out text
+///
+/// Example:
+/// ```dart
+/// AnsiStyled(
+///   foreground: Ansi16.red,
+///   bold: true,
+///   underline: true,
+///   child: PlainText('Important!'),
+/// )
+/// ```
 @experimental
-class AnsiColored extends SingleChildSpan {
-  final XtermColor? foreground;
-  final XtermColor? background;
+class AnsiStyled extends SingleChildSpan {
+  final ConsoleColor? foreground;
+  final ConsoleColor? background;
 
-  AnsiColored({
+  /// Whether to apply bold styling (ANSI SGR code 1).
+  ///
+  /// **Terminal compatibility:**
+  /// - Many terminals render bold as **bright/intense color** instead of
+  ///   increased font weight, especially with the basic 16 colors
+  /// - Some terminals (like macOS Terminal.app) may show bold as both
+  ///   brighter AND heavier weight
+  /// - With 256-color or truecolor, bold more reliably means font weight
+  /// - A few older terminals may ignore bold entirely
+  ///
+  /// **Precedence:** If both [bold] and [dim] are true, bold takes precedence
+  /// and dim is ignored. They share the same reset code (SGR 22) and have
+  /// contradictory visual effects.
+  final bool bold;
+
+  /// Whether to apply dim/faint styling (ANSI SGR code 2).
+  ///
+  /// Dim text appears with reduced intensity/brightness.
+  ///
+  /// **Terminal compatibility:**
+  /// - Support varies significantly across terminals
+  /// - Some terminals (like older xterm) may ignore dim entirely
+  /// - With truecolor (RGB), some terminals mathematically reduce brightness,
+  ///   while others may ignore it or render it inconsistently
+  /// - iTerm2, VS Code terminal, and most modern terminals support dim well
+  /// - Windows Console (conhost) has limited dim support
+  ///
+  /// **Precedence:** Ignored if [bold] is also true, since they share the same
+  /// reset code (SGR 22) and have contradictory visual effects.
+  final bool dim;
+
+  /// Whether to apply italic styling (ANSI SGR code 3).
+  final bool italic;
+
+  /// Whether to apply underline styling (ANSI SGR code 4).
+  final bool underline;
+
+  /// Whether to apply strikethrough styling (ANSI SGR code 9).
+  final bool strikethrough;
+
+  AnsiStyled({
     super.child,
     this.foreground,
     this.background,
+    this.bold = false,
+    this.dim = false,
+    this.italic = false,
+    this.underline = false,
+    this.strikethrough = false,
   });
 
   @override
   void render(ConsoleMessageBuffer buffer) {
     final c = child;
     if (c == null) return;
-    buffer.pushColor(foreground: foreground, background: background);
+    buffer.pushStyle(
+      foreground: foreground,
+      background: background,
+      bold: bold,
+      dim: dim,
+      italic: italic,
+      underline: underline,
+      strikethrough: strikethrough,
+    );
     c.render(buffer);
-    buffer.popColor();
+    buffer.popStyle();
   }
 
   @override
   String toString() =>
-      'AnsiColored(fg: $foreground, bg: $background, child: $child)';
+      'AnsiStyled(fg: $foreground, bg: $background, bold: $bold, dim: $dim, '
+      'italic: $italic, underline: $underline, strikethrough: $strikethrough, '
+      'child: $child)';
 }
 
 // =============================================================================
@@ -98,17 +171,23 @@ class AnsiColored extends SingleChildSpan {
 /// A sequence of spans rendered sequentially.
 @experimental
 class SpanSequence extends MultiChildSpan {
-  SpanSequence([List<LogSpan>? children]) : super(children: children);
+  SpanSequence({super.children, this.separator});
+
+  /// Optional span to render between each child.
+  final LogSpan? separator;
 
   @override
   void render(ConsoleMessageBuffer buffer) {
-    for (final child in children) {
-      child.render(buffer);
+    for (var i = 0; i < children.length; i++) {
+      if (i > 0 && separator != null) {
+        separator!.render(buffer);
+      }
+      children[i].render(buffer);
     }
   }
 
   @override
-  String toString() => 'SpanSequence($children)';
+  String toString() => 'SpanSequence($children, separator: $separator)';
 }
 
 // =============================================================================
@@ -591,7 +670,7 @@ class BoxBorderChars {
 @experimental
 class Bordered extends SingleChildSpan {
   final BoxBorderStyle style;
-  final XtermColor? borderColor;
+  final ConsoleColor? borderColor;
   final int padding;
 
   Bordered({

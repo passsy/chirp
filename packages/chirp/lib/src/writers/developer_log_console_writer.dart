@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_redundant_argument_values
+
 import 'dart:developer' as developer;
 
 import 'package:chirp/chirp.dart';
@@ -57,7 +59,10 @@ class DeveloperLogConsoleWriter extends ChirpWriter {
   void write(LogRecord record) {
     // Colors disabled - developer.log adds its own [name] prefix which
     // makes ANSI codes look messy in the output
-    final buffer = ConsoleMessageBuffer(supportsColors: false);
+    final buffer = ConsoleMessageBuffer(
+      capabilities:
+          const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+    );
     formatter.format(record, buffer);
     final text = buffer.toString();
 

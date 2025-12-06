@@ -190,7 +190,7 @@ LogSpan _buildSimpleLogSpan({
     ]);
   }
 
-  return SpanSequence(spans);
+  return SpanSequence(children: spans);
 }
 
 /// Full timestamp with date: 2024-01-10 10:30:45.123

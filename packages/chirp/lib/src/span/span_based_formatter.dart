@@ -14,7 +14,7 @@ import 'package:meta/meta.dart';
 ///
 ///   @override
 ///   LogSpan buildSpan(LogRecord record) {
-///     return SpanSequence([
+///     return SpanSequence(children: [
 ///       Timestamp(record.date),
 ///       Whitespace(),
 ///       LogMessage(record.message),

@@ -18,7 +18,10 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -42,11 +45,14 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
-      expect(result, '10:23:45.123 API [info] Short (key: "value")');
+      expect(result, '10:23:45.123 [info] API Short (key: "value")');
     });
 
     test('multiline message outputs each line', () {
@@ -56,7 +62,10 @@ void main() {
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -75,13 +84,16 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        '10:23:45.123 file:100 VeryLongLoggerNameThatExceedsTheDefaultMetaWidth longMethodName [info] Test message (key: "value")',
+        '10:23:45.123 [info] file:100 VeryLongLoggerNameThatExceedsTheDefaultMetaWidth longMethodName Test message (key: "value")',
       );
     });
   });
@@ -99,17 +111,20 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        startsWith('10:23:45.123 device_manager:809 _TestClass@'),
+        startsWith('10:23:45.123 [info] device_manager:809 _TestClass@'),
       );
       expect(
         result,
-        contains(' _startAutoConnectScanning [info] Test message'),
+        contains(' _startAutoConnectScanning Test message'),
       );
       expect(result, isNot(contains('.<anonymous closure>')));
     });
@@ -124,13 +139,16 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        '10:23:45.123 user_service:100 UserService logStatic [info] Test message',
+        '10:23:45.123 [info] user_service:100 UserService logStatic Test message',
       );
     });
 
@@ -144,13 +162,16 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        '10:23:45.123 utils:42 processData [info] Test message',
+        '10:23:45.123 [info] utils:42 processData Test message',
       );
     });
 
@@ -166,15 +187,18 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        startsWith('10:23:45.123 my_class:50 _TestClass@'),
+        startsWith('10:23:45.123 [info] my_class:50 _TestClass@'),
       );
-      expect(result, contains(' myMethod [info] Test message'));
+      expect(result, contains(' myMethod Test message'));
     });
 
     test('preserves method name when no anonymous closure present', () {
@@ -189,15 +213,18 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        startsWith('10:23:45.123 my_class:50 _TestClass@'),
+        startsWith('10:23:45.123 [info] my_class:50 _TestClass@'),
       );
-      expect(result, contains(' normalMethod [info] Test message'));
+      expect(result, contains(' normalMethod Test message'));
     });
 
     test(
@@ -214,15 +241,18 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        startsWith('10:23:45.123 test_class:100 _TestClass@'),
+        startsWith('10:23:45.123 [info] test_class:100 _TestClass@'),
       );
-      expect(result, contains(' processData [info] Test message'));
+      expect(result, contains(' processData Test message'));
     });
   });
 
@@ -234,7 +264,10 @@ void main() {
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: true);
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+            colorSupport: TerminalColorSupport.ansi256),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -251,7 +284,10 @@ void main() {
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -268,15 +304,18 @@ void main() {
         loggerName: 'TestLogger',
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        startsWith('10:23:45.123 TestLogger _TestClass@'),
+        startsWith('10:23:45.123 [info] TestLogger _TestClass@'),
       );
-      expect(result, endsWith(' [info] Test message'));
+      expect(result, endsWith(' Test message'));
     });
   });
 
@@ -294,7 +333,10 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -319,7 +361,10 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -341,7 +386,10 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -365,7 +413,10 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -384,7 +435,10 @@ void main() {
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -402,7 +456,10 @@ void main() {
         instance: instance,
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -410,10 +467,10 @@ void main() {
       final hash = identityHashCode(instance).toRadixString(16).padLeft(4, '0');
       final shortHash = hash.substring(hash.length >= 4 ? hash.length - 4 : 0);
 
-      // Should be exactly: "timestamp _TestClass@XXXX [info] message"
+      // Should be exactly: "timestamp [info] _TestClass@XXXX message"
       expect(
         result,
-        '10:23:45.123 _TestClass@$shortHash [info] Test message',
+        '10:23:45.123 [info] _TestClass@$shortHash Test message',
       );
 
       // Verify only one @ in the class portion
@@ -431,7 +488,10 @@ void main() {
         instance: instance,
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -456,7 +516,10 @@ void main() {
         error: Exception('Something went wrong'),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -478,7 +541,10 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 

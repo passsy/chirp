@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_redundant_argument_values
+
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
@@ -10,7 +12,10 @@ void main() {
       );
 
       final formatter = CompactChirpMessageFormatter();
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -27,7 +32,10 @@ void main() {
       );
 
       final formatter = CompactChirpMessageFormatter();
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -46,7 +54,10 @@ void main() {
       );
 
       final formatter = CompactChirpMessageFormatter();
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
