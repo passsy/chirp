@@ -326,7 +326,32 @@ Chirp.root = ChirpLogger()
 
 ## Span-Based Formatting (Advanced)
 
-For custom console formatters, Chirp uses a **span-based system** similar to Flutter widgets. Spans are composable, nestable, and support ANSI colors.
+For custom console formatters, Chirp uses a **span-based system** similar to Flutter widgets.
+Spans are composable, nestable, and support ANSI colors.
+
+```dart
+class MyMessageFormatter extends SpanBasedFormatter {
+  MyMessageFormatter({super.spanTransformers});
+
+  @override
+  LogSpan buildSpan(LogRecord record) {
+    return SpanSequence(children: [
+      Timestamp(record.timestamp), // 14:32:05.123
+      Whitespace(),
+      BracketedLogLevel(record.level), // [INFO]
+      Surrounded(prefix: Whitespace(), child: ClassName.fromRecord(record)), // UserService@a1b2
+      Whitespace(),
+      LogMessage(record.message),    // User logged in
+    ]);
+  }
+}
+```
+
+Spans are composable building blocks for log output.
+Each span knows its parent and can be manipulated in place with a `SpanTransformer` (replaced, removed, wrapped).
+The usage is similar to DOM elements in HTML.
+
+This allows changing exiting log formats depending on your needs!
 
 ```dart
 // Add emoji prefix using span transformers
@@ -342,7 +367,7 @@ final formatter = RainbowMessageFormatter(
 );
 ```
 
-See [docs/SPANS.md](docs/SPANS.md) for the full span API documentation.
+See [docs/SPANS.md](https://github.com/passsy/chirp/blob/main/docs/SPANS.md) for the full span API documentation.
 
 ## Configuration
 
