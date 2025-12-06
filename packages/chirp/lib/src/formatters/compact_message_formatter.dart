@@ -1,6 +1,18 @@
 import 'package:chirp/chirp.dart';
 
 /// Single-line compact format using spans.
+///
+/// Example output:
+/// ```text
+/// 10:23:45.123 [info] user_service:42 UserService Processing user (userId: robin)
+/// ```
+///
+/// With error and stack trace:
+/// ```text
+/// 10:23:45.123 [error] api_client:87 ApiClient Request failed
+/// Exception: Connection timeout
+/// #0      ApiClient.fetch (package:my_app/api_client.dart:87:5)
+/// ```
 class CompactChirpMessageFormatter extends SpanBasedFormatter {
   CompactChirpMessageFormatter({
     super.spanTransformers,

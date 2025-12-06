@@ -9,17 +9,77 @@ A lightweight, flexible logging library for Dart with instance tracking, child l
 
 ## Features
 
-- **Simple API**: Static methods, named loggers, or `.chirp` extension on any object
-- **Child Loggers**: Winston-style `.child()` method for creating loggers with inherited configuration
-- **Instance Tracking**: Automatically tracks object instances with unique hashes
-- **Automatic Caller Detection**: Extracts class names, method names, and file locations from stack traces
-- **Named Loggers**: Create loggers for different subsystems (HTTP, Database, etc.)
-- **Structured Logging**: Attach key-value data to log entries for machine-readable logs
-- **Contextual Logging**: Per-request/per-transaction loggers with automatic context propagation
-- **Flexible Log Levels**: 8 built-in levels (trace, debug, info, notice, warning, error, critical, wtf) plus support for custom levels
-- **Span-Based Formatting**: Unique mutable span tree architecture for type-safe, transformable log output
-- **Multiple Formats**: Compact, structural JSON and Rainbow formatters included
-- **Multiple Writers**: Send logs to multiple destinations with different formats per writer
+- **Zero Configuration**: Works out of the box - just call `Chirp.info('hello')`
+- **Multiple APIs**: Static methods, named loggers, or `.chirp` extension on any object
+- **Child Loggers**: Hierarchical loggers with inherited writers and merged context
+- **Instance Tracking**: Differentiates logs from multiple instances of the same class
+- **Structured Logging**: Attach key-value data for machine-readable logs
+- **Custom Log Levels**: 9 built-in levels plus support for your own
+- **Interceptors**: Transform or filter logs before output (redaction, sampling, enrichment)
+- **Multiple Writers**: Send logs to console, files, or custom destinations with different formats
+- **Designed for Packages**: Ship loggers with your libraries that apps can adopt
+
+## Installation
+
+Add `chirp` to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  chirp: ^0.5.0
+```
+
+Then run:
+```bash
+dart pub get
+```
+
+## Quick Start
+
+**Flutter app:**
+```dart
+import 'package:chirp/chirp.dart';
+
+void main() {
+  Chirp.root = ChirpLogger()
+    .addConsoleWriter(formatter: RainbowMessageFormatter());
+
+  try {
+    login();
+    Chirp.success('User logged in', data: {'userId': 'abc123'});
+  } catch (e, stack) {
+    Chirp.error('Error occurred', error: e, stackTrace: stack);
+  }
+
+  runApp(MyApp());
+}
+
+// Output:
+// 14:32:05.123 [success] User logged in (userId: "abc123")
+// 14:32:05.456 [error] Error occurred
+// Exception: Connection timeout
+// #0 login (auth.dart:42)
+```
+
+**Backend (Shelf, etc.):**
+```dart
+import 'package:chirp/chirp.dart';
+
+void main() {
+  Chirp.root = ChirpLogger()
+    .addConsoleWriter(formatter: JsonMessageFormatter());
+
+  final handler = (Request request) {
+    final logger = Chirp.root.child(context: {'requestId': request.headers['x-request-id']});
+    logger.info('Request received');
+    // ...
+  };
+}
+
+// Output:
+// {"timestamp":"2025-01-15T14:32:05.123","level":"info","message":"Request received","requestId":"req-abc"}
+```
+
+> **Zero-config:** Skip the setup - `Chirp.info()` works out of the box with sensible defaults.
 
 ## Why "Chirp"?
 
@@ -27,24 +87,6 @@ Birds chirp to express everything from danger to delight, your app chirps throug
 The name celebrates Dart and Flutter's feathered identity.
 
 ## Usage
-
-### Basic Logging - Static Methods
-
-Use static methods for quick logging without creating logger instances:
-
-```dart
-import 'package:chirp/chirp.dart';
-
-// Static methods on Chirp class
-Chirp.trace('Detailed trace information');
-Chirp.debug('Debug information');
-Chirp.info('Application started');
-Chirp.notice('User role changed'); // Normal but significant events
-Chirp.warning('Deprecated API used');
-Chirp.error('Failed to connect', error: e, stackTrace: st);
-Chirp.critical('Database connection lost');
-Chirp.wtf('Impossible state detected'); // What a Terrible Failure
-```
 
 ### Named Loggers
 
@@ -58,95 +100,46 @@ logger.error('Error occurred', error: Exception('Something went wrong'));
 
 ### Extension-Based Logging
 
-Log from any object with automatic instance tracking:
+Every object has a `chirp` logger that tracks which instance logged:
 
 ```dart
 class UserService {
   void fetchUser(String userId) {
     chirp.info('Fetching user: $userId');
-    // Simulate work
-    chirp.info('User fetched successfully');
   }
 }
 
-// Different instances get different hash codes
 final service1 = UserService();
 final service2 = UserService();
-service1.chirp.info('From service 1'); // Instance hash: a1b2
-service2.chirp.info('From service 2'); // Instance hash: c3d4
+service1.chirp.info('From service 1');
+service2.chirp.info('From service 2');
+
+// Output - different instances have different hashes:
+// 14:32:05.123 UserService@a1b2 [info] From service 1
+// 14:32:05.124 UserService@c3d4 [info] From service 2
 ```
 
-### When to Use `Chirp` vs `chirp` in Classes
+### When to Use `Chirp` vs `chirp`
 
-**Use `chirp` (extension) for instance methods:**
-- ✅ When you need to track and differentiate between multiple instances of the same class
-- ✅ When debugging object lifecycle issues (creation, state changes, disposal)
-- ✅ In services where multiple instances might exist simultaneously
-- ✅ When troubleshooting which specific instance is causing issues
+| Use Case | Method | Why |
+|----------|--------|-----|
+| Instance methods | `chirp.info()` | Tracks which instance logged (shows `@a1b2` hash) |
+| Static methods | `Chirp.info()` | No instance to track |
+| Top-level functions | `Chirp.info()` | No instance to track |
 
-```dart
-class ConnectionPool {
-  void connect() {
-    chirp.info('Connecting to database');
-    // Different pool instances will have different hashes
-  }
-}
-```
-
-**Output with `chirp` (instance tracking):**
-```
-18:30:45.123 connection_pool:42 connect ConnectionPool@a1b2 │ Connecting to database
-18:30:46.789 connection_pool:42 connect ConnectionPool@c3d4 │ Connecting to database
-                                                       ^^^^  <- Different instance hashes
-```
-
-**Use `Chirp` (static methods) for:**
-- ✅ Static methods and top-level functions
-- ✅ When instance differentiation isn't meaningful
-- ✅ Simple utility classes
-- ✅ When you want cleaner output without instance hashes
-
-```dart
-class ConfigLoader {
-  static void load() {
-    Chirp.info('Loading configuration');
-    // No instance hash needed - it's a static method
-  }
-}
-```
-
-**Output with `Chirp` (no instance tracking):**
-```
-18:30:45.123 config_loader:15 load ConfigLoader │ Loading configuration
-18:30:46.789 config_loader:15 load ConfigLoader │ Loading configuration
-                                                   <- Same output, no instance differentiation
-```
-
-**Mixed approach example:**
 ```dart
 class PaymentProcessor {
   static void validateConfig() {
-    Chirp.info('Validating payment configuration');  // Static: no instance
+    Chirp.info('Validating config');  // Static method → Chirp
   }
 
   void processPayment(double amount) {
-    chirp.info('Processing payment', data: {'amount': amount});  // Instance: track which processor
+    chirp.info('Processing payment');  // Instance method → chirp (shows @hash)
   }
 }
 ```
 
-**Output comparison:**
-```
-// Static method (Chirp) - no instance hash
-18:30:45.123 payment_processor:10 validateConfig PaymentProcessor │ Validating payment configuration
-
-// Instance method (chirp) - with instance hash
-18:30:46.234 payment_processor:14 processPayment PaymentProcessor@a1b2 │ Processing payment
-18:30:47.345 payment_processor:14 processPayment PaymentProcessor@c3d4 │ Processing payment
-                                                                 ^^^^  <- Different processors
-```
-
-### Child Loggers (Winston-Style)
+### Child Loggers
 
 Create child loggers that inherit their parent's writers configuration but add their own context. Perfect for per-request or per-transaction logging:
 
@@ -229,7 +222,7 @@ logger.info('Processing request');
 
 ### Log Levels
 
-Chirp provides 8 semantic log levels with comprehensive documentation:
+Chirp provides 9 semantic log levels with comprehensive documentation:
 
 | Level | Severity | Use For | Example |
 |-------|----------|---------|---------|
@@ -237,6 +230,7 @@ Chirp provides 8 semantic log levels with comprehensive documentation:
 | **debug** | 100 | Diagnostic information | Function parameters, state changes |
 | **info** | 200 | Routine operational messages (DEFAULT) | App started, request completed |
 | **notice** | 300 | Normal but significant events | Security events, configuration changes |
+| **success** | 310 | Positive outcome confirmation | Deployment succeeded, tests passed |
 | **warning** | 400 | Potentially problematic situations | Deprecated usage, resource limits |
 | **error** | 500 | Errors that prevent specific operations | API failures, validation errors |
 | **critical** | 600 | Severe errors affecting core functionality | Database connection lost |
@@ -247,6 +241,7 @@ Chirp.trace('Entering loop iteration', data: {'i': 42});
 Chirp.debug('Cache miss for key: $key');
 Chirp.info('User logged in', data: {'userId': 'user_123'});
 Chirp.notice('User role changed', data: {'userId': 'user_123', 'oldRole': 'user', 'newRole': 'admin'});
+Chirp.success('Deployment completed', data: {'version': '1.2.0'});
 Chirp.warning('API rate limit approaching', data: {'used': 950, 'limit': 1000});
 Chirp.error('Payment failed', error: e, stackTrace: st);
 Chirp.critical('Database connection lost', data: {'attempt': 3});
@@ -279,75 +274,18 @@ Chirp.root = ChirpLogger()
 
 ### Console Writers
 
-Chirp provides two console writers optimized for different use cases:
+| Writer | Output | Best For |
+|--------|--------|----------|
+| `PrintConsoleWriter` | `print()` → logcat/os_log | Production, CI/CD, release builds |
+| `DeveloperLogConsoleWriter` | `developer.log()` | Development (unlimited length, requires debugger) |
 
-#### `PrintConsoleWriter` - For logcat/os_log visibility
-
-Uses `print()` which routes through Android's logcat and iOS's os_log. Best for production debugging where you need logs visible in platform tools.
-
-```dart
-Chirp.root = ChirpLogger(
-  writers: [PrintConsoleWriter(formatter: RainbowMessageFormatter())],
-);
-```
-
-| Feature | Details |
-|---------|---------|
-| **Output method** | `print()` → logcat (Android) / os_log (iOS) |
-| **ANSI colors** | ✅ Supported |
-| **Message limit** | Android: 1024 chars, iOS: ~1024 bytes |
-| **Auto-chunking** | ✅ Messages split automatically |
-| **Rate limiting** | ✅ 2ms throttle between chunks (configurable) |
-| **Visibility** | `adb logcat`, Xcode console, `flutter logs`, IDE debug console |
-
-**Why the 1024 limit?** Android's `liblog` defines `LOG_BUF_SIZE=1024` in [`logger_write.cpp`](https://cs.android.com/android/platform/superproject/main/+/main:system/logging/liblog/logger_write.cpp;l=62). The Flutter engine calls `__android_log_print()` which truncates at this buffer size.
-
-#### `DeveloperLogConsoleWriter` - For unlimited length
-
-Uses `developer.log()` which bypasses platform logging limits via the Dart VM Service Protocol. Best for development when you need to see full JSON responses or stack traces.
+`PrintConsoleWriter` is the default (used by `addConsoleWriter()`). It auto-chunks long messages to handle Android's 1024-char limit.
 
 ```dart
-Chirp.root = ChirpLogger(
-  writers: [DeveloperLogConsoleWriter(name: 'myapp')],
-);
-```
-
-| Feature | Details |
-|---------|---------|
-| **Output method** | `developer.log()` → VM Service Protocol |
-| **ANSI colors** | ❌ Disabled (output has `[name]` prefix) |
-| **Message limit** | ♾️ Unlimited |
-| **Chunking** | Not needed |
-| **Rate limiting** | Not needed |
-| **Visibility** | Flutter DevTools, IDE debug console (requires debugger) |
-| **Release builds** | ❌ Not available (AOT strips VM service) |
-
-**Trade-off:** Logs don't appear in `adb logcat` or Xcode console - only in Flutter tooling when a debugger is attached.
-
-#### Choosing Between Writers
-
-| Scenario | Recommended Writer |
-|----------|-------------------|
-| Development with long JSON responses | `DeveloperLogConsoleWriter` |
-| Production debugging via `adb logcat` | `PrintConsoleWriter` |
-| CI/CD logs | `PrintConsoleWriter` |
-| Viewing logs in Android Studio logcat tab | `PrintConsoleWriter` |
-| Viewing logs in Flutter DevTools | Either (both work) |
-| Release builds | `PrintConsoleWriter` only |
-
-#### Using Both Writers
-
-For maximum flexibility, use both:
-
-```dart
-Chirp.root = ChirpLogger(
-  writers: [
-    // Always available, visible in logcat
-    PrintConsoleWriter(formatter: RainbowMessageFormatter()),
-    // Unlimited length when debugger attached
-    DeveloperLogConsoleWriter(name: 'myapp'),
-  ],
-);
+// Use both for maximum flexibility
+Chirp.root = ChirpLogger()
+  .addConsoleWriter()  // PrintConsoleWriter - always works
+  .addWriter(DeveloperLogConsoleWriter(name: 'myapp'));  // Unlimited when debugging
 ```
 
 ### Available Formatters
@@ -367,450 +305,57 @@ Chirp.root = ChirpLogger(
 08:30:45.123 UserService@a1b2 [info] User logged in (userId: "user_123", email: "user@example.com")
 ```
 
-## Span-Based Formatting (Optional, Advanced)
+## Span-Based Formatting (Advanced)
 
-Chirp's console formatters use a **span-based formatting system** - a composable tree of rendering elements similar to Flutter widgets. If you're familiar with Flutter's widget tree, you'll feel right at home: spans are composable, nestable, and each span knows how to render itself.
-
-> **When to use spans:** The span API is designed for **human-readable console output** with colors, formatting, and visual structure. For machine-readable logs (log files, log aggregators, cloud logging), use JSON formatters like `JsonChirpMessageFormatter` or `GcpChirpMessageFormatter` instead - they're simpler and more efficient for automated processing.
-
-### Spans Work Like Flutter Widgets
-
-Just like Flutter widgets, spans form a tree where each node is responsible for its own rendering:
+For custom console formatters, Chirp uses a **span-based system** similar to Flutter widgets. Spans are composable, nestable, and support ANSI colors.
 
 ```dart
-// Flutter Widget tree
-Column(
-  children: [
-    Text('Hello'),
-    Padding(
-      padding: EdgeInsets.all(8),
-      child: Text('World'),
-    ),
-  ],
-)
-
-// Chirp Span tree - same concept!
-SpanSequence([
-  PlainText('Hello'),
-  AnsiStyled(
-    foreground: Ansi16.blue,
-    child: PlainText('World'),
-  ),
-])
-```
-
-Key similarities:
-- **Composable**: Combine simple spans to create complex output
-- **Single child vs multi child**: `AnsiStyled` wraps one child, `SpanSequence` holds many
-- **Nested styling**: Colors and formatting cascade through the tree
-- **Declarative**: Describe what you want, not how to build it
-
-### SpanSequence - Your Starting Point
-
-Almost every formatter starts with `SpanSequence` - it's like Flutter's `Row`, rendering children one after another:
-
-```dart
-SpanSequence([
-  Timestamp(record.date),        // 14:32:05.123
-  Whitespace(),                  // ' '
-  BracketedLogLevel(record.level), // [INFO]
-  Whitespace(),                  // ' '
-  LogMessage(record.message),    // User logged in
-])
-// Output: 14:32:05.123 [INFO] User logged in
-```
-
-Nest sequences and styled spans to build complex output:
-
-```dart
-SpanSequence([
-  AnsiStyled(
-    foreground: Ansi16.brightBlack,
-    child: Timestamp(record.date),
-  ),
-  Whitespace(),
-  AnsiStyled(
-    foreground: Ansi16.green,
-    child: LogMessage(record.message),
-  ),
-])
-```
-
-### Creating Custom Spans
-
-Create your own spans by extending the base span classes:
-
-```dart
-/// A span that displays a request ID with cyan coloring
-class RequestIdSpan extends LeafSpan {
-  final String requestId;
-  RequestIdSpan(this.requestId);
-
-  @override
-  LogSpan build() {
-    // build() transforms this semantic span into renderable spans
-    return AnsiStyled(
-      foreground: Ansi16.cyan,
-      child: PlainText('[$requestId]'),
-    );
-  }
-}
-
-/// A span that shows an emoji based on log level
-class LevelEmojiSpan extends LeafSpan {
-  final ChirpLogLevel level;
-  LevelEmojiSpan(this.level);
-
-  @override
-  LogSpan build() {
-    final emoji = switch (level.severity) {
-      >= 500 => '🔴',  // Error+
-      >= 400 => '🟡',  // Warning
-      >= 200 => '🟢',  // Info
-      _ => '⚪',       // Debug/Trace
-    };
-    return PlainText(emoji);
-  }
-}
-```
-
-### Creating a Custom Span-Based Formatter
-
-To create your own formatter with complete control over the output, extend `SpanBasedFormatter`:
-
-```dart
-class MyConsoleFormatter extends SpanBasedFormatter {
-  @override
-  LogSpan buildSpan(LogRecord record) {
-    // Build your span tree - this is your "widget tree" for the log line
-    return SpanSequence([
-      // Emoji based on level
-      LevelEmojiSpan(record.level),
-      Whitespace(),
-
-      // Timestamp in gray
-      AnsiStyled(
-        foreground: Ansi16.brightBlack,
-        child: Timestamp(record.date),
-      ),
-      Whitespace(),
-
-      // Log message - colored by level
-      AnsiStyled(
-        foreground: _colorForLevel(record.level),
-        child: LogMessage(record.message),
-      ),
-
-      // Optional: show data if present
-      if (record.data?.isNotEmpty ?? false) ...[
-        NewLine(),
-        MultilineData(record.data),
-      ],
-    ]);
-  }
-
-  IndexedColor _colorForLevel(ChirpLogLevel level) {
-    return switch (level.severity) {
-      >= 500 => Ansi16.red,
-      >= 400 => Ansi16.yellow,
-      _ => Ansi16.white,
-    };
-  }
-}
-```
-
-Use your formatter:
-```dart
-Chirp.root = ChirpLogger(
-  writers: [
-    ConsoleChirpMessageWriter(formatter: MyConsoleFormatter()),
-  ],
-);
-```
-
-### Transforming Existing Formatters
-
-Don't want to build a formatter from scratch? Use **span transformers** to modify the output of existing formatters. This is perfect for small tweaks:
-
-```dart
+// Add emoji prefix using span transformers
 final formatter = RainbowMessageFormatter(
   spanTransformers: [
     (tree, record) {
-      // The tree is mutable - find spans and modify them!
-
-      // Replace timestamp with emoji
-      tree.findFirst<Timestamp>()?.replaceWith(
-        LevelEmojiSpan(record.level),
+      final emoji = record.level.severity >= 500 ? '🔴 ' : '🟢 ';
+      tree.findFirst<LogMessage>()?.wrap(
+        (child) => SpanSequence(children: [PlainText(emoji), child]),
       );
     },
   ],
 );
 ```
 
-**Tree Navigation** - find spans anywhere in the tree:
-```dart
-tree.findFirst<Timestamp>();     // First matching span
-tree.findAll<AnsiStyled>();     // All matching spans
-tree.allDescendants;             // Every span in the tree
-```
-
-**Tree Modification** - mutate the tree before rendering:
-```dart
-// Replace a span with something else
-span.replaceWith(PlainText('replacement'));
-
-// Remove a span entirely
-span.remove();
-
-// Wrap a span with another span
-span.wrap((child) => AnsiStyled(
-  foreground: Ansi16.red,
-  child: child,
-));
-```
-
-### Transformer Examples
-
-**Add emoji prefix to messages:**
-```dart
-(tree, record) {
-  final emoji = switch (record.level.name) {
-    'error' => '🔴 ',
-    'warning' => '🟡 ',
-    'info' => '🟢 ',
-    _ => '⚪ ',
-  };
-  tree.findFirst<LogMessage>()?.wrap(
-    (child) => SpanSequence([PlainText(emoji), child]),
-  );
-}
-```
-
-**Remove timestamps (useful for tests with golden output):**
-```dart
-(tree, record) {
-  tree.findFirst<Timestamp>()?.remove();
-}
-```
-
-**Highlight errors with red background:**
-```dart
-(tree, record) {
-  if (record.level.severity >= 500) {
-    tree.findFirst<LogMessage>()?.wrap(
-      (child) => AnsiStyled(
-        background: Ansi16.red,
-        foreground: Ansi16.white,
-        child: child,
-      ),
-    );
-  }
-}
-```
-
-**Add borders around critical logs:**
-```dart
-(tree, record) {
-  if (record.level.name == 'critical') {
-    // Wrap the entire tree
-    tree.wrap((child) => Bordered(
-      style: BoxBorderStyle.double,
-      child: child,
-    ));
-  }
-}
-```
-
-### Smart Color Nesting
-
-The span system handles nested colors correctly. When you pop a color, it restores the previous color instead of resetting to default:
-
-```dart
-AnsiStyled(
-  foreground: Ansi16.red,
-  child: SpanSequence([
-    PlainText('red '),
-    AnsiStyled(
-      foreground: Ansi16.blue,
-      child: PlainText('blue'),
-    ),
-    PlainText(' red again'),  // Correctly returns to red!
-  ]),
-)
-```
-
-This "just works" because colors are managed as a stack internally.
-
-### Built-in Span Reference
-
-**Basic Text Spans:**
-```dart
-PlainText('hello')     // hello
-Whitespace()           // (single space)
-NewLine()              // (line break)
-EmptySpan()            // (renders nothing - like SizedBox.shrink())
-```
-
-**Semantic Spans** - these know how to format log data:
-```dart
-Timestamp(dateTime)                                    // 14:32:05.123
-FullTimestamp(dateTime)                                // 2025-01-15 14:32:05.123
-BracketedLogLevel(ChirpLogLevel.info)                  // [info]
-LogMessage('User logged in')                           // User logged in
-LoggerName('payment')                                  // payment
-ClassName('UserService', instanceHash: 'a1b2')         // UserService@a1b2
-MethodName('fetchUser')                                // fetchUser
-DartSourceCodeLocation(fileName: 'user.dart', line: 42) // user.dart:42
-InlineData({'userId': '123'})                          //  (userId: "123")
-MultilineData({'a': 1, 'b': 2})                        // a: 1
-                                                       // b: 2
-ErrorSpan(exception)                                   // Exception: Something went wrong
-StackTraceSpan(stackTrace)                             // #0 main (file.dart:10)
-                                                       // #1 ...
-```
-
-**Container Spans:**
-```dart
-SpanSequence([a, b, c])                // Renders a, b, c in order
-AnsiStyled(foreground: Ansi16.red, child: span)  // Colored text
-Bordered(style: BoxBorderStyle.rounded, child: span)  // ╭─────╮
-                                                      // │text │
-                                                      // ╰─────╯
-Surrounded(prefix: PlainText('['), child: span, suffix: PlainText(']'))
-// Only renders if child is non-null: [text] or nothing
-```
-
-### When to Use Spans vs JSON
-
-| Use Case | Recommended Approach |
-|----------|---------------------|
-| Development console | Span-based formatters (`RainbowMessageFormatter`) |
-| CI/CD logs | Span-based or simple text formatters |
-| Log files | `JsonMessageFormatter` |
-| Cloud logging (GCP, AWS) | JSON formatters |
-| Log aggregators (ELK, Datadog) | JSON formatters |
-| Debugging with colors | Span-based formatters |
-
-**Example: Multiple writers for different outputs:**
-```dart
-Chirp.root = ChirpLogger()
-  // Pretty console output for humans
-  .addConsoleWriter(formatter: RainbowMessageFormatter())
-  // JSON for log files - no spans needed
-  .addConsoleWriter(
-    formatter: JsonMessageFormatter(),
-    output: (msg) => logFile.writeAsStringSync('$msg\n', mode: FileMode.append),
-  );
-```
+See [docs/SPANS.md](docs/SPANS.md) for the full span API documentation.
 
 ## Configuration
 
 ### Color Support
 
-Chirp auto-detects terminal color support based on environment variables, CI systems, and platform capabilities. When auto-detection doesn't work correctly, you can override it.
-
-#### Environment Variables
-
-**Disable colors:**
-```bash
-# Standard way to disable colors (https://no-color.org/)
-NO_COLOR=1 dart run my_app.dart
-NO_COLOR=1 flutter run
-```
-
-**Force specific color level:**
-```bash
-# Force colors off
-FORCE_COLOR=0 dart run
-
-# Force 16 colors
-FORCE_COLOR=1 dart run
-
-# Force 256 colors
-FORCE_COLOR=2 dart run
-
-# Force true color (24-bit)
-FORCE_COLOR=3 dart run
-```
-
-**Set terminal color capability:**
-```bash
-# Modern terminals set this automatically
-COLORTERM=truecolor dart run
-COLORTERM=24bit dart run
-```
-
-#### Flutter Apps
-
-Flutter apps don't inherit shell environment variables at runtime. Use `--dart-define` instead:
+Chirp auto-detects terminal color support. Override via environment or code:
 
 ```bash
-# Disable colors in Flutter app
-flutter run --dart-define=NO_COLOR=1
-
-# Force true color
-flutter run --dart-define=FORCE_COLOR=3
+NO_COLOR=1 dart run           # Disable colors (https://no-color.org/)
+FORCE_COLOR=3 dart run        # Force truecolor (0=off, 1=16, 2=256, 3=truecolor)
 ```
-
-Then check in your code:
-```dart
-// Check compile-time defines
-const noColor = bool.hasEnvironment('NO_COLOR');
-const forceColor = String.fromEnvironment('FORCE_COLOR', defaultValue: '');
-
-if (noColor) {
-  Chirp.root = ChirpLogger().addConsoleWriter(colorSupport: TerminalColorSupport.none);
-}
-```
-
-#### Backend/Server Apps
-
-For Dart backend applications, environment variables work directly:
-
-```bash
-# Docker
-docker run -e NO_COLOR=1 my-dart-app
-
-# Kubernetes (in deployment.yaml)
-env:
-  - name: FORCE_COLOR
-    value: "3"
-
-# systemd service
-Environment="COLORTERM=truecolor"
-```
-
-#### Programmatic Override
-
-Override color support directly in code:
 
 ```dart
-// Disable colors
+// Programmatic override
 Chirp.root = ChirpLogger()
-  .addConsoleWriter(colorSupport: TerminalColorSupport.none);
-
-// Force truecolor
-Chirp.root = ChirpLogger()
-  .addConsoleWriter(colorSupport: TerminalColorSupport.truecolor);
-
-// Force 256-color mode
-Chirp.root = ChirpLogger()
-  .addConsoleWriter(colorSupport: TerminalColorSupport.ansi256);
+  .addConsoleWriter(colorSupport: TerminalColorSupport.none);  // or .truecolor
 ```
-
-#### Detection Priority
-
-Chirp checks these in order:
-1. `NO_COLOR` env var → disables colors
-2. `FORCE_COLOR` env var → forces specific level (0/1/2/3)
-3. `COLORTERM` env var → truecolor/24bit/ansi256
-4. CI systems (GitHub Actions, GitLab CI → truecolor)
-5. Windows Terminal (`WT_SESSION`) → truecolor
-6. `TERM` patterns (xterm-256color, etc.)
-7. Flutter apps → truecolor (Android Studio, VS Code support it)
-8. `stdout.supportsAnsiEscapes` fallback
 
 ### Root Logger
+
+#### Default Behavior (Zero Configuration)
+
+Chirp works immediately without any setup. When you call `Chirp.info()` or use the `.chirp` extension, logs are automatically printed to the console with colorful formatting:
+
+```dart
+// No setup needed - this just works!
+Chirp.info('Hello, Chirp!');
+```
+
+The default logger uses `PrintConsoleWriter` with `RainbowMessageFormatter`, which outputs colorful logs to the console via `print()`.
+
+#### Custom Configuration
 
 Configure the global root logger that all child loggers and extensions inherit from:
 
@@ -824,6 +369,101 @@ void main() {
   runApp();
 }
 ```
+
+**Important:** Always **replace** `Chirp.root` entirely rather than modifying it:
+
+```dart
+// ✅ Correct - replaces the logger
+Chirp.root = ChirpLogger().addConsoleWriter();
+
+// ❌ Wrong - throws StateError (by design, to prevent test pollution)
+Chirp.root.addWriter(myWriter);
+```
+
+### Log Level Filtering
+
+Filter logs by severity at the logger or writer level:
+
+#### Logger-Level Filtering
+
+Set a minimum log level for an entire logger hierarchy:
+
+```dart
+final logger = ChirpLogger(name: 'verbose-lib')
+  .setMinLogLevel(ChirpLogLevel.warning)  // Only warning and above
+  .addConsoleWriter();
+
+logger.debug('Ignored');  // Below threshold
+logger.warning('Logged'); // At threshold
+```
+
+#### Writer-Level Filtering
+
+Different writers can have different minimum levels:
+
+```dart
+Chirp.root = ChirpLogger()
+  // Console shows everything
+  .addConsoleWriter()
+  // File only gets errors
+  .addConsoleWriter(
+    minLogLevel: ChirpLogLevel.error,
+    output: (msg) => errorLog.writeAsStringSync('$msg\n', mode: FileMode.append),
+  );
+```
+
+### Interceptors
+
+Transform or filter log records before they reach writers:
+
+```dart
+class RedactSecretsInterceptor implements ChirpInterceptor {
+  @override
+  bool get requiresCallerInfo => false;
+
+  @override
+  LogRecord? intercept(LogRecord record) {
+    // Transform: modify and return record
+    // Reject: return null to drop the record
+    // Pass through: return record unchanged
+    return record;
+  }
+}
+
+final logger = ChirpLogger(name: 'api')
+  .addInterceptor(RedactSecretsInterceptor())
+  .addConsoleWriter();
+```
+
+See [`examples/simple/bin/main.dart`](examples/simple/bin/main.dart) for interceptor examples.
+
+### Library Logger Adoption
+
+Libraries can expose loggers that app developers can optionally adopt to see internal logs:
+
+```dart
+// library.dart - Library exposes a silent logger
+final httpLogger = ChirpLogger(name: 'http_client');
+
+void get(String url) {
+  httpLogger.debug('GET $url');
+}
+```
+
+```dart
+// app.dart - App adopts the library logger
+void main() {
+  Chirp.root = ChirpLogger().addConsoleWriter();
+  Chirp.root.adopt(httpLogger);  // Library logs now visible!
+
+  get('https://api.example.com');
+}
+
+// Output:
+// 14:32:05.123 http_client [debug] GET https://api.example.com
+```
+
+See [`examples/simple/bin/library.dart`](examples/simple/bin/library.dart) and [`examples/simple/bin/app.dart`](examples/simple/bin/app.dart) for a complete example.
 
 ### Custom Formatters
 
@@ -880,15 +520,80 @@ Future<void> handleRequest(Request req) async {
 
 All logs from this request will include `requestId`, `method`, `path`, and (after auth) `userId` automatically.
 
+## Testing
+
+Capture logs in tests by providing a custom output function:
+
+```dart
+import 'package:chirp/chirp.dart';
+import 'package:test/test.dart';
+
+void main() {
+  late List<String> capturedLogs;
+
+  setUp(() {
+    capturedLogs = [];
+    // Replace root logger for each test
+    Chirp.root = ChirpLogger().addConsoleWriter(output: capturedLogs.add);
+  });
+
+  tearDown(() {
+    // Reset to default behavior
+    Chirp.root = null;
+  });
+
+  test('logs user login', () {
+    myLoginFunction();
+
+    expect(capturedLogs, hasLength(1));
+    expect(capturedLogs.first, contains('User logged in'));
+  });
+}
+```
+
+For testing with specific formatters or to verify structured data:
+
+```dart
+test('logs structured data correctly', () {
+  final records = <LogRecord>[];
+
+  // Use a custom writer that captures LogRecords directly
+  Chirp.root = ChirpLogger()
+    ..addWriter(_CapturingWriter(records));
+
+  Chirp.info('Payment processed', data: {'amount': 99.99});
+
+  expect(records.single.data, {'amount': 99.99});
+});
+
+class _CapturingWriter implements ChirpWriter {
+  final List<LogRecord> records;
+  _CapturingWriter(this.records);
+
+  @override
+  void write(LogRecord record) => records.add(record);
+
+  @override
+  bool get requiresCallerInfo => false;
+
+  // ... other required overrides
+}
+```
+
 ## Examples
 
-See [example/main.dart](example/main.dart) for a comprehensive example covering:
-- All 8 log levels (trace through wtf)
-- Named loggers with structured data
-- Child loggers for per-request context
-- Instance tracking with `.chirp` extension
-- Multiple writers with different formats
-- Span transformers for customizing output
+See [`examples/simple/bin/`](examples/simple/bin/) for runnable examples:
+
+| File | Description |
+|------|-------------|
+| [`basic.dart`](examples/simple/bin/basic.dart) | Zero-config logging |
+| [`log_levels.dart`](examples/simple/bin/log_levels.dart) | All 9 log levels + custom levels |
+| [`child_loggers.dart`](examples/simple/bin/child_loggers.dart) | Context inheritance |
+| [`instance_tracking.dart`](examples/simple/bin/instance_tracking.dart) | The `.chirp` extension |
+| [`multiple_writers.dart`](examples/simple/bin/multiple_writers.dart) | Console + JSON output |
+| [`interceptors.dart`](examples/simple/bin/interceptors.dart) | Filtering and transforming logs |
+| [`library.dart`](examples/simple/bin/library.dart) / [`app.dart`](examples/simple/bin/app.dart) | Library logger adoption |
+| [`main.dart`](examples/simple/bin/main.dart) | Span transformers (advanced) |
 
 ## License
 
