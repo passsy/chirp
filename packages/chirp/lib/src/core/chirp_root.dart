@@ -15,8 +15,6 @@ import 'package:chirp/src/writers/console_writer.dart';
 /// This class provides static logging methods that work out of the box.
 /// Logs will print to console automatically without any configuration.
 ///
-/// For silent logging (library use), depend on `chirp_protocol` instead.
-///
 /// ## Default Behavior
 ///
 /// By default, [Chirp.root] is `null` and all logging goes through an internal
@@ -252,9 +250,6 @@ class Chirp {
 }
 
 /// Extension on [ChirpLogger] to add convenience methods for console writers.
-///
-/// This extension adds the [addConsoleWriter] method that requires implementation
-/// classes from chirp (not available in chirp_protocol).
 extension ChirpLoggerConsoleWriterExt on ChirpLogger {
   /// Adds a [PrintConsoleWriter] - logs via `print()` to logcat/os_log.
   ///
@@ -395,9 +390,6 @@ final Expando<ChirpLogger> _instanceLoggerCache = Expando('chirp');
 /// which specific object instance produced each log entry.
 ///
 /// ## Note for Library Authors
-///
-/// If you're writing a library that depends on `chirp_protocol` (to stay silent
-/// by default), create your own logger instead:
 ///
 /// ```dart
 /// final logger = ChirpLogger(name: 'my_library');

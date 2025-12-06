@@ -32,14 +32,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Test chirp_protocol package
-      - name: Get dependencies (chirp_protocol)
-        run: dart pub get
-        working-directory: packages/chirp_protocol
-      - name: Run tests (chirp_protocol)
-        run: dart test
-        working-directory: packages/chirp_protocol
-
       # Test chirp package
       - name: Get dependencies (chirp)
         run: dart pub get

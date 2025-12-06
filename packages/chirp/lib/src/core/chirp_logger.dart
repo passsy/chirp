@@ -877,7 +877,7 @@ class ChirpLogger {
 
 /// Soft-private extension for package-internal use.
 ///
-/// This extension is intentionally not exported from `chirp_protocol.dart`.
+/// This extension is intentionally not exported from `chirp_logger.dart`.
 /// It provides internal APIs needed for cross-file communication within the
 /// package (e.g., between [ChirpWriter] and [ChirpLogger]).
 ///

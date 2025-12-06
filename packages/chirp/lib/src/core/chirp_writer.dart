@@ -142,7 +142,7 @@ final Expando<List<ChirpLogger>> _writerLoggers = Expando('writerLoggers');
 
 /// Soft-private extension for package-internal use.
 ///
-/// This extension is intentionally not exported from `chirp_protocol.dart`.
+/// This extension is intentionally not exported from `chirp_writer.dart`.
 /// It provides internal APIs needed for cross-file communication within the
 /// package (e.g., between [ChirpWriter] and [ChirpLogger]).
 ///
