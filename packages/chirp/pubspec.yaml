@@ -4,6 +4,10 @@ description: >-
   child loggers, structured logging, and span-based formatting.
 version: 0.6.0
 repository: https://github.com/passsy/chirp
+topics:
+  - logging
+  - ansi
+  - error
 
 environment:
   sdk: ^3.0.0
