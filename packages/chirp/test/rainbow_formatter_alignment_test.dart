@@ -11,14 +11,17 @@ void main() {
       );
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
           'endpoint': '/api/profile',
         },
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -37,26 +40,32 @@ void main() {
 
       final entry = LogRecord(
         message: 'Short',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         loggerName: 'API',
         data: {'key': 'value'},
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
-      expect(result, '10:23:45.123 API [info] Short (key: "value")');
+      expect(result, '10:23:45.123 [info] API Short (key: "value")');
     });
 
     test('multiline message outputs each line', () {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Line 1\nLine 2\nLine 3',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -67,7 +76,7 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         loggerName: 'VeryLongLoggerNameThatExceedsTheDefaultMetaWidth',
         caller: StackTrace.fromString(
           '#0      longMethodName (package:app/file.dart:100:5)',
@@ -75,13 +84,16 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        '10:23:45.123 file:100 VeryLongLoggerNameThatExceedsTheDefaultMetaWidth longMethodName [info] Test message (key: "value")',
+        '10:23:45.123 [info] file:100 VeryLongLoggerNameThatExceedsTheDefaultMetaWidth longMethodName Test message (key: "value")',
       );
     });
   });
@@ -92,24 +104,27 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      DeviceManager._startAutoConnectScanning.<anonymous closure>.<anonymous closure> (package:app/device_manager.dart:809:5)',
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        startsWith('10:23:45.123 device_manager:809 _TestClass@'),
+        startsWith('10:23:45.123 [info] device_manager:809 _TestClass@'),
       );
       expect(
         result,
-        contains(' _startAutoConnectScanning [info] Test message'),
+        contains(' _startAutoConnectScanning Test message'),
       );
       expect(result, isNot(contains('.<anonymous closure>')));
     });
@@ -118,19 +133,22 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         caller: StackTrace.fromString(
           '#0      UserService.logStatic.<anonymous closure> (package:app/user_service.dart:100:5)',
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        '10:23:45.123 user_service:100 UserService logStatic [info] Test message',
+        '10:23:45.123 [info] user_service:100 UserService logStatic Test message',
       );
     });
 
@@ -138,19 +156,22 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         caller: StackTrace.fromString(
           '#0      processData.<anonymous closure>.<anonymous closure> (package:app/utils.dart:42:5)',
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        '10:23:45.123 utils:42 processData [info] Test message',
+        '10:23:45.123 [info] utils:42 processData Test message',
       );
     });
 
@@ -159,22 +180,25 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      MyClass.myMethod.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:app/my_class.dart:50:5)',
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        startsWith('10:23:45.123 my_class:50 _TestClass@'),
+        startsWith('10:23:45.123 [info] my_class:50 _TestClass@'),
       );
-      expect(result, contains(' myMethod [info] Test message'));
+      expect(result, contains(' myMethod Test message'));
     });
 
     test('preserves method name when no anonymous closure present', () {
@@ -182,22 +206,25 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      MyClass.normalMethod (package:app/my_class.dart:50:5)',
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        startsWith('10:23:45.123 my_class:50 _TestClass@'),
+        startsWith('10:23:45.123 [info] my_class:50 _TestClass@'),
       );
-      expect(result, contains(' normalMethod [info] Test message'));
+      expect(result, contains(' normalMethod Test message'));
     });
 
     test(
@@ -207,22 +234,25 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      _TestClass.processData.<anonymous closure> (package:app/test_class.dart:100:5)',
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        startsWith('10:23:45.123 test_class:100 _TestClass@'),
+        startsWith('10:23:45.123 [info] test_class:100 _TestClass@'),
       );
-      expect(result, contains(' processData [info] Test message'));
+      expect(result, contains(' processData Test message'));
     });
   });
 
@@ -231,10 +261,13 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: true);
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+            colorSupport: TerminalColorSupport.ansi256),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -248,10 +281,13 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -263,20 +299,23 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         loggerName: 'TestLogger',
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
       expect(
         result,
-        startsWith('10:23:45.123 TestLogger _TestClass@'),
+        startsWith('10:23:45.123 [info] TestLogger _TestClass@'),
       );
-      expect(result, endsWith(' [info] Test message'));
+      expect(result, endsWith(' Test message'));
     });
   });
 
@@ -287,14 +326,17 @@ void main() {
       );
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
           'action': 'login',
         },
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -312,14 +354,17 @@ void main() {
       );
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
           'action': 'login',
         },
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -335,13 +380,16 @@ void main() {
       );
       final entry = LogRecord(
         message: 'User action',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
         },
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -357,7 +405,7 @@ void main() {
       );
       final entry = LogRecord(
         message: 'Request',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'method': 'POST',
           'endpoint': '/api/users',
@@ -365,7 +413,10 @@ void main() {
         },
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -381,10 +432,13 @@ void main() {
       );
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -398,11 +452,14 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -410,10 +467,10 @@ void main() {
       final hash = identityHashCode(instance).toRadixString(16).padLeft(4, '0');
       final shortHash = hash.substring(hash.length >= 4 ? hash.length - 4 : 0);
 
-      // Should be exactly: "timestamp _TestClass@XXXX [info] message"
+      // Should be exactly: "timestamp [info] _TestClass@XXXX message"
       expect(
         result,
-        '10:23:45.123 _TestClass@$shortHash [info] Test message',
+        '10:23:45.123 [info] _TestClass@$shortHash Test message',
       );
 
       // Verify only one @ in the class portion
@@ -427,11 +484,14 @@ void main() {
       final instance = _TestClass();
       final entry = LogRecord(
         message: 'Test',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -452,11 +512,14 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Operation failed',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Something went wrong'),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -471,14 +534,17 @@ void main() {
       final formatter = RainbowMessageFormatter();
       final entry = LogRecord(
         message: 'Error occurred',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Test error'),
         stackTrace: StackTrace.fromString(
           '#0      main (file.dart:10:5)\n#1      test (file.dart:20:3)',
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 

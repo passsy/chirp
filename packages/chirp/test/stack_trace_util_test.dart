@@ -1,4 +1,4 @@
-import 'package:chirp/src/stack_trace_util.dart';
+import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
 void main() {

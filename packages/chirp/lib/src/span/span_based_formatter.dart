@@ -1,4 +1,5 @@
 import 'package:chirp/chirp.dart';
+import 'package:meta/meta.dart';
 
 /// Base class for formatters that use the span-based templating system.
 ///
@@ -13,7 +14,7 @@ import 'package:chirp/chirp.dart';
 ///
 ///   @override
 ///   LogSpan buildSpan(LogRecord record) {
-///     return SpanSequence([
+///     return SpanSequence(children: [
 ///       Timestamp(record.date),
 ///       Whitespace(),
 ///       LogMessage(record.message),
@@ -21,6 +22,7 @@ import 'package:chirp/chirp.dart';
 ///   }
 /// }
 /// ```
+@experimental
 abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
   /// Transformers to apply to the span tree before rendering.
   ///
@@ -76,6 +78,7 @@ abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
 ///   root.findFirst<Timestamp>()?.replaceWith(LevelEmoji(record.level));
 /// }
 /// ```
+@experimental
 typedef SpanTransformer = void Function(
   LogSpan span,
   LogRecord record,
@@ -102,6 +105,7 @@ typedef SpanTransformer = void Function(
 ///   ],
 /// );
 /// ```
+@experimental
 class SpanFormatOptions extends FormatOptions {
   const SpanFormatOptions({
     this.spanTransformers = const [],

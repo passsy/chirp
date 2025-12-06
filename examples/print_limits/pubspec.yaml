@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  flutter: '3.38.3'
+  flutter: '^3.38.3'
   sdk: ^3.9.0
 
 dependencies:
@@ -16,8 +16,6 @@ dependencies:
 dependency_overrides:
   chirp:
     path: ../../packages/chirp
-  chirp_protocol:
-    path: ../../packages/chirp_protocol
 
 dev_dependencies:
   flutter_test:

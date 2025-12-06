@@ -6,12 +6,15 @@ import 'package:test/test.dart';
 void main() {
   group('Colored', () {
     test('applies color to each line of multi-line strings', () {
-      final span = AnsiColored(
-        foreground: XtermColor.red1_196,
+      final span = AnsiStyled(
+        foreground: Ansi256.red1_196,
         child: PlainText('line1\nline2\nline3'),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: true);
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+            colorSupport: TerminalColorSupport.ansi256),
+      );
       renderSpan(span, buffer);
       final result = buffer.toString();
 
@@ -28,19 +31,22 @@ void main() {
 
     test('restores parent color after nested multi-line color', () {
       // Parent: red, nested middle line: blue
-      final span = AnsiColored(
-        foreground: XtermColor.red1_196,
-        child: SpanSequence([
+      final span = AnsiStyled(
+        foreground: Ansi256.red1_196,
+        child: SpanSequence(children: [
           PlainText('red1\n'),
-          AnsiColored(
-            foreground: XtermColor.blue1_21,
+          AnsiStyled(
+            foreground: Ansi256.blue1_21,
             child: PlainText('blue\n'),
           ),
           PlainText('red2'),
         ]),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: true);
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+            colorSupport: TerminalColorSupport.ansi256),
+      );
       renderSpan(span, buffer);
       final result = buffer.toString();
 
@@ -58,12 +64,15 @@ void main() {
     });
 
     test('handles trailing newline in colored text', () {
-      final span = AnsiColored(
-        foreground: XtermColor.red1_196,
+      final span = AnsiStyled(
+        foreground: Ansi256.red1_196,
         child: PlainText('text\n'),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: true);
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+            colorSupport: TerminalColorSupport.ansi256),
+      );
       renderSpan(span, buffer);
       final result = buffer.toString();
 
@@ -79,19 +88,22 @@ void main() {
     test('nested Colored colors override parent colors', () {
       // Parent: red, Child: blue
       // "Hello " should be red, "World" should be blue
-      final span = AnsiColored(
-        foreground: XtermColor.red1_196, // red
-        child: SpanSequence([
+      final span = AnsiStyled(
+        foreground: Ansi256.red1_196, // red
+        child: SpanSequence(children: [
           PlainText('Hello '),
-          AnsiColored(
-            foreground: XtermColor.blue1_21, // blue
+          AnsiStyled(
+            foreground: Ansi256.blue1_21, // blue
             child: PlainText('World'),
           ),
           PlainText('!'),
         ]),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: true);
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+            colorSupport: TerminalColorSupport.ansi256),
+      );
       renderSpan(span, buffer);
       final result = buffer.toString();
 
@@ -117,7 +129,7 @@ void main() {
     test('replaces Timestamp with level emoji', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
       );
 
@@ -130,7 +142,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -143,7 +158,7 @@ void main() {
     test('wraps Timestamp with custom span', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
       );
 
@@ -158,7 +173,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -169,7 +187,7 @@ void main() {
     test('removes Timestamp entirely', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
       );
 
@@ -181,7 +199,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -193,7 +214,7 @@ void main() {
     test('wraps entire WTF log with Bordered using root.wrap', () {
       final record = LogRecord(
         message: 'WTF error',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.wtf,
       );
 
@@ -214,14 +235,17 @@ void main() {
               (child) => Bordered(
                 child: child,
                 style: BoxBorderStyle.rounded,
-                borderColor: XtermColor.red3_160,
+                borderColor: Ansi256.red3_160,
               ),
             );
           },
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -239,7 +263,7 @@ void main() {
   group('LogSpan tree manipulation', () {
     group('replaceWith', () {
       test('replaces a leaf span in parent', () {
-        final sequence = SpanSequence([
+        final sequence = SpanSequence(children: [
           PlainText('before'),
           PlainText('target'),
           PlainText('after'),
@@ -248,21 +272,27 @@ void main() {
         final target = sequence.children[1];
         target.replaceWith(PlainText('replaced'));
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'beforereplacedafter');
       });
 
       test('replaces nested span', () {
-        final outer = AnsiColored(
-          foreground: XtermColor.red1_196,
+        final outer = AnsiStyled(
+          foreground: Ansi256.red1_196,
           child: PlainText('nested'),
         );
-        final sequence = SpanSequence([outer]);
+        final sequence = SpanSequence(children: [outer]);
 
         outer.child!.replaceWith(PlainText('replaced'));
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'replaced');
       });
@@ -273,7 +303,7 @@ void main() {
       });
 
       test('updates parent references correctly', () {
-        final sequence = SpanSequence([PlainText('child')]);
+        final sequence = SpanSequence(children: [PlainText('child')]);
         final newSpan = PlainText('new');
 
         sequence.children.first.replaceWith(newSpan);
@@ -284,7 +314,7 @@ void main() {
 
     group('remove', () {
       test('removes span from parent', () {
-        final sequence = SpanSequence([
+        final sequence = SpanSequence(children: [
           PlainText('a'),
           PlainText('b'),
           PlainText('c'),
@@ -292,7 +322,10 @@ void main() {
 
         sequence.children[1].remove();
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'ac');
       });
@@ -303,7 +336,7 @@ void main() {
       });
 
       test('clears parent reference after removal', () {
-        final sequence = SpanSequence([PlainText('child')]);
+        final sequence = SpanSequence(children: [PlainText('child')]);
         final child = sequence.children.first;
 
         child.remove();
@@ -314,14 +347,14 @@ void main() {
 
     group('wrap', () {
       test('wraps a span with colored', () {
-        final sequence = SpanSequence([PlainText('hello')]);
+        final sequence = SpanSequence(children: [PlainText('hello')]);
         final child = sequence.children.first;
 
         child.wrap(
-          (c) => AnsiColored(foreground: XtermColor.red1_196, child: c),
+          (c) => AnsiStyled(foreground: Ansi256.red1_196, child: c),
         );
 
-        expect(sequence.children.first, isA<AnsiColored>());
+        expect(sequence.children.first, isA<AnsiStyled>());
         expect(
           (sequence.children.first as SingleChildSpan).child,
           isA<PlainText>(),
@@ -329,14 +362,17 @@ void main() {
       });
 
       test('preserves rendering after wrap', () {
-        final sequence = SpanSequence([PlainText('hello')]);
+        final sequence = SpanSequence(children: [PlainText('hello')]);
         final child = sequence.children.first;
 
         child.wrap(
-          (c) => AnsiColored(foreground: XtermColor.red1_196, child: c),
+          (c) => AnsiStyled(foreground: Ansi256.red1_196, child: c),
         );
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'hello');
       });
@@ -350,16 +386,16 @@ void main() {
 
       test('finds nested span', () {
         final timestamp = Timestamp(DateTime.now());
-        final sequence = SpanSequence([
+        final sequence = SpanSequence(children: [
           PlainText('before'),
-          AnsiColored(child: timestamp),
+          AnsiStyled(child: timestamp),
         ]);
 
         expect(sequence.findFirst<Timestamp>(), timestamp);
       });
 
       test('returns null when not found', () {
-        final sequence = SpanSequence([PlainText('hello')]);
+        final sequence = SpanSequence(children: [PlainText('hello')]);
         expect(sequence.findFirst<Timestamp>(), isNull);
       });
     });
@@ -369,9 +405,9 @@ void main() {
         final t1 = PlainText('a');
         final t2 = PlainText('b');
         final t3 = PlainText('c');
-        final sequence = SpanSequence([
+        final sequence = SpanSequence(children: [
           t1,
-          AnsiColored(child: t2),
+          AnsiStyled(child: t2),
           t3,
         ]);
 
@@ -393,7 +429,7 @@ void main() {
 
       test('returns child for single child span', () {
         final child = PlainText('child');
-        final span = AnsiColored(child: child);
+        final span = AnsiStyled(child: child);
         expect(span.allChildren.toList(), [child]);
       });
 
@@ -401,7 +437,7 @@ void main() {
         final a = PlainText('a');
         final b = PlainText('b');
         final c = PlainText('c');
-        final span = SpanSequence([a, b, c]);
+        final span = SpanSequence(children: [a, b, c]);
         expect(span.allChildren.toList(), [a, b, c]);
       });
     });
@@ -415,8 +451,8 @@ void main() {
       test('returns self and all descendants', () {
         final a = PlainText('a');
         final b = PlainText('b');
-        final inner = AnsiColored(child: b);
-        final sequence = SpanSequence([a, inner]);
+        final inner = AnsiStyled(child: b);
+        final sequence = SpanSequence(children: [a, inner]);
 
         final descendants = sequence.allDescendants.toList();
         expect(descendants, [sequence, a, inner, b]);
@@ -431,8 +467,8 @@ void main() {
 
       test('returns ancestors from parent to root', () {
         final deep = PlainText('deep');
-        final middle = AnsiColored(child: deep);
-        final root = SpanSequence([middle]);
+        final middle = AnsiStyled(child: deep);
+        final root = SpanSequence(children: [middle]);
 
         final ancestors = deep.allAncestors.toList();
         expect(ancestors, [middle, root]);
@@ -447,7 +483,7 @@ void main() {
 
       test('returns root from nested span', () {
         final deep = PlainText('deep');
-        final root = SpanSequence([AnsiColored(child: deep)]);
+        final root = SpanSequence(children: [AnsiStyled(child: deep)]);
 
         expect(deep.root, root);
       });
@@ -461,7 +497,7 @@ void main() {
 
       test('is set for child span', () {
         final child = PlainText('child');
-        final parent = SpanSequence([child]);
+        final parent = SpanSequence(children: [child]);
 
         expect(child.parent, parent);
       });
@@ -469,19 +505,26 @@ void main() {
 
     group('MultiChildSpan operations', () {
       test('addChild adds to end', () {
-        final sequence = SpanSequence([PlainText('a')]);
+        final sequence = SpanSequence(children: [PlainText('a')]);
         sequence.addChild(PlainText('b'));
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'ab');
       });
 
       test('insertChild at index', () {
-        final sequence = SpanSequence([PlainText('a'), PlainText('c')]);
+        final sequence =
+            SpanSequence(children: [PlainText('a'), PlainText('c')]);
         sequence.insertChild(1, PlainText('b'));
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(sequence, buffer);
         expect(buffer.toString(), 'abc');
       });
@@ -489,7 +532,7 @@ void main() {
       test('indexOf returns correct index', () {
         final a = PlainText('a');
         final b = PlainText('b');
-        final sequence = SpanSequence([a, b]);
+        final sequence = SpanSequence(children: [a, b]);
 
         expect(sequence.indexOf(a), 0);
         expect(sequence.indexOf(b), 1);
@@ -499,7 +542,7 @@ void main() {
         final a = PlainText('a');
         final b = PlainText('b');
         final c = PlainText('c');
-        final sequence = SpanSequence([a, b, c]);
+        final sequence = SpanSequence(children: [a, b, c]);
 
         expect(sequence.previousSiblingOf(a), isNull);
         expect(sequence.previousSiblingOf(b), a);
@@ -510,7 +553,7 @@ void main() {
 
     group('SingleChildSpan operations', () {
       test('setting child updates parent reference', () {
-        final span = AnsiColored();
+        final span = AnsiStyled();
         final child = PlainText('hello');
 
         span.child = child;
@@ -519,7 +562,7 @@ void main() {
       });
 
       test('replacing child clears old parent reference', () {
-        final span = AnsiColored();
+        final span = AnsiStyled();
         final oldChild = PlainText('old');
         final newChild = PlainText('new');
 
@@ -565,7 +608,10 @@ void main() {
           suffix: PlainText(']'),
         );
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(surrounded, buffer);
         expect(buffer.toString(), '[content]');
       });
@@ -576,7 +622,10 @@ void main() {
           suffix: PlainText(']'),
         );
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(surrounded, buffer);
         expect(buffer.toString(), isEmpty);
       });
@@ -584,7 +633,7 @@ void main() {
 
     group('complex tree operations', () {
       test('multiple operations preserve consistency', () {
-        final sequence = SpanSequence([
+        final sequence = SpanSequence(children: [
           PlainText('a'),
           PlainText('b'),
         ]);
@@ -606,13 +655,16 @@ void main() {
         }
 
         // Verify output
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(sequence, buffer);
         expect(buffer.toString(), '0abc');
       });
 
       test('moving child between parents', () {
-        final parent1 = SpanSequence([PlainText('child')]);
+        final parent1 = SpanSequence(children: [PlainText('child')]);
         final parent2 = SpanSequence();
         final child = parent1.children.first;
 
@@ -626,10 +678,10 @@ void main() {
 
     group('SingleChildSpan as nested child', () {
       test('replaceWith when SingleChildSpan has a parent', () {
-        final inner = AnsiColored(child: PlainText('inner'));
-        final outer = SpanSequence([inner]);
+        final inner = AnsiStyled(child: PlainText('inner'));
+        final outer = SpanSequence(children: [inner]);
 
-        final newSpan = AnsiColored(child: PlainText('replaced'));
+        final newSpan = AnsiStyled(child: PlainText('replaced'));
         final result = inner.replaceWith(newSpan);
 
         expect(result, isTrue);
@@ -639,8 +691,8 @@ void main() {
       });
 
       test('remove when SingleChildSpan has a parent', () {
-        final inner = AnsiColored(child: PlainText('inner'));
-        final outer = SpanSequence([inner]);
+        final inner = AnsiStyled(child: PlainText('inner'));
+        final outer = SpanSequence(children: [inner]);
 
         final result = inner.remove();
 
@@ -650,22 +702,22 @@ void main() {
       });
 
       test('replaceWith returns false for root SingleChildSpan', () {
-        final span = AnsiColored(child: PlainText('child'));
+        final span = AnsiStyled(child: PlainText('child'));
         expect(span.replaceWith(PlainText('new')), isFalse);
       });
 
       test('remove returns false for root SingleChildSpan', () {
-        final span = AnsiColored(child: PlainText('child'));
+        final span = AnsiStyled(child: PlainText('child'));
         expect(span.remove(), isFalse);
       });
     });
 
     group('MultiChildSpan as nested child', () {
       test('replaceWith when MultiChildSpan has a parent', () {
-        final inner = SpanSequence([PlainText('a'), PlainText('b')]);
-        final outer = AnsiColored(child: inner);
+        final inner = SpanSequence(children: [PlainText('a'), PlainText('b')]);
+        final outer = AnsiStyled(child: inner);
 
-        final newSpan = SpanSequence([PlainText('replaced')]);
+        final newSpan = SpanSequence(children: [PlainText('replaced')]);
         final result = inner.replaceWith(newSpan);
 
         expect(result, isTrue);
@@ -675,8 +727,8 @@ void main() {
       });
 
       test('remove when MultiChildSpan has a parent', () {
-        final inner = SpanSequence([PlainText('a')]);
-        final outer = AnsiColored(child: inner);
+        final inner = SpanSequence(children: [PlainText('a')]);
+        final outer = AnsiStyled(child: inner);
 
         final result = inner.remove();
 
@@ -686,12 +738,12 @@ void main() {
       });
 
       test('replaceWith returns false for root MultiChildSpan', () {
-        final span = SpanSequence([PlainText('child')]);
+        final span = SpanSequence(children: [PlainText('child')]);
         expect(span.replaceWith(PlainText('new')), isFalse);
       });
 
       test('remove returns false for root MultiChildSpan', () {
-        final span = SpanSequence([PlainText('child')]);
+        final span = SpanSequence(children: [PlainText('child')]);
         expect(span.remove(), isFalse);
       });
     });
@@ -714,7 +766,7 @@ void main() {
           child: PlainText('content'),
           suffix: PlainText(']'),
         );
-        final outer = SpanSequence([inner]);
+        final outer = SpanSequence(children: [inner]);
 
         final newSpan = Surrounded(child: PlainText('new'));
         final result = inner.replaceWith(newSpan);
@@ -727,7 +779,7 @@ void main() {
 
       test('remove when SlottedSpan has a parent', () {
         final inner = Surrounded(child: PlainText('content'));
-        final outer = SpanSequence([inner]);
+        final outer = SpanSequence(children: [inner]);
 
         final result = inner.remove();
 
@@ -798,11 +850,11 @@ void main() {
         final surrounded = Surrounded(child: child);
 
         child.wrap(
-          (c) => AnsiColored(foreground: XtermColor.red1_196, child: c),
+          (c) => AnsiStyled(foreground: Ansi256.red1_196, child: c),
         );
 
-        expect(surrounded.child, isA<AnsiColored>());
-        expect((surrounded.child! as AnsiColored).child, isA<PlainText>());
+        expect(surrounded.child, isA<AnsiStyled>());
+        expect((surrounded.child! as AnsiStyled).child, isA<PlainText>());
       });
 
       test('wrap preserves slot position', () {
@@ -814,12 +866,15 @@ void main() {
         );
 
         prefix.wrap(
-          (c) => AnsiColored(foreground: XtermColor.blue1_21, child: c),
+          (c) => AnsiStyled(foreground: Ansi256.blue1_21, child: c),
         );
 
-        expect(surrounded.prefix, isA<AnsiColored>());
+        expect(surrounded.prefix, isA<AnsiStyled>());
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(surrounded, buffer);
         expect(buffer.toString(), '[content');
       });
@@ -832,7 +887,10 @@ void main() {
         final date = DateTime(2024, 1, 15, 10, 23, 45, 123);
         final fancyTimestamp = _FancyTimestamp(date);
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(fancyTimestamp, buffer);
 
         // Should render as ">>> 10:23:45.123 <<<"
@@ -843,7 +901,10 @@ void main() {
         // Chain: Level3 -> Level2 -> Level1 -> PlainText
         final span = _Level3Span('hello');
 
-        final buffer = ConsoleMessageBuffer(supportsColors: false);
+        final buffer = ConsoleMessageBuffer(
+          capabilities: const TerminalCapabilities(
+              colorSupport: TerminalColorSupport.none),
+        );
         renderSpan(span, buffer);
 
         expect(buffer.toString(), '<<<[[[hello]]]>>>');
@@ -855,7 +916,7 @@ void main() {
     test('applies spanTransformers from formatOptions', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: [
           SpanFormatOptions(
@@ -877,7 +938,10 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -889,7 +953,7 @@ void main() {
 
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: [
           SpanFormatOptions(
@@ -910,7 +974,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
 
       expect(transformerOrder, ['formatter', 'per-log']);
@@ -919,7 +986,7 @@ void main() {
     test('multiple SpanFormatOptions are all applied', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: [
           SpanFormatOptions(
@@ -948,7 +1015,10 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -959,7 +1029,7 @@ void main() {
     test('wraps entire message with Bordered via per-log transformer', () {
       final record = LogRecord(
         message: 'Important',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.warning,
         formatOptions: [
           SpanFormatOptions(
@@ -988,7 +1058,10 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -1003,7 +1076,7 @@ void main() {
     test('empty formatOptions list does not affect output', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: const [],
       );
@@ -1017,7 +1090,10 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -1027,7 +1103,7 @@ void main() {
     test('null formatOptions does not affect output', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
       );
 
@@ -1040,7 +1116,10 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -1050,7 +1129,7 @@ void main() {
     test('non-SpanFormatOptions in formatOptions are ignored', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: const [
           FormatOptions(), // Not SpanFormatOptions
@@ -1067,7 +1146,10 @@ void main() {
         ),
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -1079,7 +1161,7 @@ void main() {
     test('works with CompactChirpMessageFormatter', () {
       final record = LogRecord(
         message: 'Hello',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.info,
         formatOptions: [
           SpanFormatOptions(
@@ -1096,7 +1178,10 @@ void main() {
 
       final formatter = CompactChirpMessageFormatter();
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(record, buffer);
       final result = buffer.toString();
 
@@ -1117,7 +1202,7 @@ class _FancyTimestamp extends LeafSpan {
   LogSpan build() {
     // Returns a Timestamp wrapped with decoration
     // Timestamp.build() will return PlainText
-    return SpanSequence([
+    return SpanSequence(children: [
       PlainText('>>> '),
       Timestamp(date),
       PlainText(' <<<'),

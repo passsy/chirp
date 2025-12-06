@@ -153,7 +153,7 @@ Create child loggers that inherit their parent's writers configuration but add t
 ```dart
 // Configure root logger once
 Chirp.root = ChirpLogger()
-  ..addConsoleWriter(formatter: RainbowMessageFormatter());
+  .addConsoleWriter(formatter: RainbowMessageFormatter());
 
 // Create child logger with context
 final requestLogger = Chirp.root.child(context: {
@@ -269,9 +269,9 @@ Each writer can have its own formatter, perfect for multi-environment setups:
 ```dart
 Chirp.root = ChirpLogger()
   // Colorful console logs for development
-  ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
+  .addConsoleWriter(formatter: CompactChirpMessageFormatter())
   // JSON logs to file for production
-  ..addConsoleWriter(
+  .addConsoleWriter(
     formatter: JsonMessageFormatter(),
     output: (msg) => writeToFile('app.log', msg),
   );
@@ -392,8 +392,8 @@ Column(
 // Chirp Span tree - same concept!
 SpanSequence([
   PlainText('Hello'),
-  AnsiColored(
-    foreground: XtermColor.blue,
+  AnsiStyled(
+    foreground: Ansi16.blue,
     child: PlainText('World'),
   ),
 ])
@@ -401,7 +401,7 @@ SpanSequence([
 
 Key similarities:
 - **Composable**: Combine simple spans to create complex output
-- **Single child vs multi child**: `AnsiColored` wraps one child, `SpanSequence` holds many
+- **Single child vs multi child**: `AnsiStyled` wraps one child, `SpanSequence` holds many
 - **Nested styling**: Colors and formatting cascade through the tree
 - **Declarative**: Describe what you want, not how to build it
 
@@ -424,13 +424,13 @@ Nest sequences and styled spans to build complex output:
 
 ```dart
 SpanSequence([
-  AnsiColored(
-    foreground: XtermColor.gray,
+  AnsiStyled(
+    foreground: Ansi16.brightBlack,
     child: Timestamp(record.date),
   ),
   Whitespace(),
-  AnsiColored(
-    foreground: XtermColor.green,
+  AnsiStyled(
+    foreground: Ansi16.green,
     child: LogMessage(record.message),
   ),
 ])
@@ -449,8 +449,8 @@ class RequestIdSpan extends LeafSpan {
   @override
   LogSpan build() {
     // build() transforms this semantic span into renderable spans
-    return AnsiColored(
-      foreground: XtermColor.cyan,
+    return AnsiStyled(
+      foreground: Ansi16.cyan,
       child: PlainText('[$requestId]'),
     );
   }
@@ -489,14 +489,14 @@ class MyConsoleFormatter extends SpanBasedFormatter {
       Whitespace(),
 
       // Timestamp in gray
-      AnsiColored(
-        foreground: XtermColor.brightBlack,
+      AnsiStyled(
+        foreground: Ansi16.brightBlack,
         child: Timestamp(record.date),
       ),
       Whitespace(),
 
       // Log message - colored by level
-      AnsiColored(
+      AnsiStyled(
         foreground: _colorForLevel(record.level),
         child: LogMessage(record.message),
       ),
@@ -509,11 +509,11 @@ class MyConsoleFormatter extends SpanBasedFormatter {
     ]);
   }
 
-  XtermColor _colorForLevel(ChirpLogLevel level) {
+  IndexedColor _colorForLevel(ChirpLogLevel level) {
     return switch (level.severity) {
-      >= 500 => XtermColor.red,
-      >= 400 => XtermColor.yellow,
-      _ => XtermColor.white,
+      >= 500 => Ansi16.red,
+      >= 400 => Ansi16.yellow,
+      _ => Ansi16.white,
     };
   }
 }
@@ -550,7 +550,7 @@ final formatter = RainbowMessageFormatter(
 **Tree Navigation** - find spans anywhere in the tree:
 ```dart
 tree.findFirst<Timestamp>();     // First matching span
-tree.findAll<AnsiColored>();     // All matching spans
+tree.findAll<AnsiStyled>();     // All matching spans
 tree.allDescendants;             // Every span in the tree
 ```
 
@@ -563,8 +563,8 @@ span.replaceWith(PlainText('replacement'));
 span.remove();
 
 // Wrap a span with another span
-span.wrap((child) => AnsiColored(
-  foreground: XtermColor.red,
+span.wrap((child) => AnsiStyled(
+  foreground: Ansi16.red,
   child: child,
 ));
 ```
@@ -598,9 +598,9 @@ span.wrap((child) => AnsiColored(
 (tree, record) {
   if (record.level.severity >= 500) {
     tree.findFirst<LogMessage>()?.wrap(
-      (child) => AnsiColored(
-        background: XtermColor.red,
-        foreground: XtermColor.white,
+      (child) => AnsiStyled(
+        background: Ansi16.red,
+        foreground: Ansi16.white,
         child: child,
       ),
     );
@@ -626,12 +626,12 @@ span.wrap((child) => AnsiColored(
 The span system handles nested colors correctly. When you pop a color, it restores the previous color instead of resetting to default:
 
 ```dart
-AnsiColored(
-  foreground: XtermColor.red,
+AnsiStyled(
+  foreground: Ansi16.red,
   child: SpanSequence([
     PlainText('red '),
-    AnsiColored(
-      foreground: XtermColor.blue,
+    AnsiStyled(
+      foreground: Ansi16.blue,
       child: PlainText('blue'),
     ),
     PlainText(' red again'),  // Correctly returns to red!
@@ -672,7 +672,7 @@ StackTraceSpan(stackTrace)                             // #0 main (file.dart:10)
 **Container Spans:**
 ```dart
 SpanSequence([a, b, c])                // Renders a, b, c in order
-AnsiColored(foreground: XtermColor.red, child: span)  // Colored text
+AnsiStyled(foreground: Ansi16.red, child: span)  // Colored text
 Bordered(style: BoxBorderStyle.rounded, child: span)  // ╭─────╮
                                                       // │text │
                                                       // ╰─────╯
@@ -695,15 +695,120 @@ Surrounded(prefix: PlainText('['), child: span, suffix: PlainText(']'))
 ```dart
 Chirp.root = ChirpLogger()
   // Pretty console output for humans
-  ..addConsoleWriter(formatter: RainbowMessageFormatter())
+  .addConsoleWriter(formatter: RainbowMessageFormatter())
   // JSON for log files - no spans needed
-  ..addConsoleWriter(
+  .addConsoleWriter(
     formatter: JsonMessageFormatter(),
     output: (msg) => logFile.writeAsStringSync('$msg\n', mode: FileMode.append),
   );
 ```
 
 ## Configuration
+
+### Color Support
+
+Chirp auto-detects terminal color support based on environment variables, CI systems, and platform capabilities. When auto-detection doesn't work correctly, you can override it.
+
+#### Environment Variables
+
+**Disable colors:**
+```bash
+# Standard way to disable colors (https://no-color.org/)
+NO_COLOR=1 dart run my_app.dart
+NO_COLOR=1 flutter run
+```
+
+**Force specific color level:**
+```bash
+# Force colors off
+FORCE_COLOR=0 dart run
+
+# Force 16 colors
+FORCE_COLOR=1 dart run
+
+# Force 256 colors
+FORCE_COLOR=2 dart run
+
+# Force true color (24-bit)
+FORCE_COLOR=3 dart run
+```
+
+**Set terminal color capability:**
+```bash
+# Modern terminals set this automatically
+COLORTERM=truecolor dart run
+COLORTERM=24bit dart run
+```
+
+#### Flutter Apps
+
+Flutter apps don't inherit shell environment variables at runtime. Use `--dart-define` instead:
+
+```bash
+# Disable colors in Flutter app
+flutter run --dart-define=NO_COLOR=1
+
+# Force true color
+flutter run --dart-define=FORCE_COLOR=3
+```
+
+Then check in your code:
+```dart
+// Check compile-time defines
+const noColor = bool.hasEnvironment('NO_COLOR');
+const forceColor = String.fromEnvironment('FORCE_COLOR', defaultValue: '');
+
+if (noColor) {
+  Chirp.root = ChirpLogger().addConsoleWriter(colorSupport: TerminalColorSupport.none);
+}
+```
+
+#### Backend/Server Apps
+
+For Dart backend applications, environment variables work directly:
+
+```bash
+# Docker
+docker run -e NO_COLOR=1 my-dart-app
+
+# Kubernetes (in deployment.yaml)
+env:
+  - name: FORCE_COLOR
+    value: "3"
+
+# systemd service
+Environment="COLORTERM=truecolor"
+```
+
+#### Programmatic Override
+
+Override color support directly in code:
+
+```dart
+// Disable colors
+Chirp.root = ChirpLogger()
+  .addConsoleWriter(colorSupport: TerminalColorSupport.none);
+
+// Force truecolor
+Chirp.root = ChirpLogger()
+  .addConsoleWriter(colorSupport: TerminalColorSupport.truecolor);
+
+// Force 256-color mode
+Chirp.root = ChirpLogger()
+  .addConsoleWriter(colorSupport: TerminalColorSupport.ansi256);
+```
+
+#### Detection Priority
+
+Chirp checks these in order:
+1. `NO_COLOR` env var → disables colors
+2. `FORCE_COLOR` env var → forces specific level (0/1/2/3)
+3. `COLORTERM` env var → truecolor/24bit/ansi256
+4. CI systems (GitHub Actions, GitLab CI → truecolor)
+5. Windows Terminal (`WT_SESSION`) → truecolor
+6. `TERM` patterns (xterm-256color, etc.)
+7. Flutter apps → truecolor (Android Studio, VS Code support it)
+8. `stdout.supportsAnsiEscapes` fallback
 
 ### Root Logger
 
@@ -713,7 +818,7 @@ Configure the global root logger that all child loggers and extensions inherit f
 void main() {
   // Configure once at app startup
   Chirp.root = ChirpLogger()
-    ..addConsoleWriter(formatter: RainbowMessageFormatter());
+    .addConsoleWriter(formatter: RainbowMessageFormatter());
 
   // All loggers now use the configured formatter
   runApp();
@@ -739,7 +844,7 @@ class MyCustomFormatter extends ConsoleMessageFormatter {
 // Setup (once at app startup)
 void main() {
   Chirp.root = ChirpLogger()
-    ..addConsoleWriter(formatter: RainbowMessageFormatter());
+    .addConsoleWriter(formatter: RainbowMessageFormatter());
 
   runApp();
 }

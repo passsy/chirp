@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_redundant_argument_values
+
 import 'dart:convert';
 
 import 'package:chirp/chirp.dart';
@@ -9,13 +11,16 @@ void main() {
       final instance = _MyClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         loggerName: 'MyClass',
         instance: instance,
       );
 
       final formatter = JsonMessageFormatter();
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -35,14 +40,17 @@ void main() {
       final instance = _MyClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Test error'),
         loggerName: 'MyClass',
         instance: instance,
       );
 
       final formatter = JsonMessageFormatter();
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -63,7 +71,7 @@ void main() {
       final instance = _MyClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Test error'),
         stackTrace: StackTrace.fromString('#0      main (file.dart:10:5)'),
         loggerName: 'MyClass',
@@ -71,7 +79,10 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -93,7 +104,7 @@ void main() {
       final instance = _MyClass();
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         loggerName: 'MyClass',
         instance: instance,
         data: {
@@ -103,7 +114,10 @@ void main() {
       );
 
       final formatter = JsonMessageFormatter();
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 

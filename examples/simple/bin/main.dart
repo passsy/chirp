@@ -1,15 +1,20 @@
-// ignore_for_file: avoid_print, avoid_redundant_argument_values
-
+// ignore_for_file: avoid_redundant_argument_values, avoid_print
 import 'package:chirp/chirp.dart';
 
 void main() {
   Chirp.root = ChirpLogger()
-    // ..addConsoleWriter(formatter: CompactChirpMessageFormatter())
-    ..addConsoleWriter(
-      formatter: RainbowMessageFormatter(
-        spanTransformers: [_boxWtfMessages],
+      // .addConsoleWriter(formatter: CompactChirpMessageFormatter())
+      .addConsoleWriter(
+    interceptors: [
+      MachineNameInterceptor(),
+    ],
+    formatter: RainbowMessageFormatter(
+      options: const RainbowFormatOptions(
+        showLocation: false,
       ),
-    );
+      spanTransformers: [_boxWtfMessages],
+    ),
+  );
 
   sectionLogger.warning('=== Example 0: Basic Instance Logging ===');
   basicInstanceLoggingExample();
@@ -62,7 +67,9 @@ void allLogLevelsExample() {
   Chirp.trace('Detailed execution trace', data: {'step': 1});
   Chirp.debug('Debug information', data: {'cache': 'miss'});
   Chirp.info('Application started info');
-  Chirp.notice('Device connected', data: {'id': '32168', 'name': 'DPE 2'});
+  Chirp.notice('Establishing connection...',
+      data: {'id': '32168', 'name': 'DPE 2'});
+  Chirp.success('Device connected');
   Chirp.log(
     'Application started custom level 600',
     level: const ChirpLogLevel('myAlert', 600),
@@ -138,16 +145,16 @@ void instanceTrackingExample() {
 /// Multiple writers send to different destinations with different formats
 void multipleWritersExample() {
   Chirp.root = ChirpLogger()
-    // Human-readable format for console
-    ..addConsoleWriter(
-      formatter: CompactChirpMessageFormatter(),
-      output: (msg) => print('[CONSOLE] $msg'),
-    )
-    // Machine-readable JSON
-    ..addConsoleWriter(
-      formatter: JsonMessageFormatter(),
-      output: (msg) => print('[JSON] $msg'),
-    );
+      // Human-readable format for console
+      .addConsoleWriter(
+        formatter: CompactChirpMessageFormatter(),
+        output: (msg) => print('[CONSOLE] $msg'),
+      )
+      // Machine-readable JSON
+      .addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: (msg) => print('[JSON] $msg'),
+      );
 
   Chirp.info('Logged with both formatters!');
 
@@ -158,12 +165,11 @@ void multipleWritersExample() {
 /// Demonstrates different format options for RainbowMessageFormatter
 void formatOptionsExample() {
   // Multiline data display (default)
-  Chirp.root = ChirpLogger()
-    ..addConsoleWriter(
-      formatter: RainbowMessageFormatter(
-        options: const RainbowFormatOptions(data: DataPresentation.multiline),
-      ),
-    );
+  Chirp.root = ChirpLogger().addConsoleWriter(
+    formatter: RainbowMessageFormatter(
+      options: const RainbowFormatOptions(data: DataPresentation.multiline),
+    ),
+  );
 
   Chirp.info(
     'User logged in',
@@ -285,19 +291,18 @@ class UserService {
 }
 
 // Logger for section headers with newline prefix and no level
-final sectionLogger = ChirpLogger()
-  ..addConsoleWriter(
-    formatter: RainbowMessageFormatter(
-      options: const RainbowFormatOptions(
-        showLogLevel: true,
-        showMethod: false,
-      ),
-      spanTransformers: [
-        _prependNewlineForSectionHeaders,
-        _removeLevel,
-      ],
+final sectionLogger = ChirpLogger().addConsoleWriter(
+  formatter: RainbowMessageFormatter(
+    options: const RainbowFormatOptions(
+      showLogLevel: true,
+      showMethod: false,
     ),
-  );
+    spanTransformers: [
+      _prependNewlineForSectionHeaders,
+      _removeLevel,
+    ],
+  ),
+);
 
 /// Prepends a newline before messages starting with "=== ".
 void _prependNewlineForSectionHeaders(LogSpan tree, LogRecord record) {
@@ -312,18 +317,29 @@ void _prependNewlineForSectionHeaders(LogSpan tree, LogRecord record) {
 
 /// Removes the BracketedLogLevel span from the output.
 void _removeLevel(LogSpan tree, LogRecord record) {
-  tree.findFirst<BracketedLogLevel>()?.remove();
+  final label = tree.findFirst<BracketedLogLevel>();
+  if (label != null) {
+    final parent = label.parent; // AnsiStyled
+    parent!.remove();
+  }
 }
 
 /// Wraps WTF level messages in a bordered box.
 void _boxWtfMessages(LogSpan tree, LogRecord record) {
   if (record.level != ChirpLogLevel.wtf) return;
-
-  tree.wrap(
-    (child) => Bordered(
+  tree.wrap((child) {
+    return Bordered(
       child: child,
       style: BoxBorderStyle.rounded,
-      borderColor: XtermColor.red3_160, // red
-    ),
-  );
+      borderColor: Ansi256.indianRed_167,
+    );
+  });
+}
+
+class MachineNameInterceptor extends ChirpInterceptor {
+  @override
+  LogRecord? intercept(LogRecord record) {
+    record.data['machineName'] = 'instance-231';
+    return record;
+  }
 }

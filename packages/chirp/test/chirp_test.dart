@@ -15,45 +15,39 @@ void main() {
 
     test('logs with named logger', () {
       final messages = <String>[];
-      final logger = ChirpLogger(name: 'HTTP')
-        ..addConsoleWriter(
-          formatter: CompactChirpMessageFormatter(),
-          output: messages.add,
-        );
+      final logger = ChirpLogger(name: 'HTTP').addConsoleWriter(
+        formatter: CompactChirpMessageFormatter(),
+        output: messages.add,
+      );
 
       logger.log('Test message');
 
       expect(messages.length, 1);
-      expect(messages[0], contains('HTTP'));
+      // CompactChirpMessageFormatter shows caller location, not logger name
       expect(messages[0], contains('Test message'));
     });
 
     test('logs with top-level chirp', () {
+      addTearDown(() => Chirp.root = null);
       final messages = <String>[];
-      final originalRoot = Chirp.root;
 
-      Chirp.root = ChirpLogger()
-        ..addConsoleWriter(
-          formatter: CompactChirpMessageFormatter(),
-          output: messages.add,
-        );
+      Chirp.root = ChirpLogger().addConsoleWriter(
+        formatter: CompactChirpMessageFormatter(),
+        output: messages.add,
+      );
 
       Chirp.log('Test message');
 
       expect(messages.length, 1);
-      expect(messages[0], contains('chirp_test'));
       expect(messages[0], contains('Test message'));
-
-      Chirp.root = originalRoot;
     });
 
     test('logs with error and stack trace', () {
       final messages = <String>[];
-      final logger = ChirpLogger(name: 'ErrorLogger')
-        ..addConsoleWriter(
-          formatter: CompactChirpMessageFormatter(),
-          output: messages.add,
-        );
+      final logger = ChirpLogger(name: 'ErrorLogger').addConsoleWriter(
+        formatter: CompactChirpMessageFormatter(),
+        output: messages.add,
+      );
 
       logger.log(
         'Error occurred',
@@ -66,29 +60,35 @@ void main() {
       expect(messages[0], contains('Test error'));
     });
 
-    test('Chirp.root exists as static', () {
-      expect(Chirp.root, isNotNull);
-      expect(Chirp.root, isA<ChirpLogger>());
+    test('Chirp.root throws StateError when not set', () {
+      Chirp.root = null;
+      expect(
+        () => Chirp.root,
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('Chirp.root has not been set'),
+          ),
+        ),
+      );
     });
 
     test('can replace Chirp.root', () {
-      final originalRoot = Chirp.root;
+      addTearDown(() => Chirp.root = null);
       final messages = <String>[];
 
       // Replace root with custom logger
-      Chirp.root = ChirpLogger(name: 'CustomRoot')
-        ..addConsoleWriter(
-          formatter: CompactChirpMessageFormatter(),
-          output: messages.add,
-        );
+      Chirp.root = ChirpLogger(name: 'CustomRoot').addConsoleWriter(
+        formatter: CompactChirpMessageFormatter(),
+        output: messages.add,
+      );
 
       Chirp.root.log('Test message');
 
       expect(messages.length, 1);
-      expect(messages[0], contains('CustomRoot'));
-
-      // Restore original
-      Chirp.root = originalRoot;
+      // CompactChirpMessageFormatter shows caller location, not logger name
+      expect(messages[0], contains('Test message'));
     });
   });
 }

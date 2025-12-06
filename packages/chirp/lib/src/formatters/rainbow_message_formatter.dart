@@ -1,37 +1,21 @@
 import 'package:chirp/chirp.dart';
-import 'package:chirp/src/readable_colors.g.dart';
 
 export 'package:chirp/src/span/span_foundation.dart';
-
-/// Function type for transforming an instance into a display name.
-typedef ClassNameTransformer = String? Function(Object instance);
-
-const _subtleColors = [
-  ...readableColorsLowSaturation,
-  ...readableColorsMediumSaturation,
-];
 
 /// Default colored formatter using the span-based templating system.
 class RainbowMessageFormatter extends SpanBasedFormatter {
   final int metaWidth;
-  final List<ClassNameTransformer> classNameTransformers;
   final RainbowFormatOptions options;
 
   RainbowMessageFormatter({
-    List<ClassNameTransformer>? classNameTransformers,
     this.metaWidth = 80,
     RainbowFormatOptions? options,
     super.spanTransformers,
-  })  : options = options ?? const RainbowFormatOptions(),
-        classNameTransformers = classNameTransformers ?? [];
+  }) : options = options ?? const RainbowFormatOptions();
 
-  String resolveClassName(Object instance) {
-    for (final transformer in classNameTransformers) {
-      final result = transformer(instance);
-      if (result != null) return result;
-    }
-    return instance.runtimeType.toString();
-  }
+  @override
+  bool get requiresCallerInfo =>
+      options.showLocation || options.showClass || options.showMethod;
 
   @override
   LogSpan buildSpan(LogRecord record) {
@@ -45,6 +29,14 @@ class RainbowMessageFormatter extends SpanBasedFormatter {
   }
 }
 
+LogSpan dimmed(LogSpan span) {
+  return AnsiStyled(
+    dim: true,
+    foreground: Ansi256.white_7,
+    child: span,
+  );
+}
+
 /// Builds a span tree for a [LogRecord] with rainbow colors.
 LogSpan _buildRainbowLogSpan({
   required LogRecord record,
@@ -52,22 +44,34 @@ LogSpan _buildRainbowLogSpan({
 }) {
   final callerInfo = record.callerInfo;
 
-  final levelColor = switch (record.level.severity) {
-    > 500 => XtermColor.indianRed1_203,
-    500 => XtermColor.indianRed_167,
-    > 400 => XtermColor.lightSalmon3_173,
-    400 => XtermColor.lightGoldenrod3_179,
-    _ => null,
-  };
+  final levelColor = () {
+    final level = record.level;
+    if (level > ChirpLogLevel.error) return Ansi256.indianRed1_203;
+    if (level >= ChirpLogLevel.error) return Ansi256.indianRed_167;
+    if (level > ChirpLogLevel.warning) return Ansi256.lightSalmon3_173;
+    if (level >= ChirpLogLevel.warning) return Ansi256.lightGoldenrod3_179;
+    if (level == ChirpLogLevel.success) return Ansi256.green_2;
+    return null;
+  }();
 
   final spans = <LogSpan>[];
 
   // Timestamp
   if (options.showTime) {
-    spans.add(AnsiColored(
-      foreground: XtermColor.brightBlack_8,
-      child: Timestamp(record.date),
-    ));
+    spans.addAll([dimmed(Timestamp(record.timestamp))]);
+  }
+
+  // Level
+  if (options.showLogLevel) {
+    spans.addAll([
+      Surrounded(
+        prefix: Whitespace(),
+        child: AnsiStyled(
+          foreground: levelColor ?? Ansi256.white_7,
+          child: BracketedLogLevel(record.level),
+        ),
+      )
+    ]);
   }
 
   // Location
@@ -75,8 +79,8 @@ LogSpan _buildRainbowLogSpan({
     final fileName = callerInfo?.callerFileName;
     final location = fileName == null
         ? null
-        : AnsiColored(
-            foreground: XtermColor.brightBlack_8,
+        : AnsiStyled(
+            foreground: Ansi256.lightSkyBlue3_110,
             child: DartSourceCodeLocation(
                 fileName: fileName, line: callerInfo?.line),
           );
@@ -88,8 +92,8 @@ LogSpan _buildRainbowLogSpan({
     final name = record.loggerName;
     final loggerName = name == null
         ? null
-        : AnsiColored(
-            foreground: hashColor(name, readableColorsHighSaturation),
+        : AnsiStyled(
+            foreground: colorForHash(name, saturation: ColorSaturation.high),
             child: LoggerName(name),
           );
     spans.add(Surrounded(prefix: Whitespace(), child: loggerName));
@@ -100,8 +104,9 @@ LogSpan _buildRainbowLogSpan({
     final classNameSpan = ClassName.fromRecord(record, hashLength: 4);
     LogSpan? className;
     if (classNameSpan != null) {
-      className = AnsiColored(
-        foreground: hashColor(classNameSpan.name, readableColorsLowSaturation),
+      className = AnsiStyled(
+        foreground:
+            colorForHash(classNameSpan.name, saturation: ColorSaturation.low),
         child: classNameSpan,
       );
     }
@@ -117,53 +122,49 @@ LogSpan _buildRainbowLogSpan({
       if (cn != null && name.startsWith('$cn.')) {
         name = name.substring(cn.length + 1);
       }
-      methodName = AnsiColored(
-        foreground: hashColor(name, _subtleColors),
+      methodName = AnsiStyled(
+        foreground: colorForHash(name, saturation: ColorSaturation.low),
         child: MethodName(name),
       );
     }
     spans.add(Surrounded(prefix: Whitespace(), child: methodName));
   }
 
-  // Level
-  if (options.showLogLevel) {
-    spans.addAll([
-      Whitespace(),
-      AnsiColored(
-        foreground: levelColor ?? XtermColor.brightBlack_8,
-        child: BracketedLogLevel(record.level),
-      ),
-    ]);
-  }
-
   // Message
   spans.addAll([
     Whitespace(),
-    AnsiColored(
-      foreground: levelColor ?? XtermColor.brightBlack_8,
-      child: LogMessage(record.message),
-    ),
+    if (levelColor == null)
+      dimmed(LogMessage(record.message))
+    else
+      AnsiStyled(
+        foreground: levelColor,
+        child: LogMessage(record.message),
+      ),
   ]);
 
   // Data
   final data = record.data;
-  if (data != null && data.isNotEmpty) {
+  if (data.isNotEmpty) {
     final dataSpan = switch (options.data) {
       DataPresentation.inline => InlineData(data),
       DataPresentation.multiline => MultilineData(data),
     };
-    spans.add(AnsiColored(
-      foreground: levelColor ?? XtermColor.brightBlack_8,
-      child: dataSpan,
-    ));
+    if (levelColor == null) {
+      spans.add(dimmed(dataSpan));
+    } else {
+      spans.add(AnsiStyled(
+        foreground: levelColor,
+        child: dataSpan,
+      ));
+    }
   }
 
   // Error
   if (record.error != null) {
     spans.addAll([
       NewLine(),
-      AnsiColored(
-        foreground: levelColor ?? XtermColor.brightBlack_8,
+      AnsiStyled(
+        foreground: levelColor ?? Ansi256.grey50_244,
         child: ErrorSpan(record.error),
       ),
     ]);
@@ -173,14 +174,14 @@ LogSpan _buildRainbowLogSpan({
   if (record.stackTrace case final stackTrace?) {
     spans.addAll([
       NewLine(),
-      AnsiColored(
-        foreground: levelColor ?? XtermColor.brightBlack_8,
+      AnsiStyled(
+        foreground: levelColor ?? Ansi256.grey50_244,
         child: StackTraceSpan(stackTrace),
       ),
     ]);
   }
 
-  return SpanSequence(spans);
+  return SpanSequence(children: spans);
 }
 
 class RainbowFormatOptions extends FormatOptions {
@@ -219,10 +220,4 @@ enum DataPresentation { inline, multiline }
 
 extension _FirstWhereTypeOrNull<T> on Iterable<T> {
   R? firstWhereTypeOrNull<R>() => whereType<R>().firstOrNull;
-}
-
-XtermColor hashColor(Object? object, List<XtermColor> colors) {
-  final hash = object.hashCode.abs();
-  if (colors.isEmpty) throw ArgumentError('colors must not be empty');
-  return colors[hash % colors.length];
 }

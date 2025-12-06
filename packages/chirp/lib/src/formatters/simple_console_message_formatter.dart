@@ -92,7 +92,7 @@ LogSpan _buildSimpleLogSpan({
 
   // Timestamp: 10:30:45.123
   if (showTimestamp) {
-    spans.add(Timestamp(record.date));
+    spans.add(Timestamp(record.timestamp));
   }
 
   // Level: [INFO]
@@ -166,11 +166,11 @@ LogSpan _buildSimpleLogSpan({
   spans.add(LogMessage(record.message));
 
   // Structured data on separate line (key=value format)
-  if (showData && record.data != null && record.data!.isNotEmpty) {
+  if (showData && record.data.isNotEmpty) {
     spans.addAll([
       NewLine(),
       PlainText('  '),
-      KeyValueData(record.data!),
+      KeyValueData(record.data),
     ]);
   }
 
@@ -190,7 +190,7 @@ LogSpan _buildSimpleLogSpan({
     ]);
   }
 
-  return SpanSequence(spans);
+  return SpanSequence(children: spans);
 }
 
 /// Full timestamp with date: 2024-01-10 10:30:45.123

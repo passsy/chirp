@@ -1,5 +1,6 @@
 import 'package:chirp/chirp.dart';
 import 'package:chirp/src/formatters/yaml_formatter.dart';
+import 'package:meta/meta.dart';
 
 // =============================================================================
 // Leaf Spans (no children)
@@ -9,6 +10,7 @@ import 'package:chirp/src/formatters/yaml_formatter.dart';
 ///
 /// Use this when a span conditionally has no output, similar to
 /// Flutter's `SizedBox.shrink()`.
+@experimental
 class EmptySpan extends LeafSpan {
   @override
   void render(ConsoleMessageBuffer buffer) {
@@ -20,6 +22,7 @@ class EmptySpan extends LeafSpan {
 }
 
 /// Plain text span.
+@experimental
 class PlainText extends LeafSpan {
   final String value;
 
@@ -35,6 +38,7 @@ class PlainText extends LeafSpan {
 }
 
 /// A single space.
+@experimental
 class Whitespace extends LeafSpan {
   @override
   void render(ConsoleMessageBuffer buffer) {
@@ -46,6 +50,7 @@ class Whitespace extends LeafSpan {
 }
 
 /// A line break.
+@experimental
 class NewLine extends LeafSpan {
   @override
   void render(ConsoleMessageBuffer buffer) {
@@ -60,29 +65,103 @@ class NewLine extends LeafSpan {
 // Single Child Spans
 // =============================================================================
 
-/// Applies foreground and/or background color to a child span.
-class AnsiColored extends SingleChildSpan {
-  final XtermColor? foreground;
-  final XtermColor? background;
+/// Applies foreground and/or background color and text styles to a child span.
+///
+/// Supports all common ANSI SGR text attributes:
+/// - [foreground] and [background] colors
+/// - [bold] (SGR 1) - increased intensity
+/// - [dim] (SGR 2) - decreased intensity
+/// - [italic] (SGR 3) - italic text
+/// - [underline] (SGR 4) - underlined text
+/// - [strikethrough] (SGR 9) - crossed-out text
+///
+/// Example:
+/// ```dart
+/// AnsiStyled(
+///   foreground: Ansi16.red,
+///   bold: true,
+///   underline: true,
+///   child: PlainText('Important!'),
+/// )
+/// ```
+@experimental
+class AnsiStyled extends SingleChildSpan {
+  final ConsoleColor? foreground;
+  final ConsoleColor? background;
 
-  AnsiColored({
+  /// Whether to apply bold styling (ANSI SGR code 1).
+  ///
+  /// **Terminal compatibility:**
+  /// - Many terminals render bold as **bright/intense color** instead of
+  ///   increased font weight, especially with the basic 16 colors
+  /// - Some terminals (like macOS Terminal.app) may show bold as both
+  ///   brighter AND heavier weight
+  /// - With 256-color or truecolor, bold more reliably means font weight
+  /// - A few older terminals may ignore bold entirely
+  ///
+  /// **Precedence:** If both [bold] and [dim] are true, bold takes precedence
+  /// and dim is ignored. They share the same reset code (SGR 22) and have
+  /// contradictory visual effects.
+  final bool bold;
+
+  /// Whether to apply dim/faint styling (ANSI SGR code 2).
+  ///
+  /// Dim text appears with reduced intensity/brightness.
+  ///
+  /// **Terminal compatibility:**
+  /// - Support varies significantly across terminals
+  /// - Some terminals (like older xterm) may ignore dim entirely
+  /// - With truecolor (RGB), some terminals mathematically reduce brightness,
+  ///   while others may ignore it or render it inconsistently
+  /// - iTerm2, VS Code terminal, and most modern terminals support dim well
+  /// - Windows Console (conhost) has limited dim support
+  ///
+  /// **Precedence:** Ignored if [bold] is also true, since they share the same
+  /// reset code (SGR 22) and have contradictory visual effects.
+  final bool dim;
+
+  /// Whether to apply italic styling (ANSI SGR code 3).
+  final bool italic;
+
+  /// Whether to apply underline styling (ANSI SGR code 4).
+  final bool underline;
+
+  /// Whether to apply strikethrough styling (ANSI SGR code 9).
+  final bool strikethrough;
+
+  AnsiStyled({
     super.child,
     this.foreground,
     this.background,
+    this.bold = false,
+    this.dim = false,
+    this.italic = false,
+    this.underline = false,
+    this.strikethrough = false,
   });
 
   @override
   void render(ConsoleMessageBuffer buffer) {
     final c = child;
     if (c == null) return;
-    buffer.pushColor(foreground: foreground, background: background);
+    buffer.pushStyle(
+      foreground: foreground,
+      background: background,
+      bold: bold,
+      dim: dim,
+      italic: italic,
+      underline: underline,
+      strikethrough: strikethrough,
+    );
     c.render(buffer);
-    buffer.popColor();
+    buffer.popStyle();
   }
 
   @override
   String toString() =>
-      'AnsiColored(fg: $foreground, bg: $background, child: $child)';
+      'AnsiStyled(fg: $foreground, bg: $background, bold: $bold, dim: $dim, '
+      'italic: $italic, underline: $underline, strikethrough: $strikethrough, '
+      'child: $child)';
 }
 
 // =============================================================================
@@ -90,18 +169,25 @@ class AnsiColored extends SingleChildSpan {
 // =============================================================================
 
 /// A sequence of spans rendered sequentially.
+@experimental
 class SpanSequence extends MultiChildSpan {
-  SpanSequence([List<LogSpan>? children]) : super(children: children);
+  SpanSequence({super.children, this.separator});
+
+  /// Optional span to render between each child.
+  final LogSpan? separator;
 
   @override
   void render(ConsoleMessageBuffer buffer) {
-    for (final child in children) {
-      child.render(buffer);
+    for (var i = 0; i < children.length; i++) {
+      if (i > 0 && separator != null) {
+        separator!.render(buffer);
+      }
+      children[i].render(buffer);
     }
   }
 
   @override
-  String toString() => 'SpanSequence($children)';
+  String toString() => 'SpanSequence($children, separator: $separator)';
 }
 
 // =============================================================================
@@ -112,6 +198,7 @@ class SpanSequence extends MultiChildSpan {
 ///
 /// If [child] is null, renders nothing (empty).
 /// If [child] is non-null, renders [prefix], [child], [suffix].
+@experimental
 class Surrounded extends SlottedSpan {
   static const prefixSlot = 'prefix';
   static const childSlot = 'child';
@@ -155,6 +242,7 @@ class Surrounded extends SlottedSpan {
 /// Timestamp when the log was created.
 ///
 /// Builds to [PlainText] with format "HH:mm:ss.mmm".
+@experimental
 class Timestamp extends LeafSpan {
   final DateTime date;
 
@@ -176,6 +264,7 @@ class Timestamp extends LeafSpan {
 /// Source code location (file and line).
 ///
 /// Builds to [PlainText] with format "file:line" or [EmptySpan] if no file.
+@experimental
 class DartSourceCodeLocation extends LeafSpan {
   final String? fileName;
   final int? line;
@@ -198,6 +287,7 @@ class DartSourceCodeLocation extends LeafSpan {
 /// Logger name for named loggers.
 ///
 /// Builds to [PlainText].
+@experimental
 class LoggerName extends LeafSpan {
   final String name;
 
@@ -210,9 +300,87 @@ class LoggerName extends LeafSpan {
   String toString() => 'LoggerName("$name")';
 }
 
+/// Aligns child content within a fixed-width column.
+///
+/// Use [Aligned] to create consistent column widths in formatted output,
+/// useful for aligning log levels, timestamps, or other fixed-width fields.
+///
+/// ## Example
+///
+/// ```dart
+/// // Left-align log level in 8-character column
+/// Aligned(
+///   width: 8,
+///   align: HorizontalAlign.left,
+///   child: BracketedLogLevel(record.level),
+/// )
+/// // "[info]  " (padded to 8 chars)
+///
+/// // Right-align timestamp
+/// Aligned(
+///   width: 12,
+///   align: HorizontalAlign.right,
+///   child: Timestamp(record.date),
+/// )
+///
+/// // Center-align content
+/// Aligned(
+///   width: 20,
+///   align: HorizontalAlign.center,
+///   child: PlainText('centered'),
+/// )
+/// // "      centered      "
+/// ```
+@experimental
+class Aligned extends SingleChildSpan {
+  /// Creates an aligned span with fixed [width].
+  ///
+  /// - [HorizontalAlign.left]: Content is padded on the right with spaces.
+  /// - [HorizontalAlign.right]: Content is padded on the left with spaces.
+  /// - [HorizontalAlign.center]: Content is padded equally on both sides.
+  ///   If the padding is odd, the extra space goes on the right.
+  Aligned({
+    required this.width,
+    required this.align,
+    required super.child,
+  });
+
+  /// The horizontal alignment of the content within the column.
+  final HorizontalAlign align;
+
+  /// The fixed width of the column in characters.
+  final int width;
+
+  @override
+  void render(ConsoleMessageBuffer buffer) {
+    final b = buffer.createChildBuffer();
+    child?.render(b);
+    final content = b.toString();
+    final padded = switch (align) {
+      HorizontalAlign.left => content.padRight(width),
+      HorizontalAlign.right => content.padLeft(width),
+      HorizontalAlign.center => _padCenter(content, width),
+    };
+    buffer.write(padded);
+  }
+
+  static String _padCenter(String content, int width) {
+    if (content.length >= width) return content;
+    final totalPadding = width - content.length;
+    final leftPadding = totalPadding ~/ 2;
+    final rightPadding = totalPadding - leftPadding;
+    return '${' ' * leftPadding}$content${' ' * rightPadding}';
+  }
+}
+
+/// Horizontal alignment options for [Aligned] spans.
+@experimental
+enum HorizontalAlign { left, right, center }
+
 /// Class or instance name.
 ///
 /// Builds to [PlainText] with format "ClassName" or "ClassName@hash".
+@experimental
 class ClassName extends LeafSpan {
   final String name;
   final String? instanceHash;
@@ -282,6 +450,7 @@ class ClassName extends LeafSpan {
 /// Method name where the log was called.
 ///
 /// Builds to [PlainText].
+@experimental
 class MethodName extends LeafSpan {
   final String name;
 
@@ -297,6 +466,7 @@ class MethodName extends LeafSpan {
 /// Log severity level with brackets.
 ///
 /// Builds to [PlainText] with format "[levelName]".
+@experimental
 class BracketedLogLevel extends LeafSpan {
   final ChirpLogLevel level;
 
@@ -312,6 +482,7 @@ class BracketedLogLevel extends LeafSpan {
 /// The primary log message.
 ///
 /// Builds to [PlainText] or [EmptySpan] if message is null/empty.
+@experimental
 class LogMessage extends LeafSpan {
   final Object? message;
 
@@ -331,6 +502,7 @@ class LogMessage extends LeafSpan {
 /// Structured key-value data rendered inline: ` (key: value, key: value)`.
 ///
 /// Builds to [PlainText] or [EmptySpan] if data is null/empty.
+@experimental
 class InlineData extends LeafSpan {
   final Map<String, Object?>? data;
 
@@ -353,6 +525,7 @@ class InlineData extends LeafSpan {
 /// Structured key-value data rendered as multiline YAML.
 ///
 /// Builds to [PlainText] or [EmptySpan] if data is null/empty.
+@experimental
 class MultilineData extends LeafSpan {
   final Map<String, Object?>? data;
 
@@ -373,6 +546,7 @@ class MultilineData extends LeafSpan {
 /// Error object.
 ///
 /// Builds to [PlainText] or [EmptySpan] if error is null.
+@experimental
 class ErrorSpan extends LeafSpan {
   final Object? error;
 
@@ -391,6 +565,7 @@ class ErrorSpan extends LeafSpan {
 /// Stack trace.
 ///
 /// Builds to [PlainText].
+@experimental
 class StackTraceSpan extends LeafSpan {
   final StackTrace stackTrace;
 
@@ -408,9 +583,11 @@ class StackTraceSpan extends LeafSpan {
 // =============================================================================
 
 /// Border style for box spans.
+@experimental
 enum BoxBorderStyle { single, double, rounded, heavy, ascii }
 
 /// Characters for drawing box borders.
+@experimental
 class BoxBorderChars {
   final String topLeft;
   final String topRight;
@@ -490,9 +667,10 @@ class BoxBorderChars {
 }
 
 /// A span that draws an ASCII box around its content.
+@experimental
 class Bordered extends SingleChildSpan {
   final BoxBorderStyle style;
-  final XtermColor? borderColor;
+  final ConsoleColor? borderColor;
   final int padding;
 
   Bordered({
@@ -548,4 +726,19 @@ class Bordered extends SingleChildSpan {
 
   @override
   String toString() => 'Bordered(style: $style, child: $child)';
+}
+
+@experimental
+class ChirpLogo extends LeafSpan {
+  @override
+  void render(ConsoleMessageBuffer buffer) {
+    buffer.write('''
+ ██████╗██╗  ██╗██╗██████╗ ██████╗ 
+██╔════╝██║  ██║██║██╔══██╗██╔══██╗
+██║     ███████║██║██████╔╝██████╔╝
+██║     ██╔══██║██║██╔══██╗██╔═══╝ 
+╚██████╗██║  ██║██║██║  ██║██║     
+ ╚═════╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚═╝     
+''');
+  }
 }

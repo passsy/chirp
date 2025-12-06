@@ -40,17 +40,17 @@ void main() {
       expect(messages2.length, 1);
     });
 
-    test('child logger can have its own writers', () {
+    test('child logger writers are ignored - only parent writers used', () {
       final parentMessages = <String>[];
       final childMessages = <String>[];
-      final parent = ChirpLogger(name: 'Parent')
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: parentMessages.add,
-        );
+      final parent = ChirpLogger(name: 'Parent');
+      parent.addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: parentMessages.add,
+      );
       final child = parent.child(context: {'requestId': 'REQ-123'});
 
-      // Add writer to child only
+      // Add writer to child (will be ignored)
       child.addConsoleWriter(
         formatter: JsonMessageFormatter(),
         output: childMessages.add,
@@ -61,39 +61,38 @@ void main() {
       expect(parentMessages.length, 1);
       expect(childMessages.length, 0);
 
-      // Child logs go to both parent AND child writers
+      // Child logs go only to parent's writer (child's writer is ignored)
       child.info('Child log');
       expect(parentMessages.length, 2); // Parent receives child logs
-      expect(childMessages.length, 1); // Child's own writer also receives
-      expect(childMessages[0], contains('"requestId":"REQ-123"'));
+      expect(childMessages.length, 0); // Child's own writer is ignored
     });
 
-    test('child writers are combined with parent writers', () {
+    test('only root writers are used in hierarchy', () {
       final parentMessages = <String>[];
       final childMessages = <String>[];
       final grandchildMessages = <String>[];
 
-      final root = ChirpLogger(name: 'Root')
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: parentMessages.add,
-        );
-      final child = root.child(context: {'level': '1'})
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: childMessages.add,
-        );
-      final grandchild = child.child(context: {'level': '2'})
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: grandchildMessages.add,
-        );
+      final root = ChirpLogger(name: 'Root');
+      root.addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: parentMessages.add,
+      );
+      final child = root.child(context: {'level': '1'});
+      child.addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: childMessages.add,
+      );
+      final grandchild = child.child(context: {'level': '2'});
+      grandchild.addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: grandchildMessages.add,
+      );
 
-      // Grandchild logs go to all three writers
+      // Grandchild logs go only to root's writer (child writers ignored)
       grandchild.info('Deep log');
       expect(parentMessages.length, 1);
-      expect(childMessages.length, 1);
-      expect(grandchildMessages.length, 1);
+      expect(childMessages.length, 0);
+      expect(grandchildMessages.length, 0);
     });
 
     test('logger without writers produces no output', () {
@@ -119,11 +118,11 @@ void main() {
       final messages1 = <String>[];
       final messages2 = <String>[];
 
-      final logger = ChirpLogger(name: 'TestLogger')
-        ..addConsoleWriter(
-          formatter: CompactChirpMessageFormatter(),
-          output: messages1.add,
-        );
+      final logger = ChirpLogger(name: 'TestLogger');
+      logger.addConsoleWriter(
+        formatter: CompactChirpMessageFormatter(),
+        output: messages1.add,
+      );
 
       logger.info('First message');
       expect(messages1.length, 1);
@@ -159,35 +158,28 @@ void main() {
     });
 
     test('addWriter on Chirp.root adds globally', () {
+      addTearDown(() => Chirp.root = null);
       final messages = <String>[];
-      final originalRoot = Chirp.root;
 
-      try {
-        // Start with fresh root
-        Chirp.root = ChirpLogger();
+      // Replace root with custom logger (recommended pattern: chain writers)
+      Chirp.root = ChirpLogger().addConsoleWriter(
+        formatter: CompactChirpMessageFormatter(),
+        output: messages.add,
+      );
 
-        // Add writer to global root
-        Chirp.root.addConsoleWriter(
-          formatter: CompactChirpMessageFormatter(),
-          output: messages.add,
-        );
-
-        // Static Chirp methods should use the writer
-        Chirp.info('Global log');
-        expect(messages.length, 1);
-        expect(messages[0], contains('Global log'));
-      } finally {
-        Chirp.root = originalRoot;
-      }
+      // Static Chirp methods should use the writer
+      Chirp.info('Global log');
+      expect(messages.length, 1);
+      expect(messages[0], contains('Global log'));
     });
 
     test('child inherits parent writers', () {
       final messages = <String>[];
-      final parent = ChirpLogger(name: 'Parent')
-        ..addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-          output: messages.add,
-        );
+      final parent = ChirpLogger(name: 'Parent');
+      parent.addConsoleWriter(
+        formatter: JsonMessageFormatter(),
+        output: messages.add,
+      );
 
       final child = parent.child(context: {'requestId': 'REQ-123'});
 

@@ -12,11 +12,14 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -35,11 +38,14 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -56,14 +62,17 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
         formatOptions: const [
           RainbowFormatOptions(data: DataPresentation.inline),
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -80,14 +89,17 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
         formatOptions: const [
           RainbowFormatOptions(data: DataPresentation.multiline),
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -107,14 +119,17 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
         formatOptions: const [
           FormatOptions(), // Not a RainbowFormatOptions
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -131,11 +146,14 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -153,12 +171,15 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
         formatOptions: const [],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -175,7 +196,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
         formatOptions: const [
           FormatOptions(),
@@ -184,7 +205,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 
@@ -201,7 +225,7 @@ void main() {
 
       final entry = LogRecord(
         message: 'Test message',
-        date: DateTime(2024, 1, 15, 10, 23, 45),
+        timestamp: DateTime(2024, 1, 15, 10, 23, 45),
         formatOptions: const [
           RainbowFormatOptions(
             showTime: false,
@@ -213,7 +237,10 @@ void main() {
         ],
       );
 
-      final buffer = ConsoleMessageBuffer(supportsColors: false);
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
       formatter.format(entry, buffer);
       final result = buffer.toString();
 

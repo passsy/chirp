@@ -19,7 +19,7 @@ class JsonMessageFormatter extends ConsoleMessageFormatter {
         'Unknown';
 
     final map = <String, dynamic>{
-      'timestamp': record.date.toIso8601String(),
+      'timestamp': record.timestamp.toIso8601String(),
       'level': record.level.name,
       'class': className,
       'hash': (record.instanceHash ?? 0).toRadixString(16).padLeft(4, '0'),
@@ -34,8 +34,9 @@ class JsonMessageFormatter extends ConsoleMessageFormatter {
       map['stackTrace'] = record.stackTrace.toString();
     }
 
-    if (record.data != null) {
-      map['data'] = record.data;
+    final data = record.data;
+    if (data.isNotEmpty) {
+      map['data'] = data;
     }
 
     final jsonObject = jsonEncode(map);
