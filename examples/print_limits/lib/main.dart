@@ -11,7 +11,8 @@ void main() {
 /// Index for navigation
 enum AppPage {
   printLimits('Print Limits'),
-  throttling('Throttling');
+  throttling('Throttling'),
+  truecolor('True Color');
 
   const AppPage(this.label);
 
@@ -141,6 +142,7 @@ class _PrintLimitsAppState extends State<PrintLimitsApp> {
         body: switch (_currentPage) {
           AppPage.printLimits => const PrintLimitsPage(),
           AppPage.throttling => const ThrottlingTestPage(),
+          AppPage.truecolor => const TrueColorTestPage(),
         },
         bottomNavigationBar: NavigationBar(
           selectedIndex: _currentPage.index,
@@ -152,9 +154,11 @@ class _PrintLimitsAppState extends State<PrintLimitsApp> {
           destinations: [
             for (final page in AppPage.values)
               NavigationDestination(
-                icon: Icon(
-                  page == AppPage.printLimits ? Icons.text_fields : Icons.speed,
-                ),
+                icon: Icon(switch (page) {
+                  AppPage.printLimits => Icons.text_fields,
+                  AppPage.throttling => Icons.speed,
+                  AppPage.truecolor => Icons.color_lens,
+                }),
                 label: page.label,
               ),
           ],
@@ -531,6 +535,258 @@ class _ThrottlingTestPageState extends State<ThrottlingTestPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Test page for true color (24-bit RGB) support in the console.
+///
+/// Displays gradients using ANSI true color escape sequences to verify
+/// if the terminal/IDE supports 24-bit color output.
+class TrueColorTestPage extends StatelessWidget {
+  const TrueColorTestPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('True Color Test'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Test True Color (24-bit RGB) Support',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Press the buttons to print color gradients using ANSI true color '
+              'escape codes (\\x1B[38;2;R;G;Bm). If the gradient appears smooth, '
+              'true color is supported. If it looks banded or wrong, the terminal '
+              'may be falling back to 256 or 16 colors.',
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _printGreenToRedGradient,
+              icon: const Icon(Icons.gradient),
+              label: const Text('Green → Red Gradient'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _printRainbowGradient,
+              icon: const Icon(Icons.color_lens),
+              label: const Text('Rainbow Gradient'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _printGrayscaleGradient,
+              icon: const Icon(Icons.gradient),
+              label: const Text('Grayscale Gradient'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _print256ColorPalette,
+              icon: const Icon(Icons.palette),
+              label: const Text('256-Color Palette'),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Comparison Tests:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _printTrueColorVs256,
+              icon: const Icon(Icons.compare),
+              label: const Text('True Color vs 256-Color'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static void _printGreenToRedGradient() {
+    const steps = 64;
+    // ignore: avoid_print
+    print('');
+    // ignore: avoid_print
+    print('=== True Color Gradient: Green → Red ===');
+
+    final bgBuffer = StringBuffer();
+    final fgBuffer = StringBuffer();
+
+    for (int i = 0; i <= steps; i++) {
+      final t = i / steps;
+      final r = (255 * t).round();
+      final g = (255 * (1 - t)).round();
+
+      // Background colored blocks
+      bgBuffer.write('\x1B[48;2;$r;$g;0m \x1B[0m');
+      // Foreground colored blocks
+      fgBuffer.write('\x1B[38;2;$r;$g;0m█\x1B[0m');
+    }
+
+    // ignore: avoid_print
+    print('Background: $bgBuffer');
+    // ignore: avoid_print
+    print('Foreground: $fgBuffer');
+    // ignore: avoid_print
+    print('');
+  }
+
+  static void _printRainbowGradient() {
+    const steps = 64;
+    // ignore: avoid_print
+    print('');
+    // ignore: avoid_print
+    print('=== True Color Rainbow Gradient ===');
+
+    final buffer = StringBuffer();
+
+    for (int i = 0; i <= steps; i++) {
+      final hue = (i / steps) * 360;
+      final (r, g, b) = _hslToRgb(hue, 1.0, 0.5);
+
+      buffer.write('\x1B[48;2;$r;$g;${b}m \x1B[0m');
+    }
+
+    // ignore: avoid_print
+    print(buffer);
+    // ignore: avoid_print
+    print('');
+  }
+
+  static void _printGrayscaleGradient() {
+    const steps = 64;
+    // ignore: avoid_print
+    print('');
+    // ignore: avoid_print
+    print('=== True Color Grayscale Gradient ===');
+
+    final buffer = StringBuffer();
+
+    for (int i = 0; i <= steps; i++) {
+      final v = (255 * i / steps).round();
+      buffer.write('\x1B[48;2;$v;$v;${v}m \x1B[0m');
+    }
+
+    // ignore: avoid_print
+    print(buffer);
+    // ignore: avoid_print
+    print('');
+  }
+
+  static void _print256ColorPalette() {
+    // ignore: avoid_print
+    print('');
+    // ignore: avoid_print
+    print('=== 256-Color Palette (using 38;5;n) ===');
+
+    // Standard colors (0-15)
+    final standard = StringBuffer();
+    for (int i = 0; i < 16; i++) {
+      standard.write('\x1B[48;5;${i}m  \x1B[0m');
+    }
+    // ignore: avoid_print
+    print('Standard (0-15):  $standard');
+
+    // Color cube (16-231) - show first 36 as sample
+    final cube = StringBuffer();
+    for (int i = 16; i < 52; i++) {
+      cube.write('\x1B[48;5;${i}m \x1B[0m');
+    }
+    // ignore: avoid_print
+    print('Cube (16-51):     $cube');
+
+    // Grayscale (232-255)
+    final gray = StringBuffer();
+    for (int i = 232; i < 256; i++) {
+      gray.write('\x1B[48;5;${i}m \x1B[0m');
+    }
+    // ignore: avoid_print
+    print('Grayscale:        $gray');
+    // ignore: avoid_print
+    print('');
+  }
+
+  static void _printTrueColorVs256() {
+    const steps = 32;
+    // ignore: avoid_print
+    print('');
+    // ignore: avoid_print
+    print('=== Comparison: True Color vs 256-Color ===');
+    // ignore: avoid_print
+    print('If both lines look identical, true color may not be supported.');
+    // ignore: avoid_print
+    print('');
+
+    // True color gradient (should be smooth)
+    final trueColorBuffer = StringBuffer();
+    for (int i = 0; i <= steps; i++) {
+      final t = i / steps;
+      final r = (255 * t).round();
+      final g = (255 * (1 - t)).round();
+      trueColorBuffer.write('\x1B[48;2;$r;$g;0m  \x1B[0m');
+    }
+
+    // 256-color approximation (will show banding)
+    final color256Buffer = StringBuffer();
+    for (int i = 0; i <= steps; i++) {
+      final t = i / steps;
+      // Map to 6x6x6 color cube (values 0-5)
+      final r6 = (5 * t).round();
+      final g6 = (5 * (1 - t)).round();
+      // 256-color cube formula: 16 + 36*r + 6*g + b
+      final colorIndex = 16 + 36 * r6 + 6 * g6;
+      color256Buffer.write('\x1B[48;5;${colorIndex}m  \x1B[0m');
+    }
+
+    // ignore: avoid_print
+    print('True Color (38;2;r;g;b): $trueColorBuffer');
+    // ignore: avoid_print
+    print('256-Color  (38;5;n):     $color256Buffer');
+    // ignore: avoid_print
+    print('');
+    // ignore: avoid_print
+    print('The 256-color line should show visible banding/steps.');
+    // ignore: avoid_print
+    print('If both look the same, true color is NOT working.');
+    // ignore: avoid_print
+    print('');
+  }
+
+  /// Convert HSL to RGB
+  static (int, int, int) _hslToRgb(double h, double s, double l) {
+    final c = (1 - (2 * l - 1).abs()) * s;
+    final x = c * (1 - ((h / 60) % 2 - 1).abs());
+    final m = l - c / 2;
+
+    double r;
+    double g;
+    double b;
+    if (h < 60) {
+      (r, g, b) = (c, x, 0.0);
+    } else if (h < 120) {
+      (r, g, b) = (x, c, 0.0);
+    } else if (h < 180) {
+      (r, g, b) = (0.0, c, x);
+    } else if (h < 240) {
+      (r, g, b) = (0.0, x, c);
+    } else if (h < 300) {
+      (r, g, b) = (x, 0.0, c);
+    } else {
+      (r, g, b) = (c, 0.0, x);
+    }
+
+    return (
+      ((r + m) * 255).round(),
+      ((g + m) * 255).round(),
+      ((b + m) * 255).round(),
     );
   }
 }
