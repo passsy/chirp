@@ -5,8 +5,7 @@ import 'package:chirp/chirp.dart';
 ///
 /// Format pattern:
 /// ```dart
-/// 10:30:45.123 [INFO] main:42 processUser UserService@0000a3f2 [payment] - User logged in
-///   userId=user_123 action=login
+/// 10:30:45.123 [INFO] main:42 processUser UserService@0000a3f2 [payment] - User logged in (userId: "user_123", action: "login")
 /// Exception: Payment failed
 /// #0  PaymentService.process (payment_service.dart:78:5)
 /// #1  handlePayment (main.dart:123:12)
@@ -20,7 +19,7 @@ import 'package:chirp/chirp.dart';
 /// - Class: Class name with instance hash
 /// - Logger name: Shown in square brackets (only if not "root")
 /// - Message: The log message
-/// - Data: Structured key=value pairs (indented)
+/// - Data: Structured data inline with message
 /// - Error: Exception or error object
 /// - Stack trace: Full stack trace
 ///
@@ -165,13 +164,9 @@ LogSpan _buildSimpleLogSpan({
   }
   spans.add(LogMessage(record.message));
 
-  // Structured data on separate line (key=value format)
+  // Structured data inline with message
   if (showData && record.data.isNotEmpty) {
-    spans.addAll([
-      NewLine(),
-      PlainText('  '),
-      KeyValueData(record.data),
-    ]);
+    spans.add(InlineData(record.data));
   }
 
   // Error on new line

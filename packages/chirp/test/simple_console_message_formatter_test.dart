@@ -85,8 +85,7 @@ void main() {
 
       expect(
         result,
-        '10:30:45.123 [info] - User action\n'
-        '  userId=user_123 action=login',
+        '10:30:45.123 [info] - User action (userId: "user_123", action: "login")',
       );
     });
 
