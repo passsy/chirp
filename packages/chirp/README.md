@@ -461,33 +461,40 @@ Chirp.root = ChirpLogger()
 
 ### Interceptors
 
-Interceptors transform or filter log records before they reach writers. Use them for:
+Interceptors transform or filter log records before they reach writers.
+Return `null` from `intercept()` to drop a log record.
 
-- **Filtering**: Drop logs based on custom criteria (return `null`)
-- **Redaction**: Remove sensitive data from logs
-- **Enrichment**: Add fields like request IDs or user context
-- **Sampling**: Only log a percentage of high-volume events
+**Filtering** - Drop logs based on custom criteria:
 
 ```dart
-class RedactSecretsInterceptor implements ChirpInterceptor {
+/// Filters out high-frequency health check logs.
+class HealthCheckFilter implements ChirpInterceptor {
   @override
   bool get requiresCallerInfo => false;
 
   @override
   LogRecord? intercept(LogRecord record) {
-    // Transform: modify and return record
-    // Reject: return null to drop the record (filtering based on all metadata)
-    // Pass through: return record unchanged
+    // Return null to drop the log record
+    if (record.message.contains('/health')) return null;
     return record;
   }
 }
 
-final logger = ChirpLogger(name: 'api')
-  .addInterceptor(RedactSecretsInterceptor())
+final logger = ChirpLogger()
+  .addInterceptor(HealthCheckFilter())
   .addConsoleWriter();
+
+logger.info('GET /health');        // Dropped
+logger.info('GET /api/users');     // Logged
 ```
 
-See [`examples/simple/bin/main.dart`](examples/simple/bin/main.dart) for interceptor examples.
+Other use cases:
+
+- **Redaction**: Remove sensitive data from logs
+- **Enrichment**: Add fields like request IDs or user context
+- **Sampling**: Only log a percentage of high-volume events
+
+See [`examples/simple/bin/interceptors.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/interceptors.dart) for more examples.
 
 ### Library Logger Adoption
 
@@ -515,7 +522,7 @@ void main() {
 // 14:32:05.123 http_client [debug] GET https://api.example.com
 ```
 
-See [`examples/simple/bin/library.dart`](examples/simple/bin/library.dart) and [`examples/simple/bin/app.dart`](examples/simple/bin/app.dart) for a complete example.
+See [`examples/simple/bin/library.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/library.dart) and [`examples/simple/bin/app.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/app.dart) for a complete example.
 
 ### Custom Formatters
 
@@ -704,18 +711,18 @@ class _CapturingWriter implements ChirpWriter {
 
 ## Examples
 
-See [`examples/simple/bin/`](examples/simple/bin/) for runnable examples:
+See [`examples/simple/bin/`](https://github.com/passsy/chirp/tree/main/examples/simple/bin) for runnable examples:
 
 | File | Description |
 |------|-------------|
-| [`basic.dart`](examples/simple/bin/basic.dart) | Zero-config logging |
-| [`log_levels.dart`](examples/simple/bin/log_levels.dart) | All 9 log levels + custom levels |
-| [`child_loggers.dart`](examples/simple/bin/child_loggers.dart) | Context inheritance |
-| [`instance_tracking.dart`](examples/simple/bin/instance_tracking.dart) | The `.chirp` extension |
-| [`multiple_writers.dart`](examples/simple/bin/multiple_writers.dart) | Console + JSON output |
-| [`interceptors.dart`](examples/simple/bin/interceptors.dart) | Filtering and transforming logs |
-| [`library.dart`](examples/simple/bin/library.dart) / [`app.dart`](examples/simple/bin/app.dart) | Library logger adoption |
-| [`main.dart`](examples/simple/bin/main.dart) | Span transformers (advanced) |
+| [`basic.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/basic.dart) | Zero-config logging |
+| [`log_levels.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/log_levels.dart) | All 9 log levels + custom levels |
+| [`child_loggers.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/child_loggers.dart) | Context inheritance |
+| [`instance_tracking.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/instance_tracking.dart) | The `.chirp` extension |
+| [`multiple_writers.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/multiple_writers.dart) | Console + JSON output |
+| [`interceptors.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/interceptors.dart) | Filtering and transforming logs |
+| [`library.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/library.dart) / [`app.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/app.dart) | Library logger adoption |
+| [`main.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/main.dart) | Span transformers (advanced) |
 
 ## License
 
