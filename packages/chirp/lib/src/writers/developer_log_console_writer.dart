@@ -46,8 +46,14 @@ import 'package:chirp/chirp.dart';
 /// - https://api.flutter.dev/flutter/dart-developer/log.html
 /// - https://pub.dev/documentation/logging/latest/logging/Level-class.html
 class DeveloperLogConsoleWriter extends ChirpWriter {
+  /// The formatter that writes log records to a buffer.
   final ConsoleMessageFormatter formatter;
 
+  /// Creates a writer that outputs to `dart:developer` log.
+  ///
+  /// Use this for development with a debugger attached to see unlimited-length
+  /// log output. Falls back to [RainbowMessageFormatter] if no [formatter]
+  /// is provided.
   DeveloperLogConsoleWriter({
     ConsoleMessageFormatter? formatter,
   }) : formatter = formatter ?? RainbowMessageFormatter();

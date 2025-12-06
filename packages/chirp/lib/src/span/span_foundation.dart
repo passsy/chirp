@@ -8,10 +8,12 @@ export 'package:chirp/src/span/spans.dart';
 // Base LogSpan class - mutable tree with parent/child management
 // =============================================================================
 
+/// {@template chirp.LogSpan}
 /// Base class for all log spans - a mutable tree structure.
 ///
 /// Spans are composable building blocks for log output. Each span knows its
 /// parent and can be manipulated in place (replaced, removed, wrapped).
+/// {@endtemplate}
 ///
 /// ## Class hierarchy
 ///
@@ -62,6 +64,9 @@ export 'package:chirp/src/span/spans.dart';
 /// ```
 @experimental
 abstract class LogSpan {
+  /// {@macro chirp.LogSpan}
+  LogSpan();
+
   LogSpan? _parent;
 
   /// Parent span in the tree, or null if this is the root.
@@ -232,12 +237,17 @@ abstract class LogSpan {
 // LeafSpan - spans with no children
 // =============================================================================
 
+/// {@template chirp.LeafSpan}
 /// Base class for spans that have no children.
 ///
 /// Leaf spans are the primitive building blocks that render directly
 /// to the buffer. Examples: [PlainText], [Whitespace], [NewLine], [EmptySpan].
+/// {@endtemplate}
 @experimental
 abstract class LeafSpan extends LogSpan {
+  /// {@macro chirp.LeafSpan}
+  LeafSpan();
+
   @override
   bool replaceWith(LogSpan newSpan) {
     final p = _parent;
@@ -386,12 +396,17 @@ abstract class MultiChildSpan extends LogSpan {
 // SlottedSpan - spans with named child slots
 // =============================================================================
 
+/// {@template chirp.SlottedSpan}
 /// Base class for spans that have named child slots.
 ///
 /// Unlike [MultiChildSpan], slots have semantic names (e.g., prefix, child, suffix).
 /// Examples: [Surrounded].
+/// {@endtemplate}
 @experimental
 abstract class SlottedSpan extends LogSpan {
+  /// {@macro chirp.SlottedSpan}
+  SlottedSpan();
+
   final Map<String, LogSpan> _slots = {};
 
   /// Gets the span in the named [slot].

@@ -50,6 +50,10 @@ class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
   /// Whether to show structured data fields
   final bool showData;
 
+  /// Creates a simple console message formatter.
+  ///
+  /// All fields are shown by default. Set any `show*` parameter to `false`
+  /// to hide that element from the output.
   SimpleConsoleMessageFormatter({
     this.showTimestamp = true,
     this.showLevel = true,
@@ -188,10 +192,18 @@ LogSpan _buildSimpleLogSpan({
   return SpanSequence(children: spans);
 }
 
-/// Full timestamp with date: 2024-01-10 10:30:45.123
+/// {@template chirp.FullTimestamp}
+/// Renders full date and time: "2024-01-10 10:30:45.123".
+///
+/// Use this when logs span multiple days or need to be correlated
+/// with external systems. For compact output with just the time,
+/// use [Timestamp] instead.
+/// {@endtemplate}
 class FullTimestamp extends LeafSpan {
+  /// The date and time to render.
   final DateTime date;
 
+  /// {@macro chirp.FullTimestamp}
   FullTimestamp(this.date);
 
   @override
@@ -210,10 +222,16 @@ class FullTimestamp extends LeafSpan {
   String toString() => 'FullTimestamp($date)';
 }
 
-/// Logger name in brackets: [payment]
+/// {@template chirp.BracketedLoggerName}
+/// Renders logger name in brackets: "[payment]", "[auth]".
+///
+/// Use to visually distinguish logs from different named loggers.
+/// {@endtemplate}
 class BracketedLoggerName extends LeafSpan {
+  /// The logger name to display in brackets.
   final String name;
 
+  /// {@macro chirp.BracketedLoggerName}
   BracketedLoggerName(this.name);
 
   @override
@@ -225,10 +243,19 @@ class BracketedLoggerName extends LeafSpan {
   String toString() => 'BracketedLoggerName("$name")';
 }
 
-/// Key-value data in key=value format: userId=user_123 action=login
+/// {@template chirp.KeyValueData}
+/// Renders data as space-separated "key=value" pairs.
+///
+/// Example output: `userId=user_123 action=login`
+///
+/// This format is commonly used for log aggregation systems that
+/// parse structured data. Renders nothing if [data] is empty.
+/// {@endtemplate}
 class KeyValueData extends LeafSpan {
+  /// The key-value pairs to render.
   final Map<String, Object?> data;
 
+  /// {@macro chirp.KeyValueData}
   KeyValueData(this.data);
 
   @override

@@ -3,11 +3,13 @@ import 'package:chirp/src/core/chirp_logger.dart';
 import 'package:chirp/src/core/log_level.dart';
 import 'package:chirp/src/core/log_record.dart';
 
+/// {@template chirp.ChirpWriter}
 /// Abstract interface for log output destinations.
 ///
 /// A [ChirpWriter] receives [LogRecord] instances and writes them to a
 /// destination such as the console, a file, a network endpoint, or a
 /// monitoring service.
+/// {@endtemplate}
 ///
 /// ## Implementing Custom Writers
 ///
@@ -55,6 +57,9 @@ import 'package:chirp/src/core/log_record.dart';
 /// - [LogRecord] for the data structure passed to writers
 /// - [ChirpInterceptor] for transforming/filtering records
 abstract class ChirpWriter {
+  /// {@macro chirp.ChirpWriter}
+  ChirpWriter();
+
   final List<ChirpInterceptor> _interceptors = [];
 
   /// Interceptors attached to this writer.

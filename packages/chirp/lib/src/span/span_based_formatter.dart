@@ -30,6 +30,9 @@ abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
   /// span tree. They can modify, remove, or wrap spans in the tree.
   final List<SpanTransformer> spanTransformers;
 
+  /// Creates a span-based formatter.
+  ///
+  /// Provide [spanTransformers] to modify the span tree before rendering.
   SpanBasedFormatter({
     List<SpanTransformer>? spanTransformers,
   }) : spanTransformers = spanTransformers ?? [];
@@ -107,6 +110,7 @@ typedef SpanTransformer = void Function(
 /// ```
 @experimental
 class SpanFormatOptions extends FormatOptions {
+  /// Creates span format options with optional [spanTransformers].
   const SpanFormatOptions({
     this.spanTransformers = const [],
   });

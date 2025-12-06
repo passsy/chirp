@@ -2,8 +2,12 @@ import 'dart:convert';
 
 import 'package:chirp/chirp.dart';
 
-/// JSON format for structured logging
+/// JSON format for structured logging.
+///
+/// Outputs log records as single-line JSON objects, ideal for log aggregation
+/// services and machine parsing.
 class JsonMessageFormatter extends ConsoleMessageFormatter {
+  /// Creates a JSON message formatter.
   JsonMessageFormatter() : super();
 
   @override

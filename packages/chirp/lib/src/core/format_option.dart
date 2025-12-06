@@ -82,5 +82,8 @@
 /// );
 /// ```
 class FormatOptions {
+  /// Creates a format options instance.
+  ///
+  /// Subclass this to define custom options for your formatter.
   const FormatOptions();
 }

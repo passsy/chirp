@@ -56,6 +56,10 @@ class LogRecord {
   /// is essentially free (just a pointer lookup).
   final Zone zone;
 
+  /// Creates a log record.
+  ///
+  /// Typically you don't create these directly - use [ChirpLogger] methods
+  /// like `Chirp.info()` instead.
   LogRecord({
     required this.message,
     required this.timestamp,

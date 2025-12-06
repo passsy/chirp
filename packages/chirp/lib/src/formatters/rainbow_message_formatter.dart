@@ -3,10 +3,28 @@ import 'package:chirp/chirp.dart';
 export 'package:chirp/src/span/span_foundation.dart';
 
 /// Default colored formatter using the span-based templating system.
+///
+/// Output format:
+/// ```text
+/// 10:30:45.123 UserService@a1b2 [info] User logged in (userId: "abc")
+/// ```
+///
+/// Uses ANSI colors to highlight different parts: timestamp (dim), class names
+/// (unique color per class), log levels (color-coded by severity), and more.
 class RainbowMessageFormatter extends SpanBasedFormatter {
+  /// Width reserved for metadata (timestamp, class, level) before the message.
+  ///
+  /// Longer metadata is truncated; shorter is padded for alignment.
   final int metaWidth;
+
+  /// Controls which elements are shown in the output.
   final RainbowFormatOptions options;
 
+  /// Creates a rainbow message formatter.
+  ///
+  /// - [metaWidth]: Width for metadata column (default: 80)
+  /// - [options]: Controls visibility of timestamp, level, class, etc.
+  /// - [spanTransformers]: Customize the span tree before rendering
   RainbowMessageFormatter({
     this.metaWidth = 80,
     RainbowFormatOptions? options,
@@ -184,7 +202,11 @@ LogSpan _buildRainbowLogSpan({
   return SpanSequence(children: spans);
 }
 
+/// Format options for [RainbowMessageFormatter].
+///
+/// Controls which elements are displayed in the formatted log output.
 class RainbowFormatOptions extends FormatOptions {
+  /// Creates format options for the rainbow formatter.
   const RainbowFormatOptions({
     this.data = DataPresentation.inline,
     this.showTime = true,
@@ -195,14 +217,28 @@ class RainbowFormatOptions extends FormatOptions {
     this.showLogLevel = true,
   });
 
+  /// How structured data is rendered ([DataPresentation.inline] or multiline).
   final DataPresentation data;
+
+  /// Whether to show the timestamp.
   final bool showTime;
+
+  /// Whether to show the source code location.
   final bool showLocation;
+
+  /// Whether to show the logger name.
   final bool showLogger;
+
+  /// Whether to show the class name.
   final bool showClass;
+
+  /// Whether to show the method name.
   final bool showMethod;
+
+  /// Whether to show the log level.
   final bool showLogLevel;
 
+  /// Merges [other] options into this, with [other] values taking precedence.
   RainbowFormatOptions merge(RainbowFormatOptions? other) {
     return RainbowFormatOptions(
       data: other?.data ?? data,
@@ -216,7 +252,16 @@ class RainbowFormatOptions extends FormatOptions {
   }
 }
 
-enum DataPresentation { inline, multiline }
+/// How structured data should be rendered in log output.
+///
+/// Used by [RainbowFormatOptions.dataPresentation] to control data rendering.
+enum DataPresentation {
+  /// Data is rendered on the same line as the message.
+  inline,
+
+  /// Data is rendered on separate lines below the message.
+  multiline,
+}
 
 extension _FirstWhereTypeOrNull<T> on Iterable<T> {
   R? firstWhereTypeOrNull<R>() => whereType<R>().firstOrNull;

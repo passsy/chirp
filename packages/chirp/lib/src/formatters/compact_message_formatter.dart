@@ -14,6 +14,9 @@ import 'package:chirp/chirp.dart';
 /// #0      ApiClient.fetch (package:my_app/api_client.dart:87:5)
 /// ```
 class CompactChirpMessageFormatter extends SpanBasedFormatter {
+  /// Creates a compact message formatter.
+  ///
+  /// Use [spanTransformers] to customize the output structure.
   CompactChirpMessageFormatter({
     super.spanTransformers,
   });

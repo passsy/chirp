@@ -12,8 +12,10 @@ class StackFrameInfo {
   /// The column number (optional)
   final int? column;
 
+  /// The original stack trace this frame was parsed from.
   final StackTrace stackTrace;
 
+  /// Creates stack frame info from parsed stack trace components.
   StackFrameInfo({
     required this.stackTrace,
     required this.rawCallerMethod,

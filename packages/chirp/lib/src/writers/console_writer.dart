@@ -92,6 +92,7 @@ import 'package:chirp/src/platform/platform_info.dart';
 /// - IDE debug console (Android Studio, VS Code, IntelliJ)
 /// - Works in release builds
 class PrintConsoleWriter extends ChirpWriter {
+  /// The formatter that writes log records to a buffer.
   final ConsoleMessageFormatter formatter;
 
   /// Maximum length per chunk (in characters).
@@ -110,6 +111,10 @@ class PrintConsoleWriter extends ChirpWriter {
   /// Custom output function for testing or alternative output destinations.
   final void Function(String) output;
 
+  /// Creates a console writer that outputs via `print()`.
+  ///
+  /// Falls back to [RainbowMessageFormatter] if no [formatter] is provided.
+  /// Use [output] to redirect logs for testing or alternative destinations.
   PrintConsoleWriter({
     ConsoleMessageFormatter? formatter,
     int? maxChunkLength,
@@ -143,11 +148,16 @@ class PrintConsoleWriter extends ChirpWriter {
   }
 }
 
+/// {@template chirp.ConsoleMessageFormatter}
 /// Formats a [LogRecord] into a string for console output.
 ///
 /// Implementations receive a [ConsoleMessageBuffer] to write formatted output.
 /// The buffer handles ANSI color codes when colors are enabled.
+/// {@endtemplate}
 abstract class ConsoleMessageFormatter {
+  /// {@macro chirp.ConsoleMessageFormatter}
+  const ConsoleMessageFormatter();
+
   /// Whether this formatter requires caller info (file, line, class, method).
   ///
   /// If `true`, the logger will capture `StackTrace.current` for each log call.
@@ -211,6 +221,7 @@ abstract class ConsoleMessageFormatter {
 /// print(buffer.toString()); // "Hello " in red, "World" in dim blue, "!" in red
 /// ```
 class ConsoleMessageBuffer {
+  /// Creates a console message buffer with the given terminal [capabilities].
   ConsoleMessageBuffer({
     required this.capabilities,
   });

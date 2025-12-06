@@ -1,5 +1,6 @@
 import 'package:chirp/src/core/log_record.dart';
 
+/// {@template chirp.ChirpInterceptor}
 /// Intercepts log records before they reach a writer.
 ///
 /// Interceptors can:
@@ -9,6 +10,7 @@ import 'package:chirp/src/core/log_record.dart';
 ///
 /// Interceptors are executed in order. Each interceptor receives the output of
 /// the previous one. If any interceptor returns `null`, the chain stops.
+/// {@endtemplate}
 ///
 /// ## Example: Level Filter
 ///
@@ -39,6 +41,9 @@ import 'package:chirp/src/core/log_record.dart';
 /// }
 /// ```
 abstract class ChirpInterceptor {
+  /// {@macro chirp.ChirpInterceptor}
+  const ChirpInterceptor();
+
   /// Whether this interceptor requires caller info (file, line, class, method).
   ///
   /// If `true`, the logger will capture `StackTrace.current` for each log call.

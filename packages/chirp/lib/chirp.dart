@@ -1,3 +1,28 @@
+/// A lightweight, flexible logging library for Dart.
+///
+/// Chirp provides instance tracking, child loggers, structured logging,
+/// and multiple output formats with ANSI color support.
+///
+/// ## Quick Start
+///
+/// ```dart
+/// import 'package:chirp/chirp.dart';
+///
+/// void main() {
+///   // Zero-config - works immediately
+///   Chirp.info('Hello, Chirp!');
+///
+///   // Or configure with a custom formatter
+///   Chirp.root = ChirpLogger()
+///     .addConsoleWriter(formatter: RainbowMessageFormatter());
+///
+///   Chirp.info('User logged in', data: {'userId': 'abc123'});
+/// }
+/// ```
+///
+/// See the [README](https://pub.dev/packages/chirp) for full documentation.
+library;
+
 export 'package:chirp/src/ansi/ansi16.dart' show Ansi16;
 export 'package:chirp/src/ansi/ansi256.g.dart' show Ansi256;
 export 'package:chirp/src/ansi/console_color.dart'

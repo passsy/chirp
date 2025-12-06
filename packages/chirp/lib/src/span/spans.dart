@@ -6,12 +6,24 @@ import 'package:meta/meta.dart';
 // Leaf Spans (no children)
 // =============================================================================
 
+/// {@template chirp.EmptySpan}
 /// A span that renders nothing.
 ///
-/// Use this when a span conditionally has no output, similar to
-/// Flutter's `SizedBox.shrink()`.
+/// Similar to Flutter's `SizedBox.shrink()`, use this when a span
+/// conditionally produces no output:
+///
+/// ```dart
+/// LogSpan build() {
+///   if (data == null) return EmptySpan();
+///   return PlainText(data.toString());
+/// }
+/// ```
+/// {@endtemplate}
 @experimental
 class EmptySpan extends LeafSpan {
+  /// {@macro chirp.EmptySpan}
+  EmptySpan();
+
   @override
   void render(ConsoleMessageBuffer buffer) {
     // Intentionally empty - renders nothing
@@ -21,11 +33,19 @@ class EmptySpan extends LeafSpan {
   String toString() => 'EmptySpan()';
 }
 
-/// Plain text span.
+/// {@template chirp.PlainText}
+/// Renders literal text without any ANSI formatting.
+///
+/// This is the most basic span - use it for any text content that doesn't
+/// need colors or styling. Most semantic spans (like [LogMessage], [ClassName])
+/// build down to [PlainText] internally.
+/// {@endtemplate}
 @experimental
 class PlainText extends LeafSpan {
+  /// The text to render verbatim.
   final String value;
 
+  /// {@macro chirp.PlainText}
   PlainText(this.value);
 
   @override
@@ -37,9 +57,17 @@ class PlainText extends LeafSpan {
   String toString() => 'PlainText("$value")';
 }
 
-/// A single space.
+/// {@template chirp.Whitespace}
+/// Renders a single space character.
+///
+/// Use between spans for visual separation. For multiple spaces, use
+/// [PlainText] with the desired number of spaces instead.
+/// {@endtemplate}
 @experimental
 class Whitespace extends LeafSpan {
+  /// {@macro chirp.Whitespace}
+  Whitespace();
+
   @override
   void render(ConsoleMessageBuffer buffer) {
     buffer.write(' ');
@@ -49,9 +77,17 @@ class Whitespace extends LeafSpan {
   String toString() => 'Whitespace()';
 }
 
-/// A line break.
+/// {@template chirp.NewLine}
+/// Renders a line break (`\n`).
+///
+/// Use to separate log output across multiple lines, such as between
+/// the main message and a stack trace.
+/// {@endtemplate}
 @experimental
 class NewLine extends LeafSpan {
+  /// {@macro chirp.NewLine}
+  NewLine();
+
   @override
   void render(ConsoleMessageBuffer buffer) {
     buffer.write('\n');
@@ -86,7 +122,16 @@ class NewLine extends LeafSpan {
 /// ```
 @experimental
 class AnsiStyled extends SingleChildSpan {
+  /// The foreground (text) color to apply.
+  ///
+  /// Use [Ansi16] for basic 16-color support, [Ansi256] for 256 colors,
+  /// or [RgbColor] for truecolor (24-bit) support.
   final ConsoleColor? foreground;
+
+  /// The background color to apply behind the text.
+  ///
+  /// Use [Ansi16] for basic 16-color support, [Ansi256] for 256 colors,
+  /// or [RgbColor] for truecolor (24-bit) support.
   final ConsoleColor? background;
 
   /// Whether to apply bold styling (ANSI SGR code 1).
@@ -129,6 +174,9 @@ class AnsiStyled extends SingleChildSpan {
   /// Whether to apply strikethrough styling (ANSI SGR code 9).
   final bool strikethrough;
 
+  /// Creates a styled span that applies ANSI formatting to its [child].
+  ///
+  /// All style options default to false/null (no styling applied).
   AnsiStyled({
     super.child,
     this.foreground,
@@ -171,6 +219,7 @@ class AnsiStyled extends SingleChildSpan {
 /// A sequence of spans rendered sequentially.
 @experimental
 class SpanSequence extends MultiChildSpan {
+  /// Creates a sequence of spans with optional [separator] between children.
   SpanSequence({super.children, this.separator});
 
   /// Optional span to render between each child.
@@ -200,22 +249,31 @@ class SpanSequence extends MultiChildSpan {
 /// If [child] is non-null, renders [prefix], [child], [suffix].
 @experimental
 class Surrounded extends SlottedSpan {
+  /// Slot name for the prefix span.
   static const prefixSlot = 'prefix';
+
+  /// Slot name for the child span.
   static const childSlot = 'child';
+
+  /// Slot name for the suffix span.
   static const suffixSlot = 'suffix';
 
+  /// The span rendered before the child.
   LogSpan? get prefix => getSlot(prefixSlot);
 
   set prefix(LogSpan? v) => setSlot(prefixSlot, v);
 
+  /// The main content span (if null, nothing is rendered).
   LogSpan? get child => getSlot(childSlot);
 
   set child(LogSpan? v) => setSlot(childSlot, v);
 
+  /// The span rendered after the child.
   LogSpan? get suffix => getSlot(suffixSlot);
 
   set suffix(LogSpan? v) => setSlot(suffixSlot, v);
 
+  /// Creates a surrounded span with optional [prefix], [child], and [suffix].
   Surrounded({LogSpan? prefix, LogSpan? child, LogSpan? suffix}) {
     this.prefix = prefix;
     this.child = child;
@@ -239,13 +297,20 @@ class Surrounded extends SlottedSpan {
 // Semantic spans - these mark specific types of log content
 // =============================================================================
 
-/// Timestamp when the log was created.
+/// {@template chirp.Timestamp}
+/// Renders a timestamp in "HH:mm:ss.mmm" format (time only, no date).
 ///
-/// Builds to [PlainText] with format "HH:mm:ss.mmm".
+/// Use this for compact log output where the date is not needed.
+/// For full date and time, use [FullTimestamp] instead.
+///
+/// Example output: `10:30:45.123`
+/// {@endtemplate}
 @experimental
 class Timestamp extends LeafSpan {
+  /// The [DateTime] to extract the time from.
   final DateTime date;
 
+  /// {@macro chirp.Timestamp}
   Timestamp(this.date);
 
   @override
@@ -261,14 +326,23 @@ class Timestamp extends LeafSpan {
   String toString() => 'Timestamp($date)';
 }
 
-/// Source code location (file and line).
+/// {@template chirp.DartSourceCodeLocation}
+/// Renders a source code location as "file:line".
 ///
-/// Builds to [PlainText] with format "file:line" or [EmptySpan] if no file.
+/// Use to show where a log call originated in the codebase.
+/// Returns [EmptySpan] if [fileName] is null.
+///
+/// Example output: `user_service.dart:42`
+/// {@endtemplate}
 @experimental
 class DartSourceCodeLocation extends LeafSpan {
+  /// The file name (typically without full path), e.g., "user_service.dart".
   final String? fileName;
+
+  /// The line number in the source file, or null if unknown.
   final int? line;
 
+  /// {@macro chirp.DartSourceCodeLocation}
   DartSourceCodeLocation({this.fileName, this.line});
 
   @override
@@ -284,13 +358,20 @@ class DartSourceCodeLocation extends LeafSpan {
   String toString() => 'DartSourceCodeLocation($fileName:$line)';
 }
 
-/// Logger name for named loggers.
+/// {@template chirp.LoggerName}
+/// Renders a logger name for named loggers.
 ///
-/// Builds to [PlainText].
+/// Named loggers help organize and filter logs by subsystem or feature.
+/// Create named loggers with [ChirpLogger.named].
+///
+/// Example output: `payment`, `auth`, `api.users`
+/// {@endtemplate}
 @experimental
 class LoggerName extends LeafSpan {
+  /// The logger name, e.g., "payment" or "api.users".
   final String name;
 
+  /// {@macro chirp.LoggerName}
   LoggerName(this.name);
 
   @override
@@ -377,14 +458,28 @@ class Aligned extends SingleChildSpan {
 @experimental
 enum HorizontalAlign { left, right, center }
 
-/// Class or instance name.
+/// {@template chirp.ClassName}
+/// Renders a class name with optional instance hash.
 ///
-/// Builds to [PlainText] with format "ClassName" or "ClassName@hash".
+/// The instance hash helps distinguish multiple instances of the same class
+/// in logs, which is useful for tracking object lifecycles or debugging
+/// concurrent operations.
+///
+/// Example output: `UserService` or `UserService@a1b2c3d4`
+///
+/// Use [ClassName.fromRecord] to automatically extract class name and hash
+/// from a [LogRecord].
+/// {@endtemplate}
 @experimental
 class ClassName extends LeafSpan {
+  /// The class name, e.g., "UserService".
   final String name;
+
+  /// Optional hex hash to distinguish instances, e.g., "a1b2c3d4".
+  /// When present, output becomes "ClassName@hash".
   final String? instanceHash;
 
+  /// {@macro chirp.ClassName}
   ClassName(this.name, {this.instanceHash});
 
   /// Creates a [ClassName] from a [LogRecord].
@@ -447,13 +542,19 @@ class ClassName extends LeafSpan {
   String toString() => 'ClassName("$name", hash: $instanceHash)';
 }
 
-/// Method name where the log was called.
+/// {@template chirp.MethodName}
+/// Renders the method name where the log call originated.
 ///
-/// Builds to [PlainText].
+/// Useful for understanding the call context without looking at stack traces.
+///
+/// Example output: `processOrder`, `handleRequest`
+/// {@endtemplate}
 @experimental
 class MethodName extends LeafSpan {
+  /// The method name, e.g., "processOrder".
   final String name;
 
+  /// {@macro chirp.MethodName}
   MethodName(this.name);
 
   @override
@@ -463,13 +564,17 @@ class MethodName extends LeafSpan {
   String toString() => 'MethodName("$name")';
 }
 
-/// Log severity level with brackets.
+/// {@template chirp.BracketedLogLevel}
+/// Renders the log severity level in brackets.
 ///
-/// Builds to [PlainText] with format "[levelName]".
+/// Example output: `[debug]`, `[info]`, `[warning]`, `[error]`
+/// {@endtemplate}
 @experimental
 class BracketedLogLevel extends LeafSpan {
+  /// The log level to render.
   final ChirpLogLevel level;
 
+  /// {@macro chirp.BracketedLogLevel}
   BracketedLogLevel(this.level);
 
   @override
@@ -479,13 +584,18 @@ class BracketedLogLevel extends LeafSpan {
   String toString() => 'BracketedLogLevel(${level.name})';
 }
 
-/// The primary log message.
+/// {@template chirp.LogMessage}
+/// Renders the primary log message.
 ///
-/// Builds to [PlainText] or [EmptySpan] if message is null/empty.
+/// The [message] object is converted to a string via [Object.toString].
+/// Returns [EmptySpan] if [message] is null or empty.
+/// {@endtemplate}
 @experimental
 class LogMessage extends LeafSpan {
+  /// The message object. Will be converted to string for display.
   final Object? message;
 
+  /// {@macro chirp.LogMessage}
   LogMessage(this.message);
 
   @override
@@ -499,13 +609,24 @@ class LogMessage extends LeafSpan {
   String toString() => 'LogMessage("$message")';
 }
 
-/// Structured key-value data rendered inline: ` (key: value, key: value)`.
+/// {@template chirp.InlineData}
+/// Renders structured key-value data inline with the log message.
 ///
-/// Builds to [PlainText] or [EmptySpan] if data is null/empty.
+/// Output format: ` (key: value, key: value)`
+///
+/// Use this for compact single-line output. For multi-line YAML format
+/// that's easier to read with many fields, use [MultilineData] instead.
+///
+/// Returns [EmptySpan] if [data] is null or empty.
+///
+/// Example output: ` (userId: abc123, action: login)`
+/// {@endtemplate}
 @experimental
 class InlineData extends LeafSpan {
+  /// The structured data to render as inline key-value pairs.
   final Map<String, Object?>? data;
 
+  /// {@macro chirp.InlineData}
   InlineData(this.data);
 
   @override
@@ -522,13 +643,29 @@ class InlineData extends LeafSpan {
   String toString() => 'InlineData($data)';
 }
 
-/// Structured key-value data rendered as multiline YAML.
+/// {@template chirp.MultilineData}
+/// Renders structured key-value data in multi-line YAML format.
 ///
-/// Builds to [PlainText] or [EmptySpan] if data is null/empty.
+/// Use this when you have many data fields or nested structures that
+/// benefit from vertical layout. For compact single-line output, use
+/// [InlineData] instead.
+///
+/// Returns [EmptySpan] if [data] is null or empty.
+///
+/// Example output:
+/// ```yaml
+/// userId: abc123
+/// action: login
+/// metadata:
+///   ip: 192.168.1.1
+/// ```
+/// {@endtemplate}
 @experimental
 class MultilineData extends LeafSpan {
+  /// The structured data to render as multi-line YAML.
   final Map<String, Object?>? data;
 
+  /// {@macro chirp.MultilineData}
   MultilineData(this.data);
 
   @override
@@ -543,13 +680,21 @@ class MultilineData extends LeafSpan {
   String toString() => 'MultilineData($data)';
 }
 
-/// Error object.
+/// {@template chirp.ErrorSpan}
+/// Renders an error or exception object.
 ///
-/// Builds to [PlainText] or [EmptySpan] if error is null.
+/// The [error] is converted to string via [Object.toString].
+/// Returns [EmptySpan] if [error] is null.
+///
+/// Typically used together with [StackTraceSpan] to show both the
+/// error message and its stack trace.
+/// {@endtemplate}
 @experimental
 class ErrorSpan extends LeafSpan {
+  /// The error or exception to render.
   final Object? error;
 
+  /// {@macro chirp.ErrorSpan}
   ErrorSpan(this.error);
 
   @override
@@ -562,13 +707,18 @@ class ErrorSpan extends LeafSpan {
   String toString() => 'ErrorSpan($error)';
 }
 
-/// Stack trace.
+/// {@template chirp.StackTraceSpan}
+/// Renders a stack trace.
 ///
-/// Builds to [PlainText].
+/// Typically used together with [ErrorSpan] to show both the error
+/// message and where it occurred.
+/// {@endtemplate}
 @experimental
 class StackTraceSpan extends LeafSpan {
+  /// The stack trace to render.
   final StackTrace stackTrace;
 
+  /// {@macro chirp.StackTraceSpan}
   StackTraceSpan(this.stackTrace);
 
   @override
@@ -587,15 +737,30 @@ class StackTraceSpan extends LeafSpan {
 enum BoxBorderStyle { single, double, rounded, heavy, ascii }
 
 /// Characters for drawing box borders.
+///
+/// Provides predefined border styles: [single], [double], [rounded],
+/// [heavy], and [ascii].
 @experimental
 class BoxBorderChars {
+  /// The character for the top-left corner.
   final String topLeft;
+
+  /// The character for the top-right corner.
   final String topRight;
+
+  /// The character for the bottom-left corner.
   final String bottomLeft;
+
+  /// The character for the bottom-right corner.
   final String bottomRight;
+
+  /// The character for horizontal lines.
   final String horizontal;
+
+  /// The character for vertical lines.
   final String vertical;
 
+  /// Creates a custom set of box border characters.
   const BoxBorderChars({
     required this.topLeft,
     required this.topRight,
@@ -605,6 +770,7 @@ class BoxBorderChars {
     required this.vertical,
   });
 
+  /// Single-line box drawing characters (─ │ ┌ ┐ └ ┘).
   static const single = BoxBorderChars(
     topLeft: '\u250c',
     topRight: '\u2510',
@@ -614,6 +780,7 @@ class BoxBorderChars {
     vertical: '\u2502',
   );
 
+  /// Double-line box drawing characters (═ ║ ╔ ╗ ╚ ╝).
   static const double = BoxBorderChars(
     topLeft: '\u2554',
     topRight: '\u2557',
@@ -623,6 +790,7 @@ class BoxBorderChars {
     vertical: '\u2551',
   );
 
+  /// Rounded corner box drawing characters (─ │ ╭ ╮ ╰ ╯).
   static const rounded = BoxBorderChars(
     topLeft: '\u256d',
     topRight: '\u256e',
@@ -632,6 +800,7 @@ class BoxBorderChars {
     vertical: '\u2502',
   );
 
+  /// Heavy/thick box drawing characters (━ ┃ ┏ ┓ ┗ ┛).
   static const heavy = BoxBorderChars(
     topLeft: '\u250f',
     topRight: '\u2513',
@@ -641,6 +810,7 @@ class BoxBorderChars {
     vertical: '\u2503',
   );
 
+  /// ASCII-only box characters (- | + + + +) for maximum compatibility.
   static const ascii = BoxBorderChars(
     topLeft: '+',
     topRight: '+',
@@ -650,6 +820,7 @@ class BoxBorderChars {
     vertical: '|',
   );
 
+  /// Returns the [BoxBorderChars] for the given [style].
   static BoxBorderChars fromStyle(BoxBorderStyle style) {
     switch (style) {
       case BoxBorderStyle.single:
@@ -667,12 +838,32 @@ class BoxBorderChars {
 }
 
 /// A span that draws an ASCII box around its content.
+///
+/// Example:
+/// ```dart
+/// Bordered(
+///   style: BoxBorderStyle.rounded,
+///   borderColor: Ansi16.cyan,
+///   child: PlainText('Hello, World!'),
+/// )
+/// ```
 @experimental
 class Bordered extends SingleChildSpan {
+  /// The border style to use. Defaults to [BoxBorderStyle.single].
   final BoxBorderStyle style;
+
+  /// The color for the border characters. If null, uses the default color.
   final ConsoleColor? borderColor;
+
+  /// The padding (in spaces) between the border and the content.
+  /// Defaults to 1.
   final int padding;
 
+  /// Creates a bordered span around the [child] content.
+  ///
+  /// - [style] determines the border characters (single, double, rounded, etc.)
+  /// - [borderColor] sets the ANSI color for the border
+  /// - [padding] adds spacing between the border and content
   Bordered({
     super.child,
     this.style = BoxBorderStyle.single,
@@ -728,8 +919,12 @@ class Bordered extends SingleChildSpan {
   String toString() => 'Bordered(style: $style, child: $child)';
 }
 
+/// A span that renders the Chirp ASCII art logo.
 @experimental
 class ChirpLogo extends LeafSpan {
+  /// Creates a Chirp logo span.
+  ChirpLogo();
+
   @override
   void render(ConsoleMessageBuffer buffer) {
     buffer.write('''

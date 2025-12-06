@@ -36,6 +36,8 @@ import 'package:chirp/src/writers/console_writer.dart';
 /// a null error by design. Always replace the root logger instead. This prevents
 /// accidental writer accumulation in test setUp() code.
 class Chirp {
+  Chirp._();
+
   static ChirpLogger? _root;
 
   /// The custom root logger.
