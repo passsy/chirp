@@ -399,9 +399,12 @@ Chirp.root = ChirpLogger().addConsoleWriter();
 Chirp.root.addWriter(myWriter);
 ```
 
-### Log Level Filtering
+### Filtering
 
-Filter logs by severity at the logger or writer level:
+Chirp provides two ways to filter logs:
+
+1. **Log Level Filtering** - Drop logs below a severity threshold (fast, simple)
+2. **Interceptors** - Programmatic filtering with custom logic (see [Interceptors](#interceptors))
 
 #### Logger-Level Filtering
 
@@ -433,7 +436,12 @@ Chirp.root = ChirpLogger()
 
 ### Interceptors
 
-Transform or filter log records before they reach writers:
+Interceptors transform or filter log records before they reach writers. Use them for:
+
+- **Filtering**: Drop logs based on custom criteria (return `null`)
+- **Redaction**: Remove sensitive data from logs
+- **Enrichment**: Add fields like request IDs or user context
+- **Sampling**: Only log a percentage of high-volume events
 
 ```dart
 class RedactSecretsInterceptor implements ChirpInterceptor {
@@ -443,7 +451,7 @@ class RedactSecretsInterceptor implements ChirpInterceptor {
   @override
   LogRecord? intercept(LogRecord record) {
     // Transform: modify and return record
-    // Reject: return null to drop the record
+    // Reject: return null to drop the record (filtering based on all metadata)
     // Pass through: return record unchanged
     return record;
   }
