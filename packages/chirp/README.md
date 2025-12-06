@@ -177,7 +177,7 @@ transactionLogger.info('Transaction started');
 
 ### Structured Logging
 
-Attach key-value data to your logs for better searchability and analysis:
+Attach key-value data to your logs for better searchability and analysis. Data can be deeply nested - maps, lists, and complex objects are fully supported:
 
 ```dart
 Chirp.info(
@@ -188,6 +188,18 @@ Chirp.info(
     'loginMethod': 'oauth',
   },
 );
+
+// Deeply nested data is supported
+Chirp.info('Order placed', data: {
+  'order': {
+    'id': 'ORD-123',
+    'items': [
+      {'sku': 'WIDGET-1', 'qty': 2},
+      {'sku': 'GADGET-5', 'qty': 1},
+    ],
+    'shipping': {'method': 'express', 'address': {'city': 'Berlin'}},
+  },
+});
 
 // Data is merged with context
 final logger = Chirp.root.child(context: {'app': 'myapp'});
@@ -246,6 +258,13 @@ Chirp.warning('API rate limit approaching', data: {'used': 950, 'limit': 1000});
 Chirp.error('Payment failed', error: e, stackTrace: st);
 Chirp.critical('Database connection lost', data: {'attempt': 3});
 Chirp.wtf('User has negative age', data: {'age': -5}); // Should be impossible!
+```
+
+**Note:** Every log method accepts optional `error` and `stackTrace` parameters - not just `error()`. This is useful for logging exceptions at any severity level:
+
+```dart
+Chirp.warning('Retrying operation', error: e, stackTrace: st);
+Chirp.info('Recovered from error', error: previousError);
 ```
 
 **Custom Log Levels:**
@@ -477,6 +496,76 @@ class MyCustomFormatter extends ConsoleMessageFormatter {
   }
 }
 ```
+
+### Custom Writers
+
+Writers control where logs are sent. Extend `ChirpWriter` to send logs to any destination.
+
+#### Simple Writer (Plain Text)
+
+For basic use cases, format the `LogRecord` directly:
+
+```dart
+class FileWriter extends ChirpWriter {
+  final File file;
+
+  FileWriter(this.file);
+
+  @override
+  void write(LogRecord record) {
+    final line = '${record.timestamp} [${record.level.name}] ${record.message}';
+    file.writeAsStringSync('$line\n', mode: FileMode.append);
+  }
+}
+
+// Usage
+Chirp.root = ChirpLogger()
+  ..addWriter(FileWriter(File('app.log')));
+```
+
+#### Writer with Formatter (Span-Based)
+
+For rich formatting with colors and structure, use a `ConsoleMessageFormatter`:
+
+```dart
+class NetworkWriter extends ChirpWriter {
+  final ConsoleMessageFormatter formatter;
+  final HttpClient client;
+
+  NetworkWriter({
+    required this.client,
+    this.formatter = const JsonMessageFormatter(),
+  });
+
+  @override
+  bool get requiresCallerInfo => formatter.requiresCallerInfo;
+
+  @override
+  void write(LogRecord record) {
+    final buffer = ConsoleMessageBuffer(
+      capabilities: const TerminalCapabilities(
+        colorSupport: TerminalColorSupport.none,
+      ),
+    );
+    formatter.format(record, buffer);
+
+    // Send to logging service
+    client.post(Uri.parse('https://logs.example.com'), body: buffer.toString());
+  }
+}
+
+// Usage
+Chirp.root = ChirpLogger()
+  ..addWriter(NetworkWriter(client: HttpClient()));
+```
+
+#### Writer Options
+
+| Property | Description |
+|----------|-------------|
+| `requiresCallerInfo` | Return `true` if your writer needs file/line/class info (expensive) |
+| `minLogLevel` | Filter logs below this level via `setMinLogLevel()` |
+| `interceptors` | Add transforms/filters via `addInterceptor()` |
 
 ## Real-World Example
 
