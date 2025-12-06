@@ -7,5 +7,10 @@ environment:
 dependencies:
   chirp:
     path: ../../packages/chirp
+
 dev_dependencies:
   lint: ^2.8.0
+
+sidekick:
+  puro:
+    useDartSdk: '3.10.1'

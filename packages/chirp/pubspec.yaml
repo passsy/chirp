@@ -12,7 +12,7 @@ dependencies:
 
 sidekick:
   puro:
-    useDartSdk: '3.10.0'
+    useDartSdk: '3.10.1'
 
 dev_dependencies:
   lint: ^2.0.0
