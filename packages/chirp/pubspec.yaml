@@ -2,7 +2,7 @@ name: chirp
 description: >-
   A lightweight, flexible logging library for Dart with instance tracking,
   child loggers, structured logging, and span-based formatting.
-version: 0.5.0
+version: 0.6.0
 repository: https://github.com/passsy/chirp
 
 environment:
