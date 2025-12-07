@@ -5,8 +5,8 @@ import 'package:chirp/chirp.dart';
 /// Example demonstrating basic Chirp logging functionality.
 void main() {
   // Configure the root logger with a colorful formatter
-  Chirp.root = ChirpLogger()
-      .addConsoleWriter(formatter: RainbowMessageFormatter());
+  Chirp.root =
+      ChirpLogger().addConsoleWriter(formatter: RainbowMessageFormatter());
 
   // Basic logging with different levels
   Chirp.info('Application started');
