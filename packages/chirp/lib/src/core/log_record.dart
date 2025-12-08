@@ -12,6 +12,25 @@ class _Undefined {
   const _Undefined();
 }
 
+/// Type-safe signature for [LogRecord.copyWith].
+///
+/// This typedef enforces proper types at the call site while still allowing
+/// the sentinel pattern internally to distinguish "not provided" from "null".
+typedef _LogRecordCopyWith = LogRecord Function({
+  Object? message,
+  DateTime? timestamp,
+  Zone? zone,
+  ChirpLogLevel? level,
+  Object? error,
+  StackTrace? stackTrace,
+  Object? instance,
+  StackTrace? caller,
+  int? skipFrames,
+  String? loggerName,
+  Map<String, Object?>? data,
+  List<FormatOptions>? formatOptions,
+});
+
 /// An immutable snapshot of a log event passed to [ChirpWriter]s.
 ///
 /// You typically don't create LogRecords directly. They are created by
@@ -107,7 +126,10 @@ class LogRecord {
   /// // Explicitly set loggerName to null
   /// final noLogger = original.copyWith(loggerName: null);
   /// ```
-  LogRecord copyWith({
+  // ignore: library_private_types_in_public_api
+  _LogRecordCopyWith get copyWith => _copyWithImpl;
+
+  LogRecord _copyWithImpl({
     Object? message = _undefined,
     DateTime? timestamp,
     Zone? zone,
