@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_redundant_argument_values
+
 import 'dart:async';
 
 import 'package:chirp/chirp.dart';
@@ -489,7 +491,7 @@ void main() {
         expect(copy.loggerName, equals(original.loggerName));
         expect(copy.data, equals(original.data));
         expect(copy.formatOptions, equals(original.formatOptions));
-        expect(copy.zone, same(original.zone));
+        expect(copy.zone, same(originalZone));
       });
 
       test('copies message', () {
