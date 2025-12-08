@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
@@ -434,6 +436,312 @@ void main() {
           timestamp: DateTime.now(),
         );
         expect(record.message, isNull);
+      });
+    });
+
+    group('copyWith', () {
+      late LogRecord original;
+      late DateTime originalTimestamp;
+      late StackTrace originalStackTrace;
+      late StackTrace originalCaller;
+      late Object originalInstance;
+      late Map<String, Object?> originalData;
+      late List<FormatOptions> originalFormatOptions;
+      late Zone originalZone;
+
+      setUp(() {
+        originalTimestamp = DateTime(2025, 12, 2, 10, 30, 45);
+        originalStackTrace = StackTrace.current;
+        originalCaller = StackTrace.current;
+        originalInstance = Object();
+        originalData = {'key': 'value', 'count': 42};
+        originalFormatOptions = [const FormatOptions()];
+
+        runZoned(() {
+          originalZone = Zone.current;
+          original = LogRecord(
+            message: 'Original message',
+            timestamp: originalTimestamp,
+            level: ChirpLogLevel.warning,
+            error: Exception('original error'),
+            stackTrace: originalStackTrace,
+            caller: originalCaller,
+            skipFrames: 5,
+            instance: originalInstance,
+            loggerName: 'OriginalLogger',
+            data: originalData,
+            formatOptions: originalFormatOptions,
+          );
+        }, zoneValues: {#testZone: 'testValue'});
+      });
+
+      test('returns identical copy when no arguments provided', () {
+        final copy = original.copyWith();
+
+        expect(copy.message, equals(original.message));
+        expect(copy.timestamp, equals(original.timestamp));
+        expect(copy.level, equals(original.level));
+        expect(copy.error.toString(), equals(original.error.toString()));
+        expect(copy.stackTrace, same(original.stackTrace));
+        expect(copy.caller, same(original.caller));
+        expect(copy.skipFrames, equals(original.skipFrames));
+        expect(copy.instance, same(original.instance));
+        expect(copy.loggerName, equals(original.loggerName));
+        expect(copy.data, equals(original.data));
+        expect(copy.formatOptions, equals(original.formatOptions));
+        expect(copy.zone, same(original.zone));
+      });
+
+      test('copies message', () {
+        final copy = original.copyWith(message: 'New message');
+        expect(copy.message, equals('New message'));
+        expect(copy.timestamp, equals(originalTimestamp));
+        expect(copy.level, equals(ChirpLogLevel.warning));
+      });
+
+      test('copies timestamp', () {
+        final newTimestamp = DateTime(2026, 1, 1);
+        final copy = original.copyWith(timestamp: newTimestamp);
+        expect(copy.timestamp, equals(newTimestamp));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies level', () {
+        final copy = original.copyWith(level: ChirpLogLevel.error);
+        expect(copy.level, equals(ChirpLogLevel.error));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies error', () {
+        final newError = Exception('new error');
+        final copy = original.copyWith(error: newError);
+        expect(copy.error, same(newError));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies stackTrace', () {
+        final newStackTrace = StackTrace.current;
+        final copy = original.copyWith(stackTrace: newStackTrace);
+        expect(copy.stackTrace, same(newStackTrace));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies caller', () {
+        final newCaller = StackTrace.current;
+        final copy = original.copyWith(caller: newCaller);
+        expect(copy.caller, same(newCaller));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies skipFrames', () {
+        final copy = original.copyWith(skipFrames: 10);
+        expect(copy.skipFrames, equals(10));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies instance', () {
+        final newInstance = Object();
+        final copy = original.copyWith(instance: newInstance);
+        expect(copy.instance, same(newInstance));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies loggerName', () {
+        final copy = original.copyWith(loggerName: 'NewLogger');
+        expect(copy.loggerName, equals('NewLogger'));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies data', () {
+        final newData = {'newKey': 'newValue'};
+        final copy = original.copyWith(data: newData);
+        expect(copy.data, equals(newData));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies formatOptions', () {
+        final newFormatOptions = [
+          const FormatOptions(),
+          const _CustomFormatOptions(color: 'green'),
+        ];
+        final copy = original.copyWith(formatOptions: newFormatOptions);
+        expect(copy.formatOptions, equals(newFormatOptions));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies zone', () {
+        late Zone newZone;
+        runZoned(() {
+          newZone = Zone.current;
+        }, zoneValues: {#newZone: 'newValue'});
+
+        final copy = original.copyWith(zone: newZone);
+        expect(copy.zone, same(newZone));
+        expect(copy.message, equals('Original message'));
+      });
+
+      test('copies multiple fields at once', () {
+        final newTimestamp = DateTime(2026, 6, 15);
+        final newError = Exception('new error');
+        final copy = original.copyWith(
+          message: 'Updated message',
+          timestamp: newTimestamp,
+          level: ChirpLogLevel.critical,
+          error: newError,
+          loggerName: 'UpdatedLogger',
+        );
+
+        expect(copy.message, equals('Updated message'));
+        expect(copy.timestamp, equals(newTimestamp));
+        expect(copy.level, equals(ChirpLogLevel.critical));
+        expect(copy.error, same(newError));
+        expect(copy.loggerName, equals('UpdatedLogger'));
+        // Unchanged fields
+        expect(copy.stackTrace, same(originalStackTrace));
+        expect(copy.caller, same(originalCaller));
+        expect(copy.skipFrames, equals(5));
+        expect(copy.instance, same(originalInstance));
+        expect(copy.data, equals(originalData));
+        expect(copy.formatOptions, equals(originalFormatOptions));
+      });
+
+      group('allows setting nullable fields to null', () {
+        test('can set message to null', () {
+          final copy = original.copyWith(message: null);
+          expect(copy.message, isNull);
+          expect(copy.loggerName, equals('OriginalLogger'));
+        });
+
+        test('can set error to null', () {
+          final copy = original.copyWith(error: null);
+          expect(copy.error, isNull);
+          expect(copy.message, equals('Original message'));
+        });
+
+        test('can set stackTrace to null', () {
+          final copy = original.copyWith(stackTrace: null);
+          expect(copy.stackTrace, isNull);
+          expect(copy.message, equals('Original message'));
+        });
+
+        test('can set caller to null', () {
+          final copy = original.copyWith(caller: null);
+          expect(copy.caller, isNull);
+          expect(copy.message, equals('Original message'));
+        });
+
+        test('can set skipFrames to null', () {
+          final copy = original.copyWith(skipFrames: null);
+          expect(copy.skipFrames, isNull);
+          expect(copy.message, equals('Original message'));
+        });
+
+        test('can set instance to null', () {
+          final copy = original.copyWith(instance: null);
+          expect(copy.instance, isNull);
+          expect(copy.message, equals('Original message'));
+        });
+
+        test('can set loggerName to null', () {
+          final copy = original.copyWith(loggerName: null);
+          expect(copy.loggerName, isNull);
+          expect(copy.message, equals('Original message'));
+        });
+
+        test('can set data to null (becomes empty map)', () {
+          final copy = original.copyWith(data: null);
+          expect(copy.data, isEmpty);
+          expect(copy.message, equals('Original message'));
+        });
+
+        test('can set formatOptions to null', () {
+          final copy = original.copyWith(formatOptions: null);
+          expect(copy.formatOptions, isNull);
+          expect(copy.message, equals('Original message'));
+        });
+
+        test('can set multiple fields to null at once', () {
+          final copy = original.copyWith(
+            error: null,
+            stackTrace: null,
+            caller: null,
+            skipFrames: null,
+            loggerName: null,
+            formatOptions: null,
+          );
+
+          expect(copy.error, isNull);
+          expect(copy.stackTrace, isNull);
+          expect(copy.caller, isNull);
+          expect(copy.skipFrames, isNull);
+          expect(copy.loggerName, isNull);
+          expect(copy.formatOptions, isNull);
+          // Unchanged fields
+          expect(copy.message, equals('Original message'));
+          expect(copy.timestamp, equals(originalTimestamp));
+          expect(copy.level, equals(ChirpLogLevel.warning));
+          expect(copy.instance, same(originalInstance));
+          expect(copy.data, equals(originalData));
+        });
+      });
+
+      group('preserves original values when not specified', () {
+        test('preserves null message when setting other fields', () {
+          final recordWithNullMessage = LogRecord(
+            message: null,
+            timestamp: originalTimestamp,
+          );
+          final copy = recordWithNullMessage.copyWith(
+            level: ChirpLogLevel.error,
+          );
+          expect(copy.message, isNull);
+          expect(copy.level, equals(ChirpLogLevel.error));
+        });
+
+        test('preserves null error when setting other fields', () {
+          final recordWithNullError = LogRecord(
+            message: 'test',
+            timestamp: originalTimestamp,
+            error: null,
+          );
+          final copy = recordWithNullError.copyWith(
+            message: 'updated',
+          );
+          expect(copy.error, isNull);
+          expect(copy.message, equals('updated'));
+        });
+
+        test('preserves null loggerName when setting other fields', () {
+          final recordWithNullLogger = LogRecord(
+            message: 'test',
+            timestamp: originalTimestamp,
+            loggerName: null,
+          );
+          final copy = recordWithNullLogger.copyWith(
+            message: 'updated',
+          );
+          expect(copy.loggerName, isNull);
+          expect(copy.message, equals('updated'));
+        });
+      });
+
+      test('creates independent copy (modifying original does not affect copy)',
+          () {
+        // Note: LogRecord is immutable, so we can't really modify it,
+        // but we can verify the copy has different object identity for data
+        final copy = original.copyWith();
+        expect(copy, isNot(same(original)));
+      });
+
+      test('can chain copyWith calls', () {
+        final copy1 = original.copyWith(message: 'First change');
+        final copy2 = copy1.copyWith(level: ChirpLogLevel.error);
+        final copy3 = copy2.copyWith(loggerName: 'FinalLogger');
+
+        expect(copy3.message, equals('First change'));
+        expect(copy3.level, equals(ChirpLogLevel.error));
+        expect(copy3.loggerName, equals('FinalLogger'));
+        expect(copy3.timestamp, equals(originalTimestamp));
       });
     });
 
