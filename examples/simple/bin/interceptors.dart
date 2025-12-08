@@ -44,20 +44,7 @@ class RedactSecretsInterceptor implements ChirpInterceptor {
 
     if (!changed) return record;
 
-    return LogRecord(
-      message: record.message,
-      timestamp: record.timestamp,
-      level: record.level,
-      error: record.error,
-      stackTrace: record.stackTrace,
-      caller: record.caller,
-      skipFrames: record.skipFrames,
-      instance: record.instance,
-      loggerName: record.loggerName,
-      data: redacted,
-      formatOptions: record.formatOptions,
-      zone: record.zone,
-    );
+    return record.copyWith(data: redacted);
   }
 }
 
@@ -68,8 +55,7 @@ class AddHostnameInterceptor implements ChirpInterceptor {
 
   @override
   LogRecord? intercept(LogRecord record) {
-    record.data['host'] = 'server-01';
-    return record;
+    return record.copyWith(data: {...record.data, 'host': 'server-01'});
   }
 }
 
