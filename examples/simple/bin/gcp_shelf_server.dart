@@ -73,6 +73,42 @@ Future<void> _runDemoRequests(int port) async {
     await response.drain<void>();
   }
 
+  Future<void> post(String path) async {
+    final request = await client.postUrl(Uri.parse('$baseUrl$path'));
+    final response = await request.close();
+    await response.drain<void>();
+  }
+
+  Future<void> put(String path) async {
+    final request = await client.putUrl(Uri.parse('$baseUrl$path'));
+    final response = await request.close();
+    await response.drain<void>();
+  }
+
+  Future<void> delete(String path) async {
+    final request = await client.deleteUrl(Uri.parse('$baseUrl$path'));
+    final response = await request.close();
+    await response.drain<void>();
+  }
+
+  Future<void> patch(String path) async {
+    final request = await client.patchUrl(Uri.parse('$baseUrl$path'));
+    final response = await request.close();
+    await response.drain<void>();
+  }
+
+  Future<void> head(String path) async {
+    final request = await client.headUrl(Uri.parse('$baseUrl$path'));
+    final response = await request.close();
+    await response.drain<void>();
+  }
+
+  Future<void> options(String path) async {
+    final request = await client.openUrl('OPTIONS', Uri.parse('$baseUrl$path'));
+    final response = await request.close();
+    await response.drain<void>();
+  }
+
   // Health check
   await get('/api/health');
 
@@ -80,7 +116,11 @@ Future<void> _runDemoRequests(int port) async {
   await get('/api/users/123');
 
   // Get user (not found)
-  await get('/api/users/404');
+  await post('/api/users/404');
+  await put('/api/users/404');
+  await head('/api/users/404');
+  await delete('/api/users/404');
+  await options('/api/users/404');
 
   // Get use (illegal id)
   await get('/api/users/-1');
@@ -153,6 +193,11 @@ class RequestFormatter extends SpanBasedFormatter {
 
       if (request != null && !alreadyLoggedRequestStart) {
         spans.add(Whitespace());
+        spans.add(AnsiStyled(
+          child: PlainText(''.padRight(8 - request.method.length, '─')),
+          foreground: Ansi256.grey50_244,
+        ));
+        spans.add(Whitespace());
         spans.add(PlainText(request.method));
         spans.add(Whitespace());
         spans.add(
@@ -164,10 +209,12 @@ class RequestFormatter extends SpanBasedFormatter {
       }
       if (response != null) {
         if (alreadyLoggedRequestStart) {
+          spans.add(Whitespace());
           spans.add(AnsiStyled(
-            child: PlainText(' ───> '),
+            child: PlainText('────>'),
             foreground: Ansi256.grey50_244,
           ));
+          spans.add(Whitespace());
         } else {
           spans.add(Whitespace());
           spans.add(AnsiStyled(
@@ -187,12 +234,17 @@ class RequestFormatter extends SpanBasedFormatter {
 
       if (durationMs != null) {
         final color = () {
-          return DefaultColor();
+          if (durationMs >= 1000) return Ansi256.indianRed_167;
+          if (durationMs >= 500) return Ansi256.darkGoldenrod_136;
+          return Ansi256.grey50_244;
         }();
 
         spans.add(Whitespace());
         spans.add(AnsiStyled(
-          child: PlainText('(${durationMs}ms)'),
+          child: SpanSequence(children: [
+            if (durationMs >= 500) PlainText('⚠ '),
+            PlainText('${durationMs}ms'),
+          ]),
           foreground: color,
         ));
       }
@@ -256,7 +308,7 @@ class RequestFormatter extends SpanBasedFormatter {
             child: Aligned(
               align: HorizontalAlign.right,
               child: PlainText('${record.level}'),
-              width: 8,
+              width: 9,
             ),
             foreground: levelColor,
           ),
@@ -381,7 +433,7 @@ ChirpLogger get requestLogger {
 }
 
 /// Example handler: Get user by ID.
-Response _getUser(Request request, String userId) {
+Future<Response> _getUser(Request request, String userId) async {
   requestLogger.debug('Fetching user', data: {'userId': userId});
 
   // Simulate user lookup
@@ -393,6 +445,8 @@ Response _getUser(Request request, String userId) {
   if ((int.tryParse(userId) ?? 0) < 0) {
     throw ArgumentError('Invalid user ID: $userId');
   }
+
+  await Future.delayed(const Duration(milliseconds: 1001));
 
   requestLogger.info('User found', data: {'userId': userId});
   return Response.ok('{"id": "$userId", "name": "John Doe"}',
