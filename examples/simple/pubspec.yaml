@@ -7,6 +7,8 @@ environment:
 dependencies:
   chirp:
     path: ../../packages/chirp
+  shelf: ^1.4.0
+  shelf_router: ^1.1.0
 
 dev_dependencies:
   lint: ^2.8.0
