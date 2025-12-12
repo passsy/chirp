@@ -1,4 +1,5 @@
 import 'package:chirp/chirp.dart';
+import 'package:chirp/chirp_spans.dart';
 import 'package:meta/meta.dart';
 
 /// Base class for formatters that use the span-based templating system.

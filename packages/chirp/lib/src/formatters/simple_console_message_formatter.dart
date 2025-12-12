@@ -1,4 +1,5 @@
 import 'package:chirp/chirp.dart';
+import 'package:chirp/chirp_spans.dart';
 
 /// Simple, comprehensive text formatter that displays all LogRecord fields
 /// using the span-based templating system.

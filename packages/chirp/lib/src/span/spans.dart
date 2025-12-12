@@ -1,4 +1,5 @@
 import 'package:chirp/chirp.dart';
+import 'package:chirp/chirp_spans.dart';
 import 'package:chirp/src/formatters/yaml_formatter.dart';
 import 'package:meta/meta.dart';
 

@@ -12,6 +12,7 @@
 /// - interceptors.dart - Filtering and transforming logs
 /// - library.dart / app.dart - Library logger adoption
 import 'package:chirp/chirp.dart';
+import 'package:chirp/chirp_spans.dart';
 
 void main() {
   // Configure with span transformers for custom formatting

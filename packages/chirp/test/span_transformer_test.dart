@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_redundant_argument_values
 
 import 'package:chirp/chirp.dart';
+import 'package:chirp/chirp_spans.dart';
 import 'package:test/test.dart';
 
 void main() {
