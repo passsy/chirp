@@ -1189,6 +1189,88 @@ void main() {
       expect(result, isNot(contains('Hello')));
     });
   });
+
+  group('Aligned', () {
+    test('pads plain text to width', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.ansi256,
+        ),
+      );
+      Aligned(
+        width: 10,
+        align: HorizontalAlign.left,
+        child: PlainText('hello'),
+      ).render(buffer);
+
+      expect(buffer.toString(), 'hello     ');
+    });
+
+    test('ignores ANSI codes when calculating visible width', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.ansi256,
+        ),
+      );
+      Aligned(
+        width: 10,
+        align: HorizontalAlign.left,
+        child: AnsiStyled(
+          foreground: Ansi16.red,
+          child: PlainText('hello'),
+        ),
+      ).render(buffer);
+
+      final result = buffer.toString();
+      // The visible content is 'hello' (5 chars) + 5 spaces of padding
+      // ANSI codes should NOT be counted towards the width
+      final stripped = stripAnsiCodes(result);
+      expect(stripped, 'hello     ');
+      expect(stripped.length, 10);
+    });
+
+    test('right align ignores ANSI codes', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.ansi256,
+        ),
+      );
+      Aligned(
+        width: 10,
+        align: HorizontalAlign.right,
+        child: AnsiStyled(
+          foreground: Ansi16.blue,
+          child: PlainText('hello'),
+        ),
+      ).render(buffer);
+
+      final result = buffer.toString();
+      final stripped = stripAnsiCodes(result);
+      expect(stripped, '     hello');
+      expect(stripped.length, 10);
+    });
+
+    test('center align ignores ANSI codes', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.ansi256,
+        ),
+      );
+      Aligned(
+        width: 10,
+        align: HorizontalAlign.center,
+        child: AnsiStyled(
+          foreground: Ansi16.green,
+          child: PlainText('hi'),
+        ),
+      ).render(buffer);
+
+      final result = buffer.toString();
+      final stripped = stripAnsiCodes(result);
+      expect(stripped, '    hi    ');
+      expect(stripped.length, 10);
+    });
+  });
 }
 
 /// Builds to Timestamp (which builds to PlainText).
