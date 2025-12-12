@@ -119,6 +119,17 @@ class ChirpLogger {
   /// Use [setMinLogLevel] to change this value.
   ChirpLogLevel? get minLogLevel => _minLogLevel;
 
+  /// Get effective minimum log level for this logger.
+  ///
+  /// - If this logger has a minLogLevel set, use it
+  /// - Otherwise, inherit from parent (if any)
+  /// - Returns null if no minLogLevel is set in the hierarchy
+  ChirpLogLevel? get _effectiveMinLogLevel {
+    final own = _minLogLevel;
+    if (own != null) return own;
+    return _parent?._effectiveMinLogLevel;
+  }
+
   /// Sets the minimum log level and returns this logger for chaining.
   ///
   /// Pass `null` to reset to no filtering (accept all levels).
@@ -409,7 +420,7 @@ class ChirpLogger {
     int? skipFrames,
   }) {
     // Early rejection based on minLogLevel - no LogRecord created
-    final min = minLogLevel;
+    final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
     // Only capture caller if any writer needs it
@@ -456,7 +467,7 @@ class ChirpLogger {
     List<FormatOptions>? formatOptions,
   }) {
     const level = ChirpLogLevel.trace;
-    final min = minLogLevel;
+    final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
@@ -502,7 +513,7 @@ class ChirpLogger {
     List<FormatOptions>? formatOptions,
   }) {
     const level = ChirpLogLevel.debug;
-    final min = minLogLevel;
+    final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
@@ -548,7 +559,7 @@ class ChirpLogger {
     List<FormatOptions>? formatOptions,
   }) {
     const level = ChirpLogLevel.info;
-    final min = minLogLevel;
+    final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
@@ -593,7 +604,7 @@ class ChirpLogger {
     List<FormatOptions>? formatOptions,
   }) {
     const level = ChirpLogLevel.notice;
-    final min = minLogLevel;
+    final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
@@ -639,7 +650,7 @@ class ChirpLogger {
     List<FormatOptions>? formatOptions,
   }) {
     const level = ChirpLogLevel.success;
-    final min = minLogLevel;
+    final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
@@ -683,7 +694,7 @@ class ChirpLogger {
     List<FormatOptions>? formatOptions,
   }) {
     const level = ChirpLogLevel.warning;
-    final min = minLogLevel;
+    final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
@@ -729,7 +740,7 @@ class ChirpLogger {
     List<FormatOptions>? formatOptions,
   }) {
     const level = ChirpLogLevel.error;
-    final min = minLogLevel;
+    final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
@@ -773,7 +784,7 @@ class ChirpLogger {
     List<FormatOptions>? formatOptions,
   }) {
     const level = ChirpLogLevel.critical;
-    final min = minLogLevel;
+    final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
@@ -818,7 +829,7 @@ class ChirpLogger {
     List<FormatOptions>? formatOptions,
   }) {
     const level = ChirpLogLevel.wtf;
-    final min = minLogLevel;
+    final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;

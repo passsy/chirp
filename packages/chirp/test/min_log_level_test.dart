@@ -408,6 +408,23 @@ void main() {
       expect(childRecords.length, 1);
       expect(childRecords[0].caller, isNull);
     });
+
+    test('child logger inherits parent minLogLevel', () {
+      final records = <LogRecord>[];
+      final writer = _TestWriter(records.add);
+      final parent = ChirpLogger(name: 'parent')
+          .addWriter(writer)
+          .setMinLogLevel(ChirpLogLevel.info);
+
+      final child = parent.child(name: 'child');
+
+      // Child should inherit parent's minLogLevel and filter debug
+      child.debug('debug message');
+      child.info('info message');
+
+      expect(records.length, 1);
+      expect(records[0].message, 'info message');
+    });
   });
 
   group('Chainable API', () {
