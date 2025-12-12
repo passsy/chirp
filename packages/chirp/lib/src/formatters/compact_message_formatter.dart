@@ -1,4 +1,5 @@
 import 'package:chirp/chirp.dart';
+import 'package:chirp/chirp_spans.dart';
 
 /// Single-line compact format using spans.
 ///

@@ -2,6 +2,7 @@
 import 'dart:io';
 
 import 'package:chirp/chirp.dart';
+import 'package:chirp/chirp_spans.dart';
 import 'package:chirp/src/platform/platform_info.dart';
 
 void main() {

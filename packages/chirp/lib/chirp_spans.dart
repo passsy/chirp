@@ -9,6 +9,41 @@ library;
 
 import 'package:meta/meta.dart';
 
-export 'package:chirp/src/span/span_based_formatter.dart';
-export 'package:chirp/src/span/span_foundation.dart';
-export 'package:chirp/src/span/spans.dart';
+export 'package:chirp/src/ansi/hash_colors.dart'
+    show ColorSaturation, colorForHash;
+export 'package:chirp/src/span/span_based_formatter.dart'
+    show SpanBasedFormatter, SpanFormatOptions, SpanTransformer;
+export 'package:chirp/src/span/span_foundation.dart'
+    show
+        LeafSpan,
+        LogSpan,
+        MultiChildSpan,
+        SingleChildSpan,
+        SlottedSpan,
+        renderSpan;
+export 'package:chirp/src/span/spans.dart'
+    show
+        Aligned,
+        AnsiStyled,
+        Bordered,
+        BoxBorderChars,
+        BoxBorderStyle,
+        BracketedLogLevel,
+        ChirpLogo,
+        ClassName,
+        DartSourceCodeLocation,
+        EmptySpan,
+        ErrorSpan,
+        HorizontalAlign,
+        InlineData,
+        LogMessage,
+        LoggerName,
+        MethodName,
+        MultilineData,
+        NewLine,
+        PlainText,
+        SpanSequence,
+        StackTraceSpan,
+        Surrounded,
+        Timestamp,
+        Whitespace;
