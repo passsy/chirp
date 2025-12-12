@@ -437,17 +437,29 @@ class Aligned extends SingleChildSpan {
     final b = buffer.createChildBuffer();
     child?.render(b);
     final content = b.toString();
+    // Use visible length (excluding ANSI escape codes) for padding calculation
+    final visibleLength = stripAnsiCodes(content).length;
     final padded = switch (align) {
-      HorizontalAlign.left => content.padRight(width),
-      HorizontalAlign.right => content.padLeft(width),
-      HorizontalAlign.center => _padCenter(content, width),
+      HorizontalAlign.left => _padRight(content, width, visibleLength),
+      HorizontalAlign.right => _padLeft(content, width, visibleLength),
+      HorizontalAlign.center => _padCenter(content, width, visibleLength),
     };
     buffer.write(padded);
   }
 
-  static String _padCenter(String content, int width) {
-    if (content.length >= width) return content;
-    final totalPadding = width - content.length;
+  static String _padLeft(String content, int width, int visibleLength) {
+    if (visibleLength >= width) return content;
+    return '${' ' * (width - visibleLength)}$content';
+  }
+
+  static String _padRight(String content, int width, int visibleLength) {
+    if (visibleLength >= width) return content;
+    return '$content${' ' * (width - visibleLength)}';
+  }
+
+  static String _padCenter(String content, int width, int visibleLength) {
+    if (visibleLength >= width) return content;
+    final totalPadding = width - visibleLength;
     final leftPadding = totalPadding ~/ 2;
     final rightPadding = totalPadding - leftPadding;
     return '${' ' * leftPadding}$content${' ' * rightPadding}';
