@@ -165,7 +165,11 @@ LogSpan _buildRainbowLogSpan({
   final data = record.data;
   if (data.isNotEmpty) {
     final dataSpan = switch (options.data) {
-      DataPresentation.inline => InlineData(data),
+      DataPresentation.inline => Surrounded(
+          prefix: PlainText(' ('),
+          child: InlineData(data),
+          suffix: PlainText(')'),
+        ),
       DataPresentation.multiline => MultilineData(data),
     };
     if (levelColor == null) {

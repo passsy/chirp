@@ -32,6 +32,8 @@ export 'package:chirp/src/span/spans.dart'
         ChirpLogo,
         ClassName,
         DartSourceCodeLocation,
+        DataKey,
+        DataValue,
         EmptySpan,
         ErrorSpan,
         HorizontalAlign,

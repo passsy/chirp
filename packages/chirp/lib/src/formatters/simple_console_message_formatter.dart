@@ -171,7 +171,13 @@ LogSpan _buildSimpleLogSpan({
 
   // Structured data inline with message
   if (showData && record.data.isNotEmpty) {
-    spans.add(InlineData(record.data));
+    spans.add(
+      Surrounded(
+        prefix: PlainText(' ('),
+        child: InlineData(record.data),
+        suffix: PlainText(')'),
+      ),
+    );
   }
 
   // Error on new line

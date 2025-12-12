@@ -622,34 +622,113 @@ class LogMessage extends LeafSpan {
   String toString() => 'LogMessage("$message")';
 }
 
+/// {@template chirp.DataKey}
+/// Renders a single data key formatted for YAML output.
+///
+/// Keys containing whitespace or special characters are automatically quoted.
+///
+/// Example output: `userId`, `"key with spaces"`
+/// {@endtemplate}
+@experimental
+class DataKey extends LeafSpan {
+  /// The key to render.
+  final Object? key;
+
+  /// {@macro chirp.DataKey}
+  DataKey(this.key);
+
+  @override
+  void render(ConsoleMessageBuffer buffer) {
+    buffer.write(formatYamlKey(key));
+  }
+
+  @override
+  String toString() => 'DataKey($key)';
+}
+
+/// {@template chirp.DataValue}
+/// Renders a single data value formatted for YAML output.
+///
+/// Strings are quoted, null becomes "null", numbers and booleans render as-is.
+///
+/// Example output: `"hello"`, `42`, `true`, `null`
+/// {@endtemplate}
+@experimental
+class DataValue extends LeafSpan {
+  /// The value to render.
+  final Object? value;
+
+  /// {@macro chirp.DataValue}
+  DataValue(this.value);
+
+  @override
+  void render(ConsoleMessageBuffer buffer) {
+    buffer.write(formatYamlValue(value));
+  }
+
+  @override
+  String toString() => 'DataValue($value)';
+}
+
 /// {@template chirp.InlineData}
 /// Renders structured key-value data inline with the log message.
 ///
-/// Output format: ` (key: value, key: value)`
+/// Output format: `key: value, key: value`
 ///
 /// Use this for compact single-line output. For multi-line YAML format
 /// that's easier to read with many fields, use [MultilineData] instead.
 ///
 /// Returns [EmptySpan] if [data] is null or empty.
 ///
-/// Example output: ` (userId: abc123, action: login)`
+/// Example output: `userId: "abc123", action: "login"`
 /// {@endtemplate}
 @experimental
 class InlineData extends LeafSpan {
   /// The structured data to render as inline key-value pairs.
   final Map<String, Object?>? data;
 
+  /// Factory to create the span rendered between each key-value pair.
+  ///
+  /// Defaults to creating `PlainText(', ')`.
+  final LogSpan Function() entrySeparatorBuilder;
+
+  /// Factory to create the span rendered between the key and value.
+  ///
+  /// Defaults to creating `PlainText(': ')`.
+  final LogSpan Function() keyValueSeparatorBuilder;
+
   /// {@macro chirp.InlineData}
-  InlineData(this.data);
+  InlineData(
+    this.data, {
+    LogSpan Function()? entrySeparatorBuilder,
+    LogSpan Function()? keyValueSeparatorBuilder,
+  })  : entrySeparatorBuilder =
+            entrySeparatorBuilder ?? (() => PlainText(', ')),
+        keyValueSeparatorBuilder =
+            keyValueSeparatorBuilder ?? (() => PlainText(': '));
 
   @override
   LogSpan build() {
     final d = data;
     if (d == null || d.isEmpty) return EmptySpan();
-    final str = d.entries
-        .map((e) => '${formatYamlKey(e.key)}: ${formatYamlValue(e.value)}')
-        .join(', ');
-    return PlainText(' ($str)');
+
+    final children = <LogSpan>[];
+    for (final entry in d.entries) {
+      children.add(
+        SpanSequence(
+          children: [
+            DataKey(entry.key),
+            keyValueSeparatorBuilder(),
+            DataValue(entry.value),
+          ],
+        ),
+      );
+    }
+
+    return SpanSequence(
+      children: children,
+      separator: entrySeparatorBuilder(),
+    );
   }
 
   @override
