@@ -553,6 +553,121 @@ void main() {
     });
   });
 
+  group('packageRelativePath', () {
+    test('converts package: URI to package-relative path', () {
+      final info = StackFrameInfo(
+        stackTrace: testStackTrace,
+        rawCallerMethod: 'MyClass.method',
+        file: 'package:my_app/src/server.dart',
+        line: 42,
+      );
+
+      expect(info.packageRelativePath, 'my_app/lib/src/server.dart');
+    });
+
+    test('converts package: URI without subdirectory', () {
+      final info = StackFrameInfo(
+        stackTrace: testStackTrace,
+        rawCallerMethod: 'main',
+        file: 'package:my_app/main.dart',
+        line: 10,
+      );
+
+      expect(info.packageRelativePath, 'my_app/lib/main.dart');
+    });
+
+    test('extracts lib/ path from file:// URI', () {
+      final info = StackFrameInfo(
+        stackTrace: testStackTrace,
+        rawCallerMethod: 'MyClass.method',
+        file: 'file:///Users/dev/project/lib/src/server.dart',
+        line: 42,
+      );
+
+      expect(info.packageRelativePath, 'lib/src/server.dart');
+    });
+
+    test('extracts bin/ path from file:// URI', () {
+      final info = StackFrameInfo(
+        stackTrace: testStackTrace,
+        rawCallerMethod: 'main',
+        file: 'file:///Users/dev/project/bin/app.dart',
+        line: 10,
+      );
+
+      expect(info.packageRelativePath, 'bin/app.dart');
+    });
+
+    test('extracts test/ path from file:// URI', () {
+      final info = StackFrameInfo(
+        stackTrace: testStackTrace,
+        rawCallerMethod: 'main',
+        file: 'file:///Users/dev/project/test/my_test.dart',
+        line: 10,
+      );
+
+      expect(info.packageRelativePath, 'test/my_test.dart');
+    });
+
+    test('falls back to filename for file:// URI without markers', () {
+      final info = StackFrameInfo(
+        stackTrace: testStackTrace,
+        rawCallerMethod: 'main',
+        file: 'file:///Users/dev/random/script.dart',
+        line: 10,
+      );
+
+      expect(info.packageRelativePath, 'script.dart');
+    });
+
+    test('converts packages/ web format to package-relative path', () {
+      final info = StackFrameInfo(
+        stackTrace: testStackTrace,
+        rawCallerMethod: 'MyClass.method',
+        file: 'packages/my_app/src/server.dart',
+        line: 42,
+      );
+
+      expect(info.packageRelativePath, 'my_app/lib/src/server.dart');
+    });
+
+    test('returns original for unrecognized format', () {
+      final info = StackFrameInfo(
+        stackTrace: testStackTrace,
+        rawCallerMethod: 'main',
+        file: 'some_file.dart',
+        line: 10,
+      );
+
+      expect(info.packageRelativePath, 'some_file.dart');
+    });
+
+    test('handles Windows file:// paths with lib/', () {
+      final info = StackFrameInfo(
+        stackTrace: testStackTrace,
+        rawCallerMethod: 'main',
+        file: 'file:///C:/Users/dev/project/lib/main.dart',
+        line: 10,
+      );
+
+      expect(info.packageRelativePath, 'lib/main.dart');
+    });
+
+    test('handles deeply nested package paths', () {
+      final info = StackFrameInfo(
+        stackTrace: testStackTrace,
+        rawCallerMethod: 'MyClass.method',
+        file: 'package:my_app/src/features/auth/services/auth_service.dart',
+        line: 42,
+      );
+
+      expect(
+        info.packageRelativePath,
+        'my_app/lib/src/features/auth/services/auth_service.dart',
+      );
+    });
+  });
+
   group('getCallerInfo with callerLocation', () {
     test('returns simplified location string via callerLocation', () {
       final stackTrace = StackTrace.fromString('''

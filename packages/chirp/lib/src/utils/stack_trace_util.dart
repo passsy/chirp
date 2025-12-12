@@ -45,6 +45,59 @@ class StackFrameInfo {
     return fileName.replaceAll('.dart', '');
   }();
 
+  /// Returns a package-relative file path, like "my_app/lib/src/server.dart"
+  ///
+  /// Converts various file path formats to a clean, package-relative path:
+  /// - `package:my_app/src/server.dart` → `my_app/lib/src/server.dart`
+  /// - `file:///home/user/project/lib/server.dart` → `lib/server.dart`
+  /// - `packages/my_app/src/server.dart` → `my_app/lib/src/server.dart`
+  ///
+  /// Falls back to the original [file] if no transformation applies.
+  late final String packageRelativePath = () {
+    // Handle package: URI format
+    // package:my_app/src/server.dart → my_app/lib/src/server.dart
+    if (file.startsWith('package:')) {
+      final withoutScheme = file.substring('package:'.length);
+      final slashIndex = withoutScheme.indexOf('/');
+      if (slashIndex != -1) {
+        final packageName = withoutScheme.substring(0, slashIndex);
+        final rest = withoutScheme.substring(slashIndex + 1);
+        return '$packageName/lib/$rest';
+      }
+      return withoutScheme;
+    }
+
+    // Handle file:// URI format - extract path after common roots
+    // file:///home/user/project/lib/server.dart → lib/server.dart
+    if (file.startsWith('file://')) {
+      final path = file.substring('file://'.length);
+      // Look for lib/, bin/, test/ as package root markers
+      for (final marker in ['lib/', 'bin/', 'test/']) {
+        final markerIndex = path.indexOf(marker);
+        if (markerIndex != -1) {
+          return path.substring(markerIndex);
+        }
+      }
+      // Fallback: return just the filename
+      return path.split('/').last;
+    }
+
+    // Handle web packages format
+    // packages/my_app/src/server.dart → my_app/lib/src/server.dart
+    if (file.startsWith('packages/')) {
+      final withoutPrefix = file.substring('packages/'.length);
+      final slashIndex = withoutPrefix.indexOf('/');
+      if (slashIndex != -1) {
+        final packageName = withoutPrefix.substring(0, slashIndex);
+        final rest = withoutPrefix.substring(slashIndex + 1);
+        return '$packageName/lib/$rest';
+      }
+      return withoutPrefix;
+    }
+
+    return file;
+  }();
+
   /// Extracts the class/type name from the caller method
   ///
   /// Examples:
