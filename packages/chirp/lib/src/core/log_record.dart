@@ -1,7 +1,6 @@
 import 'dart:async';
 
-import 'package:chirp/src/core/chirp_logger.dart';
-import 'package:chirp/src/core/chirp_writer.dart';
+/// @docImport 'package:chirp/chirp.dart';
 import 'package:chirp/src/core/format_option.dart';
 import 'package:chirp/src/core/log_level.dart';
 
@@ -36,6 +35,12 @@ class LogRecord {
   final StackTrace? stackTrace;
 
   /// The stacktrace of the log method call
+  ///
+  /// This is typically `null` and only populated if one of those fields are set
+  /// to `true`:
+  /// - [ChirpInterceptor.requiresCallerInfo]
+  /// - [ChirpWriter.requiresCallerInfo]
+  /// - [ConsoleMessageFormatter.requiresCallerInfo]
   final StackTrace? caller;
 
   /// Number of stack frames to skip when resolving caller info
