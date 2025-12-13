@@ -16,6 +16,7 @@ class RainbowMessageFormatter extends SpanBasedFormatter {
   /// Width reserved for metadata (timestamp, class, level) before the message.
   ///
   /// Longer metadata is truncated; shorter is padded for alignment.
+  // ignore: deprecated_consistency
   final int metaWidth;
 
   /// Controls which elements are shown in the output.
@@ -27,6 +28,8 @@ class RainbowMessageFormatter extends SpanBasedFormatter {
   /// - [options]: Controls visibility of timestamp, level, class, etc.
   /// - [spanTransformers]: Customize the span tree before rendering
   RainbowMessageFormatter({
+    @Deprecated(
+        "This feature has been removed and setting metaWidth has no effect")
     this.metaWidth = 80,
     RainbowFormatOptions? options,
     super.spanTransformers,
