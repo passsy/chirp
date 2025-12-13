@@ -153,7 +153,7 @@ LogSpan _buildRainbowLogSpan({
   spans.addAll([
     Whitespace(),
     if (levelColor == null)
-      dimmed(LogMessage(record.message))
+      LogMessage(record.message)
     else
       AnsiStyled(
         foreground: levelColor,
