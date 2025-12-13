@@ -1303,6 +1303,144 @@ void main() {
       expect(result, '#0 main (file:///test.dart:1:1)');
     });
   });
+
+  group('DataKey', () {
+    test('renders simple key', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      DataKey('userId').render(buffer);
+      expect(buffer.toString(), 'userId');
+    });
+
+    test('quotes key with spaces', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      DataKey('key with spaces').render(buffer);
+      expect(buffer.toString(), '"key with spaces"');
+    });
+  });
+
+  group('DataValue', () {
+    test('renders string value quoted', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      DataValue('hello').render(buffer);
+      expect(buffer.toString(), '"hello"');
+    });
+
+    test('renders number without quotes', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      DataValue(42).render(buffer);
+      expect(buffer.toString(), '42');
+    });
+
+    test('renders boolean without quotes', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      DataValue(true).render(buffer);
+      expect(buffer.toString(), 'true');
+    });
+
+    test('renders null as null', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      DataValue(null).render(buffer);
+      expect(buffer.toString(), 'null');
+    });
+  });
+
+  group('InlineData', () {
+    test('renders empty for null data', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      renderSpan(InlineData(null), buffer);
+      expect(buffer.toString(), '');
+    });
+
+    test('renders empty for empty map', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      renderSpan(InlineData({}), buffer);
+      expect(buffer.toString(), '');
+    });
+
+    test('renders single key-value pair', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      renderSpan(InlineData({'userId': 'abc123'}), buffer);
+      expect(buffer.toString(), 'userId: "abc123"');
+    });
+
+    test('renders multiple key-value pairs with separator', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      renderSpan(InlineData({'userId': 'abc', 'action': 'login'}), buffer);
+      expect(buffer.toString(), 'userId: "abc", action: "login"');
+    });
+
+    test('uses custom entry separator', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      renderSpan(
+        InlineData(
+          {'a': 1, 'b': 2},
+          entrySeparatorBuilder: () => PlainText(' | '),
+        ),
+        buffer,
+      );
+      expect(buffer.toString(), 'a: 1 | b: 2');
+    });
+
+    test('uses custom key-value separator', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      renderSpan(
+        InlineData(
+          {'key': 'value'},
+          keyValueSeparatorBuilder: () => PlainText('='),
+        ),
+        buffer,
+      );
+      expect(buffer.toString(), 'key="value"');
+    });
+  });
 }
 
 /// Builds to Timestamp (which builds to PlainText).
