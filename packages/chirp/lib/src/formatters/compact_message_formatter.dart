@@ -38,7 +38,12 @@ class CompactChirpMessageFormatter extends SpanBasedFormatter {
       Surrounded(prefix: Whitespace(), child: ClassName.fromRecord(record)),
       Whitespace(),
       LogMessage(record.message),
-      if (record.data.isNotEmpty) InlineData(record.data),
+      if (record.data.isNotEmpty)
+        Surrounded(
+          prefix: PlainText(' ('),
+          child: InlineData(record.data),
+          suffix: PlainText(')'),
+        ),
       if (record.error != null) ...[
         NewLine(),
         ErrorSpan(record.error),
