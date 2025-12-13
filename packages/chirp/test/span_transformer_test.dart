@@ -1273,6 +1273,37 @@ void main() {
     });
   });
 
+  group('StackTraceSpan', () {
+    test('trims trailing newline from stack trace', () {
+      final stackTrace =
+          StackTrace.fromString('#0 main (file:///test.dart:1:1)\n');
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      renderSpan(StackTraceSpan(stackTrace), buffer);
+      final result = buffer.toString();
+
+      expect(result, '#0 main (file:///test.dart:1:1)');
+      expect(result.endsWith('\n'), isFalse);
+    });
+
+    test('preserves stack trace without trailing newline', () {
+      final stackTrace =
+          StackTrace.fromString('#0 main (file:///test.dart:1:1)');
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+      renderSpan(StackTraceSpan(stackTrace), buffer);
+      final result = buffer.toString();
+
+      expect(result, '#0 main (file:///test.dart:1:1)');
+    });
+  });
+
   group('DataKey', () {
     test('renders simple key', () {
       final buffer = ConsoleMessageBuffer(

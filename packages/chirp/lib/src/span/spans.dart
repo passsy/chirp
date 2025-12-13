@@ -814,7 +814,14 @@ class StackTraceSpan extends LeafSpan {
   StackTraceSpan(this.stackTrace);
 
   @override
-  LogSpan build() => PlainText(stackTrace.toString());
+  LogSpan build() {
+    final text = stackTrace.toString();
+    // Trim trailing newline to avoid extra blank line in output
+    if (text.endsWith('\n')) {
+      return PlainText(text.substring(0, text.length - 1));
+    }
+    return PlainText(text);
+  }
 
   @override
   String toString() => 'StackTraceSpan(...)';
