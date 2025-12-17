@@ -305,15 +305,11 @@ void main() {
     });
 
     group('debugging support', () {
-      test('captures creation site by default', () {
+      test('captures creation stack trace by default', () {
         final interceptor = DelegatedChirpInterceptor((record) => record);
 
-        expect(interceptor.creationSite, isNotNull);
-        expect(interceptor.creationSite!.line, greaterThan(0));
-        expect(
-          interceptor.creationSite!.file,
-          contains('delegated_interceptor_test'),
-        );
+        expect(interceptor.creationStackTrace, isNotNull);
+        expect(interceptor.creationStackTrace.toString(), isNotEmpty);
       });
 
       test('toString includes creation site location', () {
@@ -331,20 +327,8 @@ void main() {
           captureCreationSite: false,
         );
 
-        expect(interceptor.creationSite, isNull);
+        expect(interceptor.creationStackTrace, isNull);
         expect(interceptor.toString(), 'DelegatedChirpInterceptor');
-      });
-
-      test('creation site identifies correct line', () {
-        // Create interceptor on a specific line and verify it's captured
-        final interceptor1 = DelegatedChirpInterceptor((record) => record);
-        final line1 = interceptor1.creationSite!.line;
-
-        // Next interceptor should have a different line
-        final interceptor2 = DelegatedChirpInterceptor((record) => record);
-        final line2 = interceptor2.creationSite!.line;
-
-        expect(line2, greaterThan(line1));
       });
     });
   });

@@ -450,15 +450,11 @@ void main() {
     });
 
     group('debugging support', () {
-      test('captures creation site by default', () {
+      test('captures creation stack trace by default', () {
         final formatter = DelegatedConsoleMessageFormatter((record, buffer) {});
 
-        expect(formatter.creationSite, isNotNull);
-        expect(formatter.creationSite!.line, greaterThan(0));
-        expect(
-          formatter.creationSite!.file,
-          contains('delegated_formatter_test'),
-        );
+        expect(formatter.creationStackTrace, isNotNull);
+        expect(formatter.creationStackTrace.toString(), isNotEmpty);
       });
 
       test('toString includes creation site location', () {
@@ -476,20 +472,8 @@ void main() {
           captureCreationSite: false,
         );
 
-        expect(formatter.creationSite, isNull);
+        expect(formatter.creationStackTrace, isNull);
         expect(formatter.toString(), 'DelegatedConsoleMessageFormatter');
-      });
-
-      test('creation site identifies correct line', () {
-        // Create formatter on a specific line and verify it's captured
-        final formatter1 = DelegatedConsoleMessageFormatter((r, b) {});
-        final line1 = formatter1.creationSite!.line;
-
-        // Next formatter should have a different line
-        final formatter2 = DelegatedConsoleMessageFormatter((r, b) {});
-        final line2 = formatter2.creationSite!.line;
-
-        expect(line2, greaterThan(line1));
       });
     });
   });

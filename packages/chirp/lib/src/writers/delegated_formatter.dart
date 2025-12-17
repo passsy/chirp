@@ -74,9 +74,7 @@ class DelegatedConsoleMessageFormatter extends ConsoleMessageFormatter {
   final bool _requiresCallerInfo;
 
   /// Stack trace captured at construction time, for debugging.
-  ///
-  /// Use [creationSite] to get parsed frame information.
-  final StackTrace? _creationStackTrace;
+  final StackTrace? creationStackTrace;
 
   /// {@macro chirp.DelegatedConsoleMessageFormatter}
   ///
@@ -95,17 +93,7 @@ class DelegatedConsoleMessageFormatter extends ConsoleMessageFormatter {
     bool captureCreationSite = true,
   })  : _format = format,
         _requiresCallerInfo = requiresCallerInfo,
-        _creationStackTrace = captureCreationSite ? StackTrace.current : null;
-
-  /// Information about where this formatter was created, for debugging.
-  ///
-  /// Returns `null` if [captureCreationSite] was `false` or if the stack
-  /// trace could not be parsed.
-  StackFrameInfo? get creationSite {
-    final stackTrace = _creationStackTrace;
-    if (stackTrace == null) return null;
-    return getCallerInfo(stackTrace);
-  }
+        creationStackTrace = captureCreationSite ? StackTrace.current : null;
 
   @override
   bool get requiresCallerInfo => _requiresCallerInfo;
@@ -116,9 +104,12 @@ class DelegatedConsoleMessageFormatter extends ConsoleMessageFormatter {
 
   @override
   String toString() {
-    final site = creationSite;
-    if (site != null) {
-      return 'DelegatedConsoleMessageFormatter(${site.callerLocation})';
+    final stackTrace = creationStackTrace;
+    if (stackTrace != null) {
+      final info = getCallerInfo(stackTrace);
+      if (info != null) {
+        return 'DelegatedConsoleMessageFormatter(${info.callerLocation})';
+      }
     }
     return 'DelegatedConsoleMessageFormatter';
   }

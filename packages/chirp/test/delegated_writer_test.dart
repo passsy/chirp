@@ -342,12 +342,11 @@ void main() {
     });
 
     group('debugging support', () {
-      test('captures creation site by default', () {
+      test('captures creation stack trace by default', () {
         final writer = DelegatedChirpWriter((record) {});
 
-        expect(writer.creationSite, isNotNull);
-        expect(writer.creationSite!.line, greaterThan(0));
-        expect(writer.creationSite!.file, contains('delegated_writer_test'));
+        expect(writer.creationStackTrace, isNotNull);
+        expect(writer.creationStackTrace.toString(), isNotEmpty);
       });
 
       test('toString includes creation site location', () {
@@ -365,20 +364,8 @@ void main() {
           captureCreationSite: false,
         );
 
-        expect(writer.creationSite, isNull);
+        expect(writer.creationStackTrace, isNull);
         expect(writer.toString(), 'DelegatedChirpWriter');
-      });
-
-      test('creation site identifies correct line', () {
-        // Create writer on a specific line and verify it's captured
-        final writer1 = DelegatedChirpWriter((record) {});
-        final line1 = writer1.creationSite!.line;
-
-        // Next writer should have a different line
-        final writer2 = DelegatedChirpWriter((record) {});
-        final line2 = writer2.creationSite!.line;
-
-        expect(line2, greaterThan(line1));
       });
     });
   });
