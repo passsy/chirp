@@ -2,9 +2,6 @@ import 'package:chirp/src/core/chirp_writer.dart';
 import 'package:chirp/src/core/log_record.dart';
 import 'package:chirp/src/utils/stack_trace_util.dart';
 
-/// Signature for writer functions used by [DelegatedChirpWriter].
-typedef WriterFunction = void Function(LogRecord record);
-
 /// {@template chirp.DelegatedChirpWriter}
 /// A [ChirpWriter] implementation that delegates to a function.
 ///
@@ -64,7 +61,7 @@ typedef WriterFunction = void Function(LogRecord record);
 /// {@endtemplate}
 class DelegatedChirpWriter extends ChirpWriter {
   /// The function that writes log records.
-  final WriterFunction _write;
+  final void Function(LogRecord record) _write;
 
   final bool _requiresCallerInfo;
 
@@ -86,7 +83,7 @@ class DelegatedChirpWriter extends ChirpWriter {
   /// each log event. For slow operations (network, disk), consider buffering
   /// or handling async operations within your function.
   DelegatedChirpWriter(
-    WriterFunction write, {
+    void Function(LogRecord record) write, {
     bool requiresCallerInfo = false,
   })  : _write = write,
         _requiresCallerInfo = requiresCallerInfo,
