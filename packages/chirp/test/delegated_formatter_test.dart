@@ -14,9 +14,7 @@ void main() {
 
       final record = LogRecord(message: 'Test', timestamp: DateTime.now());
       final buffer = ConsoleMessageBuffer(
-        capabilities: const TerminalCapabilities(
-          colorSupport: TerminalColorSupport.none,
-        ),
+        capabilities: const TerminalCapabilities(),
       );
 
       formatter.format(record, buffer);
