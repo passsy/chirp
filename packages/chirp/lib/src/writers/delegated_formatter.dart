@@ -1,4 +1,5 @@
 import 'package:chirp/src/core/log_record.dart';
+import 'package:chirp/src/utils/stack_trace_util.dart';
 import 'package:chirp/src/writers/console_writer.dart';
 
 /// Signature for formatter functions used by [DelegatedConsoleMessageFormatter].
@@ -54,6 +55,15 @@ typedef FormatterFunction = void Function(
 /// - [ConsoleMessageBuffer.pushStyle] / [ConsoleMessageBuffer.popStyle] - Manage nested styles
 /// - [ConsoleMessageBuffer.capabilities] - Query terminal capabilities
 ///
+/// ## Debugging
+///
+/// By default, the creation site is captured for debugging. This helps
+/// identify which delegated formatter is which when inspecting in a debugger:
+///
+/// ```dart
+/// print(formatter); // DelegatedConsoleMessageFormatter(my_service.dart:42)
+/// ```
+///
 /// For more complex formatters with configuration or state, consider extending
 /// [ConsoleMessageFormatter] directly.
 /// {@endtemplate}
@@ -63,6 +73,11 @@ class DelegatedConsoleMessageFormatter extends ConsoleMessageFormatter {
 
   final bool _requiresCallerInfo;
 
+  /// Stack trace captured at construction time, for debugging.
+  ///
+  /// Use [creationSite] to get parsed frame information.
+  final StackTrace? _creationStackTrace;
+
   /// {@macro chirp.DelegatedConsoleMessageFormatter}
   ///
   /// The [format] function receives a [LogRecord] and a [ConsoleMessageBuffer].
@@ -71,11 +86,26 @@ class DelegatedConsoleMessageFormatter extends ConsoleMessageFormatter {
   /// Set [requiresCallerInfo] to `true` if your formatter needs access to
   /// caller information (file, line, class, method). This triggers stack trace
   /// capture which has a performance cost.
-  const DelegatedConsoleMessageFormatter(
+  ///
+  /// Set [captureCreationSite] to `false` to disable stack trace capture at
+  /// construction time (saves a small amount of memory and CPU).
+  DelegatedConsoleMessageFormatter(
     FormatterFunction format, {
     bool requiresCallerInfo = false,
+    bool captureCreationSite = true,
   })  : _format = format,
-        _requiresCallerInfo = requiresCallerInfo;
+        _requiresCallerInfo = requiresCallerInfo,
+        _creationStackTrace = captureCreationSite ? StackTrace.current : null;
+
+  /// Information about where this formatter was created, for debugging.
+  ///
+  /// Returns `null` if [captureCreationSite] was `false` or if the stack
+  /// trace could not be parsed.
+  StackFrameInfo? get creationSite {
+    final stackTrace = _creationStackTrace;
+    if (stackTrace == null) return null;
+    return getCallerInfo(stackTrace);
+  }
 
   @override
   bool get requiresCallerInfo => _requiresCallerInfo;
@@ -83,4 +113,13 @@ class DelegatedConsoleMessageFormatter extends ConsoleMessageFormatter {
   @override
   void format(LogRecord record, ConsoleMessageBuffer buffer) =>
       _format(record, buffer);
+
+  @override
+  String toString() {
+    final site = creationSite;
+    if (site != null) {
+      return 'DelegatedConsoleMessageFormatter(${site.callerLocation})';
+    }
+    return 'DelegatedConsoleMessageFormatter';
+  }
 }

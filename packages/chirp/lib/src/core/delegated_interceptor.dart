@@ -1,5 +1,6 @@
 import 'package:chirp/src/core/chirp_interceptor.dart';
 import 'package:chirp/src/core/log_record.dart';
+import 'package:chirp/src/utils/stack_trace_util.dart';
 
 /// Signature for interceptor functions used by [DelegatedChirpInterceptor].
 ///
@@ -39,6 +40,15 @@ typedef InterceptorFunction = LogRecord? Function(LogRecord record);
 /// });
 /// ```
 ///
+/// ## Debugging
+///
+/// By default, the creation site is captured for debugging. This helps
+/// identify which delegated interceptor is which when inspecting in a debugger:
+///
+/// ```dart
+/// print(interceptor); // DelegatedChirpInterceptor(my_service.dart:42)
+/// ```
+///
 /// For more complex interceptors with state or configuration, consider
 /// extending [ChirpInterceptor] directly.
 /// {@endtemplate}
@@ -47,6 +57,11 @@ class DelegatedChirpInterceptor extends ChirpInterceptor {
   final InterceptorFunction _intercept;
 
   final bool _requiresCallerInfo;
+
+  /// Stack trace captured at construction time, for debugging.
+  ///
+  /// Use [creationSite] to get parsed frame information.
+  final StackTrace? _creationStackTrace;
 
   /// {@macro chirp.DelegatedChirpInterceptor}
   ///
@@ -58,15 +73,39 @@ class DelegatedChirpInterceptor extends ChirpInterceptor {
   /// Set [requiresCallerInfo] to `true` if your interceptor needs access to
   /// caller information (file, line, class, method). This triggers stack trace
   /// capture which has a performance cost.
-  const DelegatedChirpInterceptor(
+  ///
+  /// Set [captureCreationSite] to `false` to disable stack trace capture at
+  /// construction time (saves a small amount of memory and CPU).
+  DelegatedChirpInterceptor(
     InterceptorFunction intercept, {
     bool requiresCallerInfo = false,
+    bool captureCreationSite = true,
   })  : _intercept = intercept,
-        _requiresCallerInfo = requiresCallerInfo;
+        _requiresCallerInfo = requiresCallerInfo,
+        _creationStackTrace = captureCreationSite ? StackTrace.current : null;
+
+  /// Information about where this interceptor was created, for debugging.
+  ///
+  /// Returns `null` if [captureCreationSite] was `false` or if the stack
+  /// trace could not be parsed.
+  StackFrameInfo? get creationSite {
+    final stackTrace = _creationStackTrace;
+    if (stackTrace == null) return null;
+    return getCallerInfo(stackTrace);
+  }
 
   @override
   bool get requiresCallerInfo => _requiresCallerInfo;
 
   @override
   LogRecord? intercept(LogRecord record) => _intercept(record);
+
+  @override
+  String toString() {
+    final site = creationSite;
+    if (site != null) {
+      return 'DelegatedChirpInterceptor(${site.callerLocation})';
+    }
+    return 'DelegatedChirpInterceptor';
+  }
 }

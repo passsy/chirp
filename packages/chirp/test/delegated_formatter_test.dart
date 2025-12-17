@@ -366,8 +366,8 @@ void main() {
       expect(buffer2.toString(), 'Message');
     });
 
-    test('is const constructible', () {
-      const formatter = DelegatedConsoleMessageFormatter(_simpleFormat);
+    test('can be created with a function reference', () {
+      final formatter = DelegatedConsoleMessageFormatter(_simpleFormat);
       expect(formatter, isA<ConsoleMessageFormatter>());
     });
 
@@ -448,10 +448,54 @@ void main() {
       // toString includes ANSI codes so should be longer
       expect(buffer.toString().length, greaterThan(5));
     });
+
+    group('debugging support', () {
+      test('captures creation site by default', () {
+        final formatter = DelegatedConsoleMessageFormatter((record, buffer) {});
+
+        expect(formatter.creationSite, isNotNull);
+        expect(formatter.creationSite!.line, greaterThan(0));
+        expect(
+          formatter.creationSite!.file,
+          contains('delegated_formatter_test'),
+        );
+      });
+
+      test('toString includes creation site location', () {
+        final formatter = DelegatedConsoleMessageFormatter((record, buffer) {});
+
+        final str = formatter.toString();
+        expect(str, startsWith('DelegatedConsoleMessageFormatter('));
+        expect(str, contains('delegated_formatter_test'));
+        expect(str, contains(':'));
+      });
+
+      test('can disable creation site capture', () {
+        final formatter = DelegatedConsoleMessageFormatter(
+          (record, buffer) {},
+          captureCreationSite: false,
+        );
+
+        expect(formatter.creationSite, isNull);
+        expect(formatter.toString(), 'DelegatedConsoleMessageFormatter');
+      });
+
+      test('creation site identifies correct line', () {
+        // Create formatter on a specific line and verify it's captured
+        final formatter1 = DelegatedConsoleMessageFormatter((r, b) {});
+        final line1 = formatter1.creationSite!.line;
+
+        // Next formatter should have a different line
+        final formatter2 = DelegatedConsoleMessageFormatter((r, b) {});
+        final line2 = formatter2.creationSite!.line;
+
+        expect(line2, greaterThan(line1));
+      });
+    });
   });
 }
 
-/// A simple format function for const constructor test.
+/// A simple format function for function reference test.
 void _simpleFormat(LogRecord record, ConsoleMessageBuffer buffer) {
   buffer.write(record.message);
 }

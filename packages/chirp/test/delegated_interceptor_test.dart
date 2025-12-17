@@ -243,9 +243,8 @@ void main() {
       expect(writtenRecords.first.message, 'WRITER:LOGGER:msg');
     });
 
-    test('is const constructible', () {
-      // This ensures the class can be used as a const value
-      const interceptor = DelegatedChirpInterceptor(_passThrough);
+    test('can be created with a function', () {
+      final interceptor = DelegatedChirpInterceptor(_passThrough);
       expect(interceptor, isA<ChirpInterceptor>());
     });
 
@@ -303,6 +302,50 @@ void main() {
       );
       expect(result.error, isA<Exception>());
       expect(result.stackTrace, isNotNull);
+    });
+
+    group('debugging support', () {
+      test('captures creation site by default', () {
+        final interceptor = DelegatedChirpInterceptor((record) => record);
+
+        expect(interceptor.creationSite, isNotNull);
+        expect(interceptor.creationSite!.line, greaterThan(0));
+        expect(
+          interceptor.creationSite!.file,
+          contains('delegated_interceptor_test'),
+        );
+      });
+
+      test('toString includes creation site location', () {
+        final interceptor = DelegatedChirpInterceptor((record) => record);
+
+        final str = interceptor.toString();
+        expect(str, startsWith('DelegatedChirpInterceptor('));
+        expect(str, contains('delegated_interceptor_test'));
+        expect(str, contains(':'));
+      });
+
+      test('can disable creation site capture', () {
+        final interceptor = DelegatedChirpInterceptor(
+          (record) => record,
+          captureCreationSite: false,
+        );
+
+        expect(interceptor.creationSite, isNull);
+        expect(interceptor.toString(), 'DelegatedChirpInterceptor');
+      });
+
+      test('creation site identifies correct line', () {
+        // Create interceptor on a specific line and verify it's captured
+        final interceptor1 = DelegatedChirpInterceptor((record) => record);
+        final line1 = interceptor1.creationSite!.line;
+
+        // Next interceptor should have a different line
+        final interceptor2 = DelegatedChirpInterceptor((record) => record);
+        final line2 = interceptor2.creationSite!.line;
+
+        expect(line2, greaterThan(line1));
+      });
     });
   });
 }

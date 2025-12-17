@@ -1,5 +1,6 @@
 import 'package:chirp/src/core/chirp_writer.dart';
 import 'package:chirp/src/core/log_record.dart';
+import 'package:chirp/src/utils/stack_trace_util.dart';
 
 /// Signature for writer functions used by [DelegatedChirpWriter].
 typedef WriterFunction = void Function(LogRecord record);
@@ -49,6 +50,15 @@ typedef WriterFunction = void Function(LogRecord record);
 ///   .addInterceptor(myInterceptor);
 /// ```
 ///
+/// ## Debugging
+///
+/// By default, the creation site is captured for debugging. This helps
+/// identify which delegated writer is which when inspecting in a debugger:
+///
+/// ```dart
+/// print(writer); // DelegatedChirpWriter(my_service.dart:42)
+/// ```
+///
 /// For more complex writers with state, configuration, or cleanup logic,
 /// consider extending [ChirpWriter] directly.
 /// {@endtemplate}
@@ -57,6 +67,11 @@ class DelegatedChirpWriter extends ChirpWriter {
   final WriterFunction _write;
 
   final bool _requiresCallerInfo;
+
+  /// Stack trace captured at construction time, for debugging.
+  ///
+  /// Use [creationSite] to get parsed frame information.
+  final StackTrace? _creationStackTrace;
 
   /// {@macro chirp.DelegatedChirpWriter}
   ///
@@ -67,18 +82,42 @@ class DelegatedChirpWriter extends ChirpWriter {
   /// information (file, line, class, method). This triggers stack trace
   /// capture which has a performance cost.
   ///
+  /// Set [captureCreationSite] to `false` to disable stack trace capture at
+  /// construction time (saves a small amount of memory and CPU).
+  ///
   /// **Performance note**: The [write] function is called synchronously for
   /// each log event. For slow operations (network, disk), consider buffering
   /// or handling async operations within your function.
   DelegatedChirpWriter(
     WriterFunction write, {
     bool requiresCallerInfo = false,
+    bool captureCreationSite = true,
   })  : _write = write,
-        _requiresCallerInfo = requiresCallerInfo;
+        _requiresCallerInfo = requiresCallerInfo,
+        _creationStackTrace = captureCreationSite ? StackTrace.current : null;
+
+  /// Information about where this writer was created, for debugging.
+  ///
+  /// Returns `null` if [captureCreationSite] was `false` or if the stack
+  /// trace could not be parsed.
+  StackFrameInfo? get creationSite {
+    final stackTrace = _creationStackTrace;
+    if (stackTrace == null) return null;
+    return getCallerInfo(stackTrace);
+  }
 
   @override
   bool get requiresCallerInfo => _requiresCallerInfo;
 
   @override
   void write(LogRecord record) => _write(record);
+
+  @override
+  String toString() {
+    final site = creationSite;
+    if (site != null) {
+      return 'DelegatedChirpWriter(${site.callerLocation})';
+    }
+    return 'DelegatedChirpWriter';
+  }
 }
