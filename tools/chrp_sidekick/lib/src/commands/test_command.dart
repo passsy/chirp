@@ -208,15 +208,17 @@ class TestCommand extends Command {
       'compact',
     ];
 
-    final executable = package.isFlutterPackage ? 'flutter' : 'dart';
+    final executable = package.isFlutterPackage
+        ? flutterSdk!.file('bin/flutter').path
+        : dartSdk!.file('bin/dart').path;
     final result = await Process.run(
       executable,
       fullArgs,
       workingDirectory: package.root.path,
     );
 
-    final stdout = result.stdout.toString();
-    final stderr = result.stderr.toString();
+    final stdout = result.stdout as String;
+    final stderr = result.stderr as String;
 
     if (result.exitCode == 0) {
       print('${green('✓')} ${green(package.name)} ❭ All tests passed!');
