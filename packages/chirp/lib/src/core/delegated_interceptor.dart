@@ -2,12 +2,6 @@ import 'package:chirp/src/core/chirp_interceptor.dart';
 import 'package:chirp/src/core/log_record.dart';
 import 'package:chirp/src/utils/stack_trace_util.dart';
 
-/// Signature for interceptor functions used by [DelegatedChirpInterceptor].
-///
-/// Return the [record] unchanged to pass through, a modified copy to transform,
-/// or `null` to reject (prevent writing).
-typedef InterceptorFunction = LogRecord? Function(LogRecord record);
-
 /// {@template chirp.DelegatedChirpInterceptor}
 /// A [ChirpInterceptor] implementation that delegates to a function.
 ///
@@ -54,7 +48,7 @@ typedef InterceptorFunction = LogRecord? Function(LogRecord record);
 /// {@endtemplate}
 class DelegatedChirpInterceptor extends ChirpInterceptor {
   /// The function that intercepts log records.
-  final InterceptorFunction _intercept;
+  final LogRecord? Function(LogRecord record) _intercept;
 
   final bool _requiresCallerInfo;
 
@@ -74,7 +68,7 @@ class DelegatedChirpInterceptor extends ChirpInterceptor {
   /// caller information (file, line, class, method). This triggers stack trace
   /// capture which has a performance cost.
   DelegatedChirpInterceptor(
-    InterceptorFunction intercept, {
+    LogRecord? Function(LogRecord record) intercept, {
     bool requiresCallerInfo = false,
   })  : _intercept = intercept,
         _requiresCallerInfo = requiresCallerInfo,

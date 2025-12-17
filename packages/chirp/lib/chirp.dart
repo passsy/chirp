@@ -33,7 +33,7 @@ export 'package:chirp/src/core/chirp_root.dart'
     show Chirp, ChirpInstanceLogger, ChirpLoggerConsoleWriterExt, LogRecordExt;
 export 'package:chirp/src/core/chirp_writer.dart' show ChirpWriter;
 export 'package:chirp/src/core/delegated_interceptor.dart'
-    show DelegatedChirpInterceptor, InterceptorFunction;
+    show DelegatedChirpInterceptor;
 export 'package:chirp/src/core/delegated_writer.dart'
     show DelegatedChirpWriter, WriterFunction;
 export 'package:chirp/src/core/format_option.dart' show FormatOptions;
