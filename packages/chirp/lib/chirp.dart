@@ -65,6 +65,6 @@ export 'package:chirp/src/writers/console_writer.dart'
         splitIntoChunks,
         stripAnsiCodes;
 export 'package:chirp/src/writers/delegated_formatter.dart'
-    show DelegatedConsoleMessageFormatter, FormatterFunction;
+    show DelegatedConsoleMessageFormatter;
 export 'package:chirp/src/writers/developer_log_console_writer.dart'
     show DeveloperLogConsoleWriter;

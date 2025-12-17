@@ -2,12 +2,6 @@ import 'package:chirp/src/core/log_record.dart';
 import 'package:chirp/src/utils/stack_trace_util.dart';
 import 'package:chirp/src/writers/console_writer.dart';
 
-/// Signature for formatter functions used by [DelegatedConsoleMessageFormatter].
-typedef FormatterFunction = void Function(
-  LogRecord record,
-  ConsoleMessageBuffer buffer,
-);
-
 /// {@template chirp.DelegatedConsoleMessageFormatter}
 /// A [ConsoleMessageFormatter] implementation that delegates to a function.
 ///
@@ -69,7 +63,7 @@ typedef FormatterFunction = void Function(
 /// {@endtemplate}
 class DelegatedConsoleMessageFormatter extends ConsoleMessageFormatter {
   /// The function that formats log records.
-  final FormatterFunction _format;
+  final void Function(LogRecord record, ConsoleMessageBuffer buffer) _format;
 
   final bool _requiresCallerInfo;
 
@@ -87,7 +81,7 @@ class DelegatedConsoleMessageFormatter extends ConsoleMessageFormatter {
   /// caller information (file, line, class, method). This triggers stack trace
   /// capture which has a performance cost.
   DelegatedConsoleMessageFormatter(
-    FormatterFunction format, {
+    void Function(LogRecord record, ConsoleMessageBuffer buffer) format, {
     bool requiresCallerInfo = false,
   })  : _format = format,
         _requiresCallerInfo = requiresCallerInfo,
