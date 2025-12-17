@@ -69,6 +69,8 @@ class DelegatedChirpWriter extends ChirpWriter {
   final bool _requiresCallerInfo;
 
   /// Stack trace captured at construction time, for debugging.
+  ///
+  /// Only captured when assertions are enabled (debug mode).
   final StackTrace? creationStackTrace;
 
   /// {@macro chirp.DelegatedChirpWriter}
@@ -80,19 +82,15 @@ class DelegatedChirpWriter extends ChirpWriter {
   /// information (file, line, class, method). This triggers stack trace
   /// capture which has a performance cost.
   ///
-  /// Set [captureCreationSite] to `false` to disable stack trace capture at
-  /// construction time (saves a small amount of memory and CPU).
-  ///
   /// **Performance note**: The [write] function is called synchronously for
   /// each log event. For slow operations (network, disk), consider buffering
   /// or handling async operations within your function.
   DelegatedChirpWriter(
     WriterFunction write, {
     bool requiresCallerInfo = false,
-    bool captureCreationSite = true,
   })  : _write = write,
         _requiresCallerInfo = requiresCallerInfo,
-        creationStackTrace = captureCreationSite ? StackTrace.current : null;
+        creationStackTrace = debugCaptureStackTrace();
 
   @override
   bool get requiresCallerInfo => _requiresCallerInfo;

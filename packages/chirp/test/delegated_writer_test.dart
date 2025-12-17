@@ -358,15 +358,6 @@ void main() {
         expect(str, contains(':'));
       });
 
-      test('can disable creation site capture', () {
-        final writer = DelegatedChirpWriter(
-          (record) {},
-          captureCreationSite: false,
-        );
-
-        expect(writer.creationStackTrace, isNull);
-        expect(writer.toString(), 'DelegatedChirpWriter');
-      });
     });
   });
 }

@@ -466,15 +466,6 @@ void main() {
         expect(str, contains(':'));
       });
 
-      test('can disable creation site capture', () {
-        final formatter = DelegatedConsoleMessageFormatter(
-          (record, buffer) {},
-          captureCreationSite: false,
-        );
-
-        expect(formatter.creationStackTrace, isNull);
-        expect(formatter.toString(), 'DelegatedConsoleMessageFormatter');
-      });
     });
   });
 }

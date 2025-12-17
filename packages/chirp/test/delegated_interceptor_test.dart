@@ -321,15 +321,6 @@ void main() {
         expect(str, contains(':'));
       });
 
-      test('can disable creation site capture', () {
-        final interceptor = DelegatedChirpInterceptor(
-          (record) => record,
-          captureCreationSite: false,
-        );
-
-        expect(interceptor.creationStackTrace, isNull);
-        expect(interceptor.toString(), 'DelegatedChirpInterceptor');
-      });
     });
   });
 }

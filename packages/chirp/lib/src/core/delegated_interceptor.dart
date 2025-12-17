@@ -59,6 +59,8 @@ class DelegatedChirpInterceptor extends ChirpInterceptor {
   final bool _requiresCallerInfo;
 
   /// Stack trace captured at construction time, for debugging.
+  ///
+  /// Only captured when assertions are enabled (debug mode).
   final StackTrace? creationStackTrace;
 
   /// {@macro chirp.DelegatedChirpInterceptor}
@@ -71,16 +73,12 @@ class DelegatedChirpInterceptor extends ChirpInterceptor {
   /// Set [requiresCallerInfo] to `true` if your interceptor needs access to
   /// caller information (file, line, class, method). This triggers stack trace
   /// capture which has a performance cost.
-  ///
-  /// Set [captureCreationSite] to `false` to disable stack trace capture at
-  /// construction time (saves a small amount of memory and CPU).
   DelegatedChirpInterceptor(
     InterceptorFunction intercept, {
     bool requiresCallerInfo = false,
-    bool captureCreationSite = true,
   })  : _intercept = intercept,
         _requiresCallerInfo = requiresCallerInfo,
-        creationStackTrace = captureCreationSite ? StackTrace.current : null;
+        creationStackTrace = debugCaptureStackTrace();
 
   @override
   bool get requiresCallerInfo => _requiresCallerInfo;
