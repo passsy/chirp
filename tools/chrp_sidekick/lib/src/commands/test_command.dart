@@ -208,12 +208,9 @@ class TestCommand extends Command {
       'compact',
     ];
 
-    final executable = package.isFlutterPackage ? 'flutter' : 'dart';
-    final result = await Process.run(
-      executable,
-      fullArgs,
-      workingDirectory: package.root.path,
-    );
+    final result = package.isFlutterPackage
+        ? await flutter(fullArgs, workingDirectory: package.root)
+        : await dart(fullArgs, workingDirectory: package.root);
 
     final stdout = result.stdout.toString();
     final stderr = result.stderr.toString();
