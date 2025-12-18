@@ -19,6 +19,8 @@ jobs:
   format:
     timeout-minutes: 5
     runs-on: ubuntu-latest
+    env:
+      PURO_SIDEKICK_PLUGIN_VERBOSE: true
 
     steps:
       - uses: actions/checkout@v4
