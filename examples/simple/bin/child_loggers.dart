@@ -7,18 +7,15 @@ void main() {
   Chirp.root = ChirpLogger().addConsoleWriter();
 
   // Create a request-scoped logger with context
-  final requestLogger = Chirp.root.child(context: {
-    'requestId': 'REQ-123',
-    'userId': 'user_456',
-  });
+  final requestLogger = Chirp.root.child(
+    context: {'requestId': 'REQ-123', 'userId': 'user_456'},
+  );
 
   requestLogger.info('Request received');
   requestLogger.info('Authenticating user');
 
   // Nest children for deeper context (e.g., transaction scope)
-  final txLogger = requestLogger.child(context: {
-    'transactionId': 'TXN-789',
-  });
+  final txLogger = requestLogger.child(context: {'transactionId': 'TXN-789'});
 
   // Logs include requestId, userId, AND transactionId
   txLogger.info('Transaction started');

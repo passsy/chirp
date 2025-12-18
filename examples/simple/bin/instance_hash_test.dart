@@ -3,8 +3,9 @@
 import 'package:chirp/chirp.dart';
 
 void main() {
-  Chirp.root = ChirpLogger()
-      .addConsoleWriter(formatter: SimpleConsoleMessageFormatter());
+  Chirp.root = ChirpLogger().addConsoleWriter(
+    formatter: SimpleConsoleMessageFormatter(),
+  );
   print('Testing instance hash tracking:\n');
 
   final service1 = UserService();

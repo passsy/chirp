@@ -10,11 +10,14 @@ void main() {
       .addConsoleWriter();
 
   // Sensitive data is automatically redacted
-  Chirp.info('User login', data: {
-    'username': 'alice',
-    'password': 'super_secret_123', // Will be redacted
-    'token': 'jwt_token_here', // Will be redacted
-  });
+  Chirp.info(
+    'User login',
+    data: {
+      'username': 'alice',
+      'password': 'super_secret_123', // Will be redacted
+      'token': 'jwt_token_here', // Will be redacted
+    },
+  );
 
   // Hostname is automatically added to all logs
   Chirp.info('Request processed');

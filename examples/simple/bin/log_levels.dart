@@ -13,8 +13,10 @@ void main() {
   Chirp.warning('Deprecated API used', data: {'api': 'v1'});
   Chirp.error('Operation failed', error: Exception('Timeout'));
   Chirp.critical('Database connection lost');
-  Chirp.wtf('User age is negative',
-      data: {'age': -5}); // What a Terrible Failure
+  Chirp.wtf(
+    'User age is negative',
+    data: {'age': -5},
+  ); // What a Terrible Failure
 
   // Custom log levels
   const verbose = ChirpLogLevel('verbose', 50); // Between trace and debug
