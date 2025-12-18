@@ -31,3 +31,5 @@ dependency_overrides:
 # generated code, do not edit this manually
 sidekick:
   cli_version: 3.0.1
+  puro:
+    useDartSdk: '3.10.1'
