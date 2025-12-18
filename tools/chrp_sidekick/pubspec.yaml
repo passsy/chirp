@@ -17,6 +17,17 @@ dependencies:
 dev_dependencies:
   lint: ^2.0.0
 
+dependency_overrides:
+  puro_sidekick_plugin:
+    git:
+      url: https://github.com/phntmxyz/puro_sidekick_plugin.git
+      ref: handle-rate-limits
+  sidekick_core:
+    git:
+      url: https://github.com/phntmxyz/sidekick.git
+      ref: main
+      path: sidekick_core
+
 # generated code, do not edit this manually
 sidekick:
   cli_version: 3.0.1
