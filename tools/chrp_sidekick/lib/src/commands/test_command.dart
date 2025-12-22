@@ -209,23 +209,26 @@ class TestCommand extends Command {
     ];
 
     final executable = package.isFlutterPackage ? 'flutter' : 'dart';
+    final stopwatch = Stopwatch()..start();
     final result = await Process.run(
       executable,
       fullArgs,
       workingDirectory: package.root.path,
     );
+    stopwatch.stop();
+    final duration = (stopwatch.elapsedMilliseconds / 1000.0).toStringAsFixed(1);
 
     final stdout = result.stdout.toString();
     final stderr = result.stderr.toString();
 
     if (result.exitCode == 0) {
-      print('${green('✓')} ${green(package.name)} ❭ All tests passed!');
+      print('${green('✓')} ${green(package.name)} (${duration}s)');
       return _TestResult.success;
     }
 
     // Parse and show only failed tests
     final failedTests = _extractFailedTestNames(stdout);
-    print('${red('✗')} ${package.name}');
+    print('${red('✗')} ${package.name} (${duration}s)');
     if (failedTests != null && failedTests.isNotEmpty) {
       for (final testName in failedTests) {
         print('  - $testName');
