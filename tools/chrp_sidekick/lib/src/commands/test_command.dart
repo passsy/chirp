@@ -110,8 +110,11 @@ class TestCommand extends Command {
     // Get the relative path from the package root
     final relativePath = normalizedPath.substring(packageRootPath.length + 1);
 
-    return _executeTests(package,
-        relativePath: relativePath, requireTests: true);
+    return _executeTests(
+      package,
+      relativePath: relativePath,
+      requireTests: true,
+    );
   }
 
   Future<_TestResult> _runTestsInPackageNamed(String name) async {

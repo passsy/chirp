@@ -415,7 +415,8 @@ void main() {
         final httpRequest = decoded['httpRequest'] as Map<String, dynamic>;
 
         expect(httpRequest['requestMethod'], 'GET');
-        expect(httpRequest['requestUrl'], 'https://example.com/api/users?page=1');
+        expect(
+            httpRequest['requestUrl'], 'https://example.com/api/users?page=1');
         expect(httpRequest['protocol'], 'HTTP/1.1');
         expect(httpRequest['userAgent'], 'Mozilla/5.0 (Test)');
         expect(httpRequest['referer'], 'https://example.com/');
