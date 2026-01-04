@@ -7,9 +7,7 @@ void main() {
   group('GcpMessageFormatter', () {
     ConsoleMessageBuffer createBuffer() {
       return ConsoleMessageBuffer(
-        capabilities: const TerminalCapabilities(
-          colorSupport: TerminalColorSupport.none,
-        ),
+        capabilities: const TerminalCapabilities(),
       );
     }
 
@@ -17,7 +15,6 @@ void main() {
       final record = LogRecord(
         message: 'Server started',
         timestamp: DateTime.utc(2024, 1, 15, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
       );
 
       final formatter = GcpMessageFormatter();
@@ -325,6 +322,7 @@ void main() {
 
     test('requiresCallerInfo returns true when includeSourceLocation is true',
         () {
+      // ignore: avoid_redundant_argument_values
       final formatter = GcpMessageFormatter(includeSourceLocation: true);
       expect(formatter.requiresCallerInfo, isTrue);
     });

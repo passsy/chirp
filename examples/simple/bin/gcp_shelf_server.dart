@@ -91,6 +91,7 @@ Future<void> _runDemoRequests(int port) async {
     await response.drain<void>();
   }
 
+  // ignore: unused_element
   Future<void> patch(String path) async {
     final request = await client.patchUrl(Uri.parse('$baseUrl$path'));
     final response = await request.close();

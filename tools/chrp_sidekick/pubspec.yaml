@@ -17,6 +17,13 @@ dependencies:
 dev_dependencies:
   lint: ^2.0.0
 
+dependency_overrides:
+  sidekick_core:
+    git:
+      url: https://github.com/phntmxyz/sidekick.git
+      path: sidekick_core
+      ref: main
+
 # generated code, do not edit this manually
 sidekick:
   cli_version: 3.0.1

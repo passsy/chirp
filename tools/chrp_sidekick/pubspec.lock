@@ -396,10 +396,11 @@ packages:
   sidekick_core:
     dependency: "direct main"
     description:
-      name: sidekick_core
-      sha256: d77499af996a9d3f2ed225ddf5aa724e16ad0274fdf871cc6081188c833cdd41
-      url: "https://pub.dev"
-    source: hosted
+      path: sidekick_core
+      ref: main
+      resolved-ref: f9f64ca025d77c33b16fe5fdfbdc4b39083ea12b
+      url: "https://github.com/phntmxyz/sidekick.git"
+    source: git
     version: "3.0.1"
   simple_sparse_list:
     dependency: transitive
@@ -538,4 +539,4 @@ packages:
     source: hosted
     version: "2.2.2"
 sdks:
-  dart: ">=3.5.0 <3.999.0"
+  dart: ">=3.5.0 <4.0.0"
