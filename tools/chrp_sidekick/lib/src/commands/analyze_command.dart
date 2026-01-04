@@ -37,25 +37,21 @@ class AnalyzeCommand extends Command {
   ///   `third_party/circle/packageA` and `third_party/circle/packageB`.
   final List<String> excludeGlob;
 
-  AnalyzeCommand({
-    this.exclude = const [],
-    this.excludeGlob = const [],
-  }) {
-    argParser.addOption(
-      'package',
-      abbr: 'p',
-    );
+  AnalyzeCommand({this.exclude = const [], this.excludeGlob = const []}) {
+    argParser.addOption('package', abbr: 'p');
   }
 
   @override
   Future<void> run() async {
     final String? packageName = argResults?['package'] as String?;
 
-    final List<DartPackage> allPackages =
-        findAllPackages(SidekickContext.projectRoot);
+    final List<DartPackage> allPackages = findAllPackages(
+      SidekickContext.projectRoot,
+    );
     if (packageName != null) {
-      final package =
-          allPackages.where((it) => it.name == packageName).firstOrNull;
+      final package = allPackages
+          .where((it) => it.name == packageName)
+          .firstOrNull;
       if (package == null) {
         throw "Package with name $packageName not found in "
             "${SidekickContext.projectRoot.path}";
@@ -78,10 +74,7 @@ class AnalyzeCommand extends Command {
         .whereType<Directory>()
         .mapNotNull((e) => DartPackage.fromDirectory(e));
 
-    final excluded = [
-      ...exclude,
-      ...globExcludes,
-    ];
+    final excluded = [...exclude, ...globExcludes];
 
     for (final package in allPackages.whereNot(excluded.contains)) {
       try {

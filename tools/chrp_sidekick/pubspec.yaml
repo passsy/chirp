@@ -4,7 +4,7 @@ version: 0.0.1
 publish_to: none
 
 environment:
-  sdk: '>=3.5.0 <4.0.0'
+  sdk: '>=3.10.0 <4.0.0'
 
 executables:
   main:
@@ -18,12 +18,16 @@ dev_dependencies:
   lint: ^2.0.0
 
 dependency_overrides:
+  dcli: ^8.3.0
+  pubspec_manager: ^3.0.0
   sidekick_core:
     git:
       url: https://github.com/phntmxyz/sidekick.git
-      path: sidekick_core
       ref: main
+      path: sidekick_core
 
 # generated code, do not edit this manually
 sidekick:
   cli_version: 3.0.1
+  puro:
+    useDartSdk: '3.10.1'
