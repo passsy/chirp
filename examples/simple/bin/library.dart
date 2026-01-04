@@ -7,9 +7,9 @@ import 'package:chirp/chirp.dart';
 /// ```dart
 /// libraryLogger.setMinLogLevel(ChirpLogLevel.trace);
 /// ```
-final libraryLogger = ChirpLogger(name: 'lib')
-    .setMinLogLevel(ChirpLogLevel.warning)
-    .addConsoleWriter();
+final libraryLogger = ChirpLogger(
+  name: 'lib',
+).setMinLogLevel(ChirpLogLevel.warning).addConsoleWriter();
 
 /// Simple example demonstrating that chirp in libraries don't log by default
 void main() {

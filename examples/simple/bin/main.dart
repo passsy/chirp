@@ -18,10 +18,7 @@ void main() {
   // Configure with span transformers for custom formatting
   Chirp.root = ChirpLogger().addConsoleWriter(
     formatter: RainbowMessageFormatter(
-      spanTransformers: [
-        addEmojiPrefix,
-        boxCriticalMessages,
-      ],
+      spanTransformers: [addEmojiPrefix, boxCriticalMessages],
     ),
   );
 

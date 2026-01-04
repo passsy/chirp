@@ -83,8 +83,9 @@ class TestCommand extends Command {
     final isDirectory = FileSystemEntity.isDirectorySync(inputPath);
     final entity = isDirectory ? Directory(inputPath) : File(inputPath);
     final absolutePath = entity.absolute.path;
-    final searchDir =
-        isDirectory ? entity.absolute as Directory : entity.absolute.parent;
+    final searchDir = isDirectory
+        ? entity.absolute as Directory
+        : entity.absolute.parent;
 
     // Find the package root
     final package = _findPackageRoot(searchDir);
@@ -122,8 +123,9 @@ class TestCommand extends Command {
     final allPackages = findAllPackages(SidekickContext.projectRoot);
     final package = allPackages.firstOrNullWhere((it) => it.name == name);
     if (package == null) {
-      final packageOptions =
-          allPackages.map((it) => it.name).toList(growable: false);
+      final packageOptions = allPackages
+          .map((it) => it.name)
+          .toList(growable: false);
       error(
         'Could not find package $name. '
         'Please use one of ${packageOptions.joinToString()}',
@@ -177,8 +179,9 @@ class TestCommand extends Command {
     final stopwatch = Stopwatch()..start();
     final result = await _runDartOrFlutter(package, args);
     stopwatch.stop();
-    final duration =
-        (stopwatch.elapsedMilliseconds / 1000.0).toStringAsFixed(1);
+    final duration = (stopwatch.elapsedMilliseconds / 1000.0).toStringAsFixed(
+      1,
+    );
 
     final testPathStr = relativePath != null ? ' $relativePath' : '';
 
@@ -219,12 +222,7 @@ class TestCommand extends Command {
     String? relativePath,
   }) async {
     final concurrency = max(1, Platform.numberOfProcessors - 1);
-    final fullArgs = [
-      ...args,
-      '--concurrency=$concurrency',
-      '-r',
-      'compact',
-    ];
+    final fullArgs = [...args, '--concurrency=$concurrency', '-r', 'compact'];
 
     final stopwatch = Stopwatch()..start();
     final lines = <String>[];
@@ -240,8 +238,9 @@ class TestCommand extends Command {
       nothrow: true,
     );
     stopwatch.stop();
-    final duration =
-        (stopwatch.elapsedMilliseconds / 1000.0).toStringAsFixed(1);
+    final duration = (stopwatch.elapsedMilliseconds / 1000.0).toStringAsFixed(
+      1,
+    );
 
     final stdout = lines.join('\n');
     final exitCode = result.exitCode;
@@ -334,8 +333,9 @@ class TestCommand extends Command {
           final fullMatch = match.group(1)?.trim();
           if (fullMatch != null && fullMatch.isNotEmpty) {
             // Try to split path and test name (e.g., "test/foo.dart: Test name")
-            final pathMatch =
-                RegExp(r'^(test/\S+\.dart):\s*(.+)$').firstMatch(fullMatch);
+            final pathMatch = RegExp(
+              r'^(test/\S+\.dart):\s*(.+)$',
+            ).firstMatch(fullMatch);
             if (pathMatch != null) {
               final path = pathMatch.group(1);
               final name = pathMatch.group(2)?.trim();
@@ -433,11 +433,7 @@ class _TestResultCollector {
   }
 }
 
-enum _TestResult {
-  success,
-  failed,
-  noTests,
-}
+enum _TestResult { success, failed, noTests }
 
 class _FailedTest {
   final String name;

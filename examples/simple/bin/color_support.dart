@@ -37,21 +37,20 @@ void main() {
   print(buffer);
 
   final items = env.entries.map((e) {
-    return SpanSequence(children: [
-      AnsiStyled(
-        child: PlainText(e.key),
-        foreground: DefaultColor(),
-        dim: true,
-      ),
-      AnsiStyled(
-        child: PlainText('='),
-        foreground: Ansi256.grey50_244,
-      ),
-      AnsiStyled(
-        child: PlainText(e.value),
-        foreground: colorForHash(e.value, saturation: ColorSaturation.low),
-      ),
-    ]);
+    return SpanSequence(
+      children: [
+        AnsiStyled(
+          child: PlainText(e.key),
+          foreground: DefaultColor(),
+          dim: true,
+        ),
+        AnsiStyled(child: PlainText('='), foreground: Ansi256.grey50_244),
+        AnsiStyled(
+          child: PlainText(e.value),
+          foreground: colorForHash(e.value, saturation: ColorSaturation.low),
+        ),
+      ],
+    );
   }).toList();
 
   final allLines = SpanSequence(children: items, separator: NewLine());
@@ -59,10 +58,7 @@ void main() {
   final buffer2 = ConsoleMessageBuffer(
     capabilities: TerminalCapabilities(colorSupport: autoDetected),
   );
-  renderSpan(
-    allLines,
-    buffer2,
-  );
+  renderSpan(allLines, buffer2);
   print(buffer2);
 }
 
