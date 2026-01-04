@@ -2,6 +2,16 @@ import 'dart:math';
 
 import 'package:sidekick_core/sidekick_core.dart';
 
+/// Runs tests in all packages, a single package, or a specific file/directory.
+///
+/// Usage:
+/// - `chrp test` - Run all tests in all packages
+/// - `chrp test --fast` - Run all tests with minimal output
+/// - `chrp test --fast -p chirp` - Run tests in package by name
+/// - `chrp test --fast packages/chirp/test/some_test.dart` - Run specific test file
+/// - `chrp test --fast packages/chirp/test/` - Run all tests in a test directory
+/// - `chrp test --fast packages/chirp/` - Run all tests in a package directory
+/// - `chrp test --fast -n "my test"` - Run tests matching name filter
 class TestCommand extends Command {
   @override
   final String description =
@@ -23,7 +33,7 @@ class TestCommand extends Command {
       ..addOption(
         'package',
         abbr: 'p',
-        help: 'Run tests for a specific package',
+        help: 'Run tests for a specific package by name',
       )
       ..addOption(
         'name',
@@ -32,108 +42,82 @@ class TestCommand extends Command {
       );
   }
 
+  bool get _fastFlag => argResults?['fast'] as bool? ?? false;
+  String? get _nameOption => argResults?['name'] as String?;
+
   @override
   Future<void> run() async {
     final collector = _TestResultCollector();
 
     final String? packageArg = argResults?['package'] as String?;
-    final String? testName = argResults?['name'] as String?;
-    // Ignore --fast when filtering by test name (you want verbose output for debugging)
-    final bool fast =
-        testName == null && (argResults?['fast'] as bool? ?? false);
     final List<String> rest = argResults?.rest ?? [];
 
-    // If a file path is provided as rest argument
+    // If a path is provided as rest argument (file or directory)
     if (rest.isNotEmpty) {
-      final filePath = rest.first;
-      collector.add(await _testFile(filePath, testName, fast: fast));
+      final path = rest.first;
+      final result = await _runTestsAtPath(path);
+      // noTests is an error when user explicitly requested a path
+      collector.add(result, isError: result == _TestResult.noTests);
       exit(collector.exitCode);
     }
 
     if (packageArg != null) {
       // only run tests in selected package
-      collector.add(
-        await _testPackageWithName(packageArg, testName: testName, fast: fast),
-      );
+      final result = await _runTestsInPackageNamed(packageArg);
+      // noTests is an error when user explicitly requested a package
+      collector.add(result, isError: result == _TestResult.noTests);
       exit(collector.exitCode);
     }
 
     // outside of package, fallback to all packages
     for (final package in findAllPackages(SidekickContext.projectRoot)) {
-      collector.add(
-        await _test(
-          package,
-          requireTests: false,
-          testName: testName,
-          fast: fast,
-        ),
-      );
-      if (!fast) print('\n');
+      final result = await _executeTests(package, requireTests: false);
+      collector.add(result);
+      if (!_fastFlag) print('\n');
     }
 
     exit(collector.exitCode);
   }
 
-  Future<_TestResult> _testFile(
-    String filePath,
-    String? testName, {
-    required bool fast,
-  }) async {
-    final file = File(filePath);
-    final absolutePath = file.absolute.path;
+  Future<_TestResult> _runTestsAtPath(String inputPath) async {
+    final isDirectory = FileSystemEntity.isDirectorySync(inputPath);
+    final entity = isDirectory ? Directory(inputPath) : File(inputPath);
+    final absolutePath = entity.absolute.path;
+    final searchDir =
+        isDirectory ? entity.absolute as Directory : entity.absolute.parent;
 
-    // Find which package this file belongs to
-    final allPackages = findAllPackages(SidekickContext.projectRoot);
-    final package = allPackages.firstOrNullWhere(
-      (pkg) => absolutePath.startsWith(pkg.root.absolute.path),
-    );
+    // Find the package root
+    final package = _findPackageRoot(searchDir);
 
     if (package == null) {
       error(
-        'Could not determine package for file: $filePath\n'
-        'Make sure the file is within one of the project packages.',
+        'Could not determine package for path: $inputPath\n'
+        'No pubspec.yaml found in parent directories.',
       );
     }
 
+    // Normalize paths by removing trailing slashes for comparison
+    final normalizedPath = absolutePath.endsWith('/')
+        ? absolutePath.substring(0, absolutePath.length - 1)
+        : absolutePath;
+    final packageRootPath = package.root.absolute.path;
+
+    // If the path IS the package root, run all tests
+    if (normalizedPath == packageRootPath) {
+      return _executeTests(package, requireTests: true);
+    }
+
     // Get the relative path from the package root
-    final relativePath =
-        absolutePath.substring(package.root.absolute.path.length + 1);
+    final relativePath = normalizedPath.substring(packageRootPath.length + 1);
 
-    if (!fast) {
-      print(yellow('=== package ${package.name} ==='));
-      print('Running test: $relativePath');
-    } else {
-      print('Running test for package: ${package.name}');
-    }
-
-    final args = ['test', relativePath];
-    if (testName != null) {
-      args.addAll(['--name', testName]);
-    }
-
-    if (fast) {
-      return _runFastTest(package, args);
-    }
-
-    final exitCode = await () async {
-      if (package.isFlutterPackage) {
-        return await flutter(args, workingDirectory: package.root);
-      } else {
-        return await dart(args, workingDirectory: package.root);
-      }
-    }();
-
-    if (exitCode.exitCode == 0) {
-      return _TestResult.success;
-    }
-    return _TestResult.failed;
+    return _executeTests(
+      package,
+      relativePath: relativePath,
+      requireTests: true,
+    );
   }
 
-  Future<_TestResult> _testPackageWithName(
-    String name, {
-    String? testName,
-    required bool fast,
-  }) async {
+  Future<_TestResult> _runTestsInPackageNamed(String name) async {
     // only run tests in selected package
     final allPackages = findAllPackages(SidekickContext.projectRoot);
     final package = allPackages.firstOrNullWhere((it) => it.name == name);
@@ -145,61 +129,95 @@ class TestCommand extends Command {
         'Please use one of ${packageOptions.joinToString()}',
       );
     }
-    return await _test(
-      package,
-      requireTests: true,
-      testName: testName,
-      fast: fast,
-    );
+    return await _executeTests(package, requireTests: true);
   }
 
-  Future<_TestResult> _test(
+  /// Runs tests in a package, optionally targeting a specific path.
+  ///
+  /// [relativePath] is a path relative to the package root. Can be a file
+  /// (e.g., `test/foo_test.dart`) or directory (e.g., `test/unit/`).
+  /// If null, runs all tests in the package.
+  Future<_TestResult> _executeTests(
     DartPackage package, {
+    String? relativePath,
     required bool requireTests,
-    required bool fast,
-    String? testName,
   }) async {
-    if (!fast) {
-      print(yellow('=== package ${package.name} ==='));
-    }
-    if (!package.testDir.existsSync()) {
+    // Print header
+    final suffix = relativePath != null ? ' $relativePath' : '';
+    print('${blue('▶')} testing ${package.name}$suffix...');
+
+    // Check for test directory (only when running whole package)
+    if (relativePath == null && !package.testDir.existsSync()) {
       if (requireTests) {
-        error(
-          'Could not find a test folder in package ${package.name}. '
-          'Please create some tests first.',
-        );
+        print('${red('✗')} ${package.name} (no tests)');
       } else {
-        if (!fast) print("No tests");
-        return _TestResult.noTests;
+        print('○ ${package.name} (no tests)');
       }
+      return _TestResult.noTests;
     }
 
-    final args = ['test'];
-    if (testName != null) {
-      args.addAll(['--name', testName]);
+    // Build args
+    final args = relativePath != null ? ['test', relativePath] : ['test'];
+    if (_nameOption != null) {
+      args.addAll(['--name', _nameOption!]);
     }
 
-    if (fast) {
-      return _runFastTest(package, args);
+    if (_fastFlag) {
+      return await _runFastTest(package, args, relativePath: relativePath);
+    } else {
+      return await _runVerboseTest(package, args, relativePath: relativePath);
     }
+  }
 
-    final exitCode = await () async {
-      if (package.isFlutterPackage) {
-        return await flutter(args, workingDirectory: package.root);
-      } else {
-        return await dart(args, workingDirectory: package.root);
-      }
-    }();
-    if (exitCode.exitCode == 0) {
+  Future<_TestResult> _runVerboseTest(
+    DartPackage package,
+    List<String> args, {
+    String? relativePath,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    final result = await _runDartOrFlutter(package, args);
+    stopwatch.stop();
+    final duration =
+        (stopwatch.elapsedMilliseconds / 1000.0).toStringAsFixed(1);
+
+    final testPathStr = relativePath != null ? ' $relativePath' : '';
+
+    if (result.exitCode == 0) {
+      print('${green('✓')} ${package.name}$testPathStr (${duration}s)');
       return _TestResult.success;
     }
+    print('${red('✗')} ${package.name}$testPathStr (${duration}s)');
     return _TestResult.failed;
+  }
+
+  Future<ProcessCompletion> _runDartOrFlutter(
+    DartPackage package,
+    List<String> args, {
+    Progress? progress,
+    bool nothrow = false,
+  }) async {
+    if (package.isFlutterPackage) {
+      return flutter(
+        args,
+        workingDirectory: package.root,
+        progress: progress,
+        nothrow: nothrow,
+      );
+    } else {
+      return dart(
+        args,
+        workingDirectory: package.root,
+        progress: progress,
+        nothrow: nothrow,
+      );
+    }
   }
 
   Future<_TestResult> _runFastTest(
     DartPackage package,
-    List<String> args,
-  ) async {
+    List<String> args, {
+    String? relativePath,
+  }) async {
     final concurrency = max(1, Platform.numberOfProcessors - 1);
     final fullArgs = [
       ...args,
@@ -208,49 +226,81 @@ class TestCommand extends Command {
       'compact',
     ];
 
-    final executable = package.isFlutterPackage
-        ? flutterSdk!.file('bin/flutter').path
-        : dartSdk!.file('bin/dart').path;
-    final result = await Process.run(
-      executable,
-      fullArgs,
-      workingDirectory: package.root.path,
+    final stopwatch = Stopwatch()..start();
+    final lines = <String>[];
+    final progress = Progress(
+      (line) => lines.add(line),
+      stderr: (line) => lines.add(line),
     );
 
-    final stdout = result.stdout as String;
-    final stderr = result.stderr as String;
+    final result = await _runDartOrFlutter(
+      package,
+      fullArgs,
+      progress: progress,
+      nothrow: true,
+    );
+    stopwatch.stop();
+    final duration =
+        (stopwatch.elapsedMilliseconds / 1000.0).toStringAsFixed(1);
 
-    if (result.exitCode == 0) {
-      print('${green('✓')} ${green(package.name)} ❭ All tests passed!');
+    final stdout = lines.join('\n');
+    final exitCode = result.exitCode;
+
+    // Extract test count from output (e.g., "+25" from "00:00 +25: All tests passed!")
+    final testCount = _extractTestCount(stdout);
+
+    final testPathStr = relativePath != null ? ' $relativePath' : '';
+
+    if (exitCode == 0) {
+      final stats = [
+        if (testCount != null) '$testCount tests',
+        '${duration}s',
+      ].join(', ');
+      print('${green('✓')} ${package.name}$testPathStr ($stats)');
       return _TestResult.success;
     }
 
     // Parse and show only failed tests
-    final failedTests = _extractFailedTestNames(stdout);
-    print('${red('✗')} ${package.name}');
+    final failedTests = _extractFailedTests(stdout);
+    final failedCount = failedTests?.length ?? 0;
+    final stats = [
+      if (testCount != null) '$testCount tests',
+      if (failedCount > 0) '$failedCount failed',
+      '${duration}s',
+    ].join(', ');
+    print('${red('✗')} ${package.name}$testPathStr ($stats)');
     if (failedTests != null && failedTests.isNotEmpty) {
-      for (final testName in failedTests) {
-        print('  - $testName');
+      print('Failing tests:');
+      for (final failed in failedTests) {
+        final pathStr = failed.path != null ? ' (${failed.path})' : '';
+        print('  - "${failed.name}"$pathStr');
       }
     } else {
       // Other errors (compilation, test not found, etc.) - dump full output
       print(stdout);
     }
 
-    if (stderr.isNotEmpty) {
-      print(stderr);
-    }
-
     return _TestResult.failed;
   }
 
-  /// Extracts the names of failed tests from test output.
+  /// Extracts the test count from test output (e.g., 25 from "+25: All tests passed!")
+  int? _extractTestCount(String output) {
+    final cleanOutput = output.replaceAll(RegExp(r'\x1B\[[0-9;]*m'), '');
+    // Match patterns like "+25:" or "+25 -1:" to get total passed tests
+    final match = RegExp(r'\+(\d+)').allMatches(cleanOutput).lastOrNull;
+    if (match != null) {
+      return int.tryParse(match.group(1) ?? '');
+    }
+    return null;
+  }
+
+  /// Extracts failed tests from test output.
   /// Returns null if this is not a test failure (e.g., compilation error, no tests found).
-  List<String>? _extractFailedTestNames(String output) {
+  List<_FailedTest>? _extractFailedTests(String output) {
     // Strip ANSI escape codes for easier parsing
     final cleanOutput = output.replaceAll(RegExp(r'\x1B\[[0-9;]*m'), '');
     final lines = cleanOutput.split('\n');
-    final failedTests = <String>[];
+    final failedTests = <_FailedTest>[];
 
     // Check for non-test-failure errors
     if (lines.any(
@@ -272,51 +322,107 @@ class TestCommand extends Command {
           final testNameLine = lines[i + 1].trim();
           if (testNameLine.isNotEmpty &&
               !testNameLine.startsWith('The test description was:')) {
-            failedTests.add(testNameLine);
+            failedTests.add(_FailedTest(testNameLine));
           }
         }
       }
       // Look for lines ending with [E] (unit tests with compact reporter)
+      // Format: "00:05 +674 -1: test/chirp_test.dart: Chirp is failing [E]"
       else if (line.contains('[E]')) {
         final match = RegExp(r':\s+(.+?)\s+\[E\]').firstMatch(line);
         if (match != null) {
-          final testName = match.group(1)?.trim();
-          if (testName != null && testName.isNotEmpty) {
-            failedTests.add(testName);
+          final fullMatch = match.group(1)?.trim();
+          if (fullMatch != null && fullMatch.isNotEmpty) {
+            // Try to split path and test name (e.g., "test/foo.dart: Test name")
+            final pathMatch =
+                RegExp(r'^(test/\S+\.dart):\s*(.+)$').firstMatch(fullMatch);
+            if (pathMatch != null) {
+              final path = pathMatch.group(1);
+              final name = pathMatch.group(2)?.trim();
+              if (name != null && name.isNotEmpty) {
+                failedTests.add(_FailedTest(name, path: path));
+              }
+            } else {
+              failedTests.add(_FailedTest(fullMatch));
+            }
           }
         }
       }
     }
 
-    // Remove duplicates and substrings
-    final uniqueTests = failedTests.toSet().toList();
-    final deduplicated = <String>[];
-    for (final test in uniqueTests) {
+    // Remove duplicates by name
+    final seen = <String>{};
+    final deduplicated = <_FailedTest>[];
+    for (final test in failedTests) {
+      if (!seen.contains(test.name)) {
+        seen.add(test.name);
+        deduplicated.add(test);
+      }
+    }
+
+    // Remove tests whose names are substrings of other test names
+    final result = <_FailedTest>[];
+    for (final test in deduplicated) {
       bool isSubstringOfAnother = false;
-      for (final other in uniqueTests) {
-        if (test != other && other.contains(test)) {
+      for (final other in deduplicated) {
+        if (test.name != other.name && other.name.contains(test.name)) {
           isSubstringOfAnother = true;
           break;
         }
       }
       if (!isSubstringOfAnother) {
-        deduplicated.add(test);
+        result.add(test);
       }
     }
 
-    return deduplicated;
+    return result;
+  }
+
+  /// Finds the package root for a test file.
+  /// First tries to split at test directory, then falls back to walking up.
+  DartPackage? _findPackageRoot(Directory dir) {
+    // Try one-shot: split path at /test or /*_test and check if parent is a package
+    final path = dir.absolute.path;
+    final testMatches = RegExp(r'/(\w+_)?test(?=/|$)').allMatches(path);
+    if (testMatches.isNotEmpty) {
+      final packagePath = path.substring(0, testMatches.last.start);
+      final package = DartPackage.fromDirectory(Directory(packagePath));
+      if (package != null) {
+        return package;
+      }
+    }
+
+    // Fallback: walk up the directory tree
+    Directory current = dir;
+    while (true) {
+      final package = DartPackage.fromDirectory(current);
+      if (package != null) {
+        return package;
+      }
+      final parent = current.parent;
+      if (parent.path == current.path) {
+        // Reached filesystem root
+        return null;
+      }
+      current = parent;
+    }
   }
 }
 
 class _TestResultCollector {
   final List<_TestResult> _results = [];
+  int _errorCount = 0;
 
-  void add(_TestResult result) {
+  void add(_TestResult result, {bool isError = false}) {
     _results.add(result);
+    if (isError) _errorCount++;
   }
 
   int get exitCode {
     if (_results.contains(_TestResult.failed)) {
+      return -1;
+    }
+    if (_errorCount > 0) {
       return -1;
     }
     if (_results.contains(_TestResult.success)) {
@@ -331,4 +437,11 @@ enum _TestResult {
   success,
   failed,
   noTests,
+}
+
+class _FailedTest {
+  final String name;
+  final String? path;
+
+  _FailedTest(this.name, {this.path});
 }
