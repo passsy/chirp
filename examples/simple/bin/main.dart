@@ -41,8 +41,8 @@ void addEmojiPrefix(LogSpan tree, LogRecord record) {
   };
 
   tree.findFirst<LogMessage>()?.wrap(
-    (child) => SpanSequence(children: [PlainText(emoji), child]),
-  );
+        (child) => SpanSequence(children: [PlainText(emoji), child]),
+      );
 }
 
 /// Wraps critical messages in a bordered box.
