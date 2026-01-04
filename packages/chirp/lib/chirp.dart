@@ -32,9 +32,6 @@ export 'package:chirp/src/core/chirp_logger.dart' show ChirpLogger;
 export 'package:chirp/src/core/chirp_root.dart'
     show Chirp, ChirpInstanceLogger, ChirpLoggerConsoleWriterExt, LogRecordExt;
 export 'package:chirp/src/core/chirp_writer.dart' show ChirpWriter;
-export 'package:chirp/src/core/delegated_interceptor.dart'
-    show DelegatedChirpInterceptor;
-export 'package:chirp/src/core/delegated_writer.dart' show DelegatedChirpWriter;
 export 'package:chirp/src/core/format_option.dart' show FormatOptions;
 export 'package:chirp/src/core/log_level.dart' show ChirpLogLevel;
 export 'package:chirp/src/core/log_record.dart' show LogRecord;
@@ -63,7 +60,5 @@ export 'package:chirp/src/writers/console_writer.dart'
         PrintConsoleWriter,
         splitIntoChunks,
         stripAnsiCodes;
-export 'package:chirp/src/writers/delegated_formatter.dart'
-    show DelegatedConsoleMessageFormatter;
 export 'package:chirp/src/writers/developer_log_console_writer.dart'
     show DeveloperLogConsoleWriter;
