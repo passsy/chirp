@@ -1,19 +1,3 @@
-/// Captures stack trace only when assertions are enabled (debug mode).
-///
-/// Returns `null` in release mode to avoid the performance overhead of
-/// capturing stack traces in production.
-///
-/// This is useful for debugging delegated implementations where the
-/// creation site helps identify which instance is which.
-StackTrace? debugCaptureStackTrace() {
-  StackTrace? result;
-  assert(() {
-    result = StackTrace.current;
-    return true;
-  }());
-  return result;
-}
-
 /// Information extracted from a stack frame
 class StackFrameInfo {
   /// The raw caller method (e.g., `UserService.processUser.<anonymous closure>`)
