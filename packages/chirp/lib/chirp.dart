@@ -37,8 +37,6 @@ export 'package:chirp/src/core/log_level.dart' show ChirpLogLevel;
 export 'package:chirp/src/core/log_record.dart' show LogRecord;
 export 'package:chirp/src/formatters/compact_message_formatter.dart'
     show CompactChirpMessageFormatter;
-export 'package:chirp/src/formatters/gcp_message_formatter.dart'
-    show GcpMessageFormatter;
 export 'package:chirp/src/formatters/json_message_formatter.dart'
     show JsonMessageFormatter;
 export 'package:chirp/src/formatters/rainbow_message_formatter.dart'
