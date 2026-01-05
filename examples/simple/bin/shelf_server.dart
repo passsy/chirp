@@ -58,9 +58,10 @@ void main() async {
 
   final handler = const Pipeline()
       .addMiddleware(requestLoggingMiddleware(
-          logRequestStart: !isProduction,
-          logRequestEnd: !isProduction,
-          logger: isProduction ? Chirp.root : null))
+        logRequestStart: !isProduction,
+        logRequestEnd: !isProduction,
+        logger: isProduction ? Chirp.root : null,
+      ))
       .addHandler(router.call);
 
   final server = await shelf_io.serve(handler, InternetAddress.anyIPv4, 0);
