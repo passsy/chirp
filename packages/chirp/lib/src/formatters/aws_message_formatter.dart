@@ -2,17 +2,18 @@ import 'dart:convert';
 
 import 'package:chirp/chirp.dart';
 
-/// JSON format for structured logging.
+/// AWS CloudWatch compatible JSON formatter.
 ///
-/// Outputs log records as single-line JSON objects, ideal for log aggregation
-/// services and machine parsing.
+/// Formats logs as single-line JSON according to the structure expected by
+/// AWS CloudWatch Logs. Output to stdout is automatically parsed by Lambda,
+/// ECS, and other AWS services with the CloudWatch Logs agent.
 ///
 /// ## Output Format
 ///
 /// ```json
 /// {
 ///   "timestamp": "2024-01-15T10:30:45.123Z",
-///   "level": "info",
+///   "level": "INFO",
 ///   "message": "Server started",
 ///   "logger": "MyService",
 ///   "class": "UserService",
@@ -25,26 +26,42 @@ import 'package:chirp/chirp.dart';
 ///
 /// ## Features
 ///
+/// - Maps Chirp log levels to AWS CloudWatch levels (TRACE, DEBUG, INFO, WARN,
+///   ERROR, FATAL)
 /// - ISO 8601 timestamps in UTC
-/// - Lowercase log level names matching Chirp's level names
-/// - Custom data fields merged at root level
-/// - Optional logger name and instance hash
+/// - Optional source location extraction
 /// - Error and stack trace support
+/// - Custom data fields merged at root level
+///
+/// ## Log Level Mapping
+///
+/// Chirp levels are mapped to AWS CloudWatch levels:
+/// - trace → TRACE
+/// - debug → DEBUG
+/// - info, notice, success → INFO
+/// - warning → WARN
+/// - error → ERROR
+/// - critical, wtf → FATAL
 ///
 /// ## Usage
 ///
 /// ```dart
 /// Chirp.root = ChirpLogger()
-///   .addConsoleWriter(formatter: JsonMessageFormatter());
+///   .addConsoleWriter(formatter: AwsMessageFormatter());
 ///
 /// Chirp.info('Server started', data: {'port': 8080});
+/// // Output: {"timestamp":"2024-01-15T10:30:45.123Z","level":"INFO","message":"Server started","port":8080}
 /// ```
-class JsonMessageFormatter extends ConsoleMessageFormatter {
+///
+/// References:
+/// - https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs-logformat.html
+/// - https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs-log-level.html
+class AwsMessageFormatter extends ConsoleMessageFormatter {
   /// Whether to include source location in log entries.
   final bool includeSourceLocation;
 
-  /// Creates a JSON message formatter.
-  JsonMessageFormatter({
+  /// Creates an AWS CloudWatch compatible JSON message formatter.
+  AwsMessageFormatter({
     this.includeSourceLocation = false,
   }) : super();
 
@@ -57,7 +74,7 @@ class JsonMessageFormatter extends ConsoleMessageFormatter {
 
     // === Core fields ===
     map['timestamp'] = record.timestamp.toUtc().toIso8601String();
-    map['level'] = record.level.name;
+    map['level'] = _awsLevel(record.level);
     map['message'] = record.message?.toString();
 
     // === Logger name (explicit name set on the logger) ===
@@ -124,4 +141,17 @@ class JsonMessageFormatter extends ConsoleMessageFormatter {
 /// Converts non-JSON-serializable objects to strings.
 Object? _toEncodable(Object? object) {
   return object?.toString();
+}
+
+/// Maps a ChirpLogLevel to AWS CloudWatch level string.
+///
+/// AWS CloudWatch supports: TRACE, DEBUG, INFO, WARN, ERROR, FATAL
+/// https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs-log-level.html
+String _awsLevel(ChirpLogLevel level) {
+  if (level.severity >= ChirpLogLevel.critical.severity) return 'FATAL';
+  if (level.severity >= ChirpLogLevel.error.severity) return 'ERROR';
+  if (level.severity >= ChirpLogLevel.warning.severity) return 'WARN';
+  if (level.severity >= ChirpLogLevel.info.severity) return 'INFO';
+  if (level.severity >= ChirpLogLevel.debug.severity) return 'DEBUG';
+  return 'TRACE';
 }
