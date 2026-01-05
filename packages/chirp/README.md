@@ -607,6 +607,135 @@ Chirp.root = ChirpLogger()
 | `minLogLevel` | Filter logs below this level via `setMinLogLevel()` |
 | `interceptors` | Add transforms/filters via `addInterceptor()` |
 
+## Backend / Server-Side Logging
+
+For backend projects (Shelf, Dart Frog, etc.), Chirp provides structured JSON formatters optimized for cloud logging services.
+
+### Basic Setup
+
+Use `JsonMessageFormatter` for platform-agnostic JSON logs:
+
+```dart
+import 'package:chirp/chirp.dart';
+
+void main() {
+  Chirp.root = ChirpLogger()
+    .addConsoleWriter(formatter: JsonMessageFormatter());
+
+  // Start your server...
+}
+
+// Output:
+// {"timestamp":"2025-01-15T10:30:45.123Z","level":"info","message":"Server started","port":8080}
+```
+
+### Cloud Platform Formatters
+
+For cloud deployments, use platform-specific formatters that integrate with your logging service:
+
+| Formatter | Platform | Log Levels | Special Features |
+|-----------|----------|------------|------------------|
+| `JsonMessageFormatter` | Any | Chirp levels (lowercase) | Platform-agnostic |
+| `GcpMessageFormatter` | Google Cloud | GCP LogSeverity | sourceLocation, labels, Error Reporting |
+| `AwsMessageFormatter` | AWS CloudWatch | TRACE/DEBUG/INFO/WARN/ERROR/FATAL | CloudWatch log level filtering |
+
+#### Google Cloud Platform (Cloud Run, Cloud Functions, GKE)
+
+```dart
+Chirp.root = ChirpLogger()
+  .addConsoleWriter(
+    formatter: GcpMessageFormatter(
+      serviceName: 'my-api-service',  // For Error Reporting grouping
+      serviceVersion: '1.0.0',
+    ),
+  );
+
+// Output is automatically parsed by Cloud Logging:
+// {
+//   "severity": "INFO",
+//   "message": "Request received",
+//   "timestamp": "2025-01-15T10:30:45.123Z",
+//   "logging.googleapis.com/sourceLocation": {"file": "...", "line": "42", "function": "..."},
+//   "logging.googleapis.com/labels": {"class": "UserService", "instance": "UserService@a1b2c3d4"}
+// }
+```
+
+GCP-specific features:
+- Trace correlation via `logging.googleapis.com/trace` (set via data)
+- Automatic Error Reporting integration for errors
+- sourceLocation for click-to-source in Cloud Console
+
+#### AWS (Lambda, ECS, CloudWatch)
+
+```dart
+Chirp.root = ChirpLogger()
+  .addConsoleWriter(formatter: AwsMessageFormatter());
+
+// Output uses CloudWatch-compatible log levels:
+// {"timestamp":"2025-01-15T10:30:45.123Z","level":"INFO","message":"Request received"}
+```
+
+AWS log level mapping:
+- `trace` → `TRACE`
+- `debug` → `DEBUG`
+- `info`, `notice`, `success` → `INFO`
+- `warning` → `WARN`
+- `error` → `ERROR`
+- `critical`, `wtf` → `FATAL`
+
+### Request-Scoped Logging
+
+Create child loggers with request context for correlated logs:
+
+```dart
+Handler requestLoggingMiddleware(Handler innerHandler) {
+  return (Request request) async {
+    final requestId = generateRequestId();
+
+    // Create request-scoped logger
+    final logger = Chirp.root.child(context: {
+      'requestId': requestId,
+    });
+
+    logger.info('Request started', data: {
+      'method': request.method,
+      'path': request.requestedUri.path,
+    });
+
+    try {
+      final response = await innerHandler(request);
+      logger.info('Request completed', data: {'statusCode': response.statusCode});
+      return response;
+    } catch (e, stackTrace) {
+      logger.error('Request failed', error: e, stackTrace: stackTrace);
+      rethrow;
+    }
+  };
+}
+```
+
+### Environment-Based Configuration
+
+Switch formatters based on environment:
+
+```dart
+void main() {
+  final isProduction = Platform.environment.containsKey('PORT'); // Cloud Run
+
+  if (isProduction) {
+    Chirp.root = ChirpLogger()
+      .addConsoleWriter(formatter: GcpMessageFormatter(
+        serviceName: Platform.environment['K_SERVICE'],
+      ));
+  } else {
+    Chirp.root = ChirpLogger()
+      .addConsoleWriter(formatter: RainbowMessageFormatter());
+  }
+}
+```
+
+See [`examples/simple/bin/gcp_shelf_server.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/gcp_shelf_server.dart) for a complete Shelf server example.
+
 ## Real-World Example
 
 ```dart
