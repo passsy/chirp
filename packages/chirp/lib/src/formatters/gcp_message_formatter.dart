@@ -190,12 +190,12 @@ class GcpMessageFormatter extends ConsoleMessageFormatter {
     // === Custom data fields ===
     // Merge data fields at root level (GCP jsonPayload)
     for (final kv in data.entries) {
-      // Don't overwrite GCP special fields
-      if (map.containsKey(kv.key)) continue;
-      if (kv.key.startsWith('logging.googleapis.com/')) continue;
+      // Don't overwrite core fields (severity, message, timestamp)
+      if (_coreFields.contains(kv.key)) continue;
       // Skip request/response objects that were converted to httpRequest
       if (kv.key == 'request' && _isShelfRequest(kv.value)) continue;
       if (kv.key == 'response' && _isShelfResponse(kv.value)) continue;
+      // User-provided logging.googleapis.com/* fields override formatter defaults
       map[kv.key] = kv.value;
     }
 
@@ -203,6 +203,9 @@ class GcpMessageFormatter extends ConsoleMessageFormatter {
     buffer.write(jsonEncode(map, toEncodable: _toEncodable));
   }
 }
+
+/// Core fields that should never be overwritten by user data.
+const _coreFields = {'severity', 'message', 'timestamp'};
 
 /// Converts non-JSON-serializable objects to strings.
 ///

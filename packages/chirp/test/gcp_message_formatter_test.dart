@@ -80,14 +80,14 @@ void main() {
       expect(decoded['path'], '/api/users');
     });
 
-    test('does not overwrite GCP special fields with data', () {
+    test('does not overwrite core fields (severity, message, timestamp)', () {
       final record = LogRecord(
         message: 'Test',
         timestamp: DateTime.utc(2024, 1, 15),
         data: {
           'severity': 'SHOULD_NOT_OVERRIDE',
           'message': 'SHOULD_NOT_OVERRIDE',
-          'logging.googleapis.com/labels': 'SHOULD_NOT_OVERRIDE',
+          'timestamp': 'SHOULD_NOT_OVERRIDE',
         },
       );
 
@@ -97,9 +97,35 @@ void main() {
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
+      expect(decoded['severity'], isNot('SHOULD_NOT_OVERRIDE'));
       expect(decoded['severity'], 'INFO');
+      expect(decoded['message'], isNot('SHOULD_NOT_OVERRIDE'));
       expect(decoded['message'], 'Test');
-      expect(decoded.containsKey('logging.googleapis.com/labels'), isFalse);
+      expect(decoded['timestamp'], isNot('SHOULD_NOT_OVERRIDE'));
+      expect(decoded['timestamp'], '2024-01-15T00:00:00.000Z');
+    });
+
+    test('allows user to override logging.googleapis.com/labels', () {
+      final record = LogRecord(
+        message: 'Test',
+        timestamp: DateTime.utc(2024, 1, 15),
+        loggerName: 'MyLogger', // This causes labels to be generated
+        data: {
+          'logging.googleapis.com/labels': {'custom': 'user-value'},
+        },
+      );
+
+      final formatter = GcpMessageFormatter();
+      final buffer = createBuffer();
+      formatter.format(record, buffer);
+
+      final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+
+      // User-provided labels should override formatter-generated labels
+      final labels =
+          decoded['logging.googleapis.com/labels'] as Map<String, dynamic>;
+      expect(labels['custom'], 'user-value');
+      expect(labels.containsKey('logger'), isFalse);
     });
 
     test('appends error and stack trace to message for Error Reporting', () {
@@ -383,6 +409,141 @@ void main() {
       );
       expect(decoded['normalValue'], 'this is fine');
       expect(decoded['number'], 42);
+    });
+
+    group('trace fields', () {
+      test('allows user to set trace ID via data', () {
+        final record = LogRecord(
+          message: 'Processing request',
+          timestamp: DateTime.utc(2024, 1, 15),
+          data: {
+            'logging.googleapis.com/trace':
+                'projects/my-project/traces/463ac35c9f6413ad48485a3953bb6124',
+          },
+        );
+
+        final formatter = GcpMessageFormatter();
+        final buffer = createBuffer();
+        formatter.format(record, buffer);
+
+        final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+
+        expect(
+          decoded['logging.googleapis.com/trace'],
+          'projects/my-project/traces/463ac35c9f6413ad48485a3953bb6124',
+        );
+      });
+
+      test('allows user to set span ID via data', () {
+        final record = LogRecord(
+          message: 'Processing request',
+          timestamp: DateTime.utc(2024, 1, 15),
+          data: {
+            'logging.googleapis.com/spanId': '0020000000000001',
+          },
+        );
+
+        final formatter = GcpMessageFormatter();
+        final buffer = createBuffer();
+        formatter.format(record, buffer);
+
+        final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+
+        expect(decoded['logging.googleapis.com/spanId'], '0020000000000001');
+      });
+
+      test('allows user to set trace_sampled via data', () {
+        final record = LogRecord(
+          message: 'Processing request',
+          timestamp: DateTime.utc(2024, 1, 15),
+          data: {
+            'logging.googleapis.com/trace_sampled': true,
+          },
+        );
+
+        final formatter = GcpMessageFormatter();
+        final buffer = createBuffer();
+        formatter.format(record, buffer);
+
+        final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+
+        expect(decoded['logging.googleapis.com/trace_sampled'], true);
+      });
+
+      test('allows user to set all trace fields together', () {
+        final record = LogRecord(
+          message: 'Processing request',
+          timestamp: DateTime.utc(2024, 1, 15),
+          data: {
+            'logging.googleapis.com/trace':
+                'projects/my-project/traces/463ac35c9f6413ad48485a3953bb6124',
+            'logging.googleapis.com/spanId': '0020000000000001',
+            'logging.googleapis.com/trace_sampled': true,
+          },
+        );
+
+        final formatter = GcpMessageFormatter();
+        final buffer = createBuffer();
+        formatter.format(record, buffer);
+
+        final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+
+        expect(
+          decoded['logging.googleapis.com/trace'],
+          'projects/my-project/traces/463ac35c9f6413ad48485a3953bb6124',
+        );
+        expect(decoded['logging.googleapis.com/spanId'], '0020000000000001');
+        expect(decoded['logging.googleapis.com/trace_sampled'], true);
+      });
+
+      test('allows user to set insertId via data', () {
+        final record = LogRecord(
+          message: 'Processing request',
+          timestamp: DateTime.utc(2024, 1, 15),
+          data: {
+            'logging.googleapis.com/insertId': 'unique-insert-id-123',
+          },
+        );
+
+        final formatter = GcpMessageFormatter();
+        final buffer = createBuffer();
+        formatter.format(record, buffer);
+
+        final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+
+        expect(
+          decoded['logging.googleapis.com/insertId'],
+          'unique-insert-id-123',
+        );
+      });
+
+      test('allows user to set operation via data', () {
+        final record = LogRecord(
+          message: 'Processing request',
+          timestamp: DateTime.utc(2024, 1, 15),
+          data: {
+            'logging.googleapis.com/operation': {
+              'id': 'operation-123',
+              'producer': 'my-service',
+              'first': true,
+              'last': false,
+            },
+          },
+        );
+
+        final formatter = GcpMessageFormatter();
+        final buffer = createBuffer();
+        formatter.format(record, buffer);
+
+        final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+        final operation = decoded['logging.googleapis.com/operation']
+            as Map<String, dynamic>;
+
+        expect(operation['id'], 'operation-123');
+        expect(operation['producer'], 'my-service');
+        expect(operation['first'], true);
+        expect(operation['last'], false);
+      });
     });
 
     group('httpRequest field', () {
