@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:chirp/chirp.dart';
 import 'package:chirp/chirp_spans.dart';
 import 'package:shelf/shelf.dart';
@@ -10,28 +12,46 @@ extension RequestLogger on Request {
 }
 
 /// Middleware that creates a request-scoped logger and logs request/response.
+///
+/// When [gcpProjectId] is provided (or auto-detected from environment),
+/// trace context is extracted from the `X-Cloud-Trace-Context` header and
+/// added to log entries for correlation in Google Cloud Logging.
+///
+/// The project ID is auto-detected from these environment variables:
+/// - `GOOGLE_CLOUD_PROJECT` (Cloud Run, Cloud Functions)
+/// - `GCLOUD_PROJECT` (legacy)
+///
+/// Set [gcpProjectId] to an empty string to disable auto-detection.
 Middleware requestLoggingMiddleware({
   bool logRequestStart = false,
   bool logRequestEnd = true,
   ChirpLogger? logger,
+  String? gcpProjectId,
 }) {
   if (logger == null) {
     logger = ChirpLogger(name: 'DefaultRequestLogger')
         .addConsoleWriter(formatter: RequestFormatter());
   }
 
+  // Auto-detect GCP project ID from environment if not provided
+  final effectiveProjectId = gcpProjectId ?? _getGcpProjectIdFromEnv();
+
   return (Handler innerHandler) {
     return (Request request) async {
       final requestId = _generateRequestId();
       final stopwatch = Stopwatch()..start();
 
-      // Create a child logger with request context
+      // Extract GCP trace context from headers
+      final traceContext = effectiveProjectId != null
+          ? _extractGcpTraceContext(request, effectiveProjectId)
+          : <String, dynamic>{};
 
       final requestLogger = logger!.child(
         name: 'RequestLogger',
         context: {
           'requestId': requestId,
           'request': request,
+          ...traceContext,
         },
       );
 
@@ -78,6 +98,70 @@ Middleware requestLoggingMiddleware({
 }
 
 class _AlreadyLoggedRequestStart extends FormatOptions {}
+
+/// Returns the GCP project ID from environment variables, or null if not found.
+///
+/// Checks these environment variables in order:
+/// - `GOOGLE_CLOUD_PROJECT` (Cloud Run, Cloud Functions, App Engine)
+/// - `GCLOUD_PROJECT` (legacy)
+String? _getGcpProjectIdFromEnv() {
+  return Platform.environment['GOOGLE_CLOUD_PROJECT'] ??
+      Platform.environment['GCLOUD_PROJECT'];
+}
+
+/// Extracts GCP trace context from the `X-Cloud-Trace-Context` header.
+///
+/// Header format: `TRACE_ID/SPAN_ID;o=TRACE_TRUE`
+/// - TRACE_ID: 32-character hex string
+/// - SPAN_ID: decimal number (optional)
+/// - TRACE_TRUE: 0 or 1 indicating if trace is sampled (optional)
+///
+/// See: https://cloud.google.com/trace/docs/setup#force-trace
+Map<String, dynamic> _extractGcpTraceContext(Request request, String projectId) {
+  final header = request.headers['x-cloud-trace-context'];
+  if (header == null || header.isEmpty) {
+    return {};
+  }
+
+  final context = <String, dynamic>{};
+
+  // Parse: TRACE_ID/SPAN_ID;o=TRACE_TRUE
+  // Examples:
+  //   "105445aa7843bc8bf206b120001000/1;o=1"
+  //   "105445aa7843bc8bf206b120001000/1"
+  //   "105445aa7843bc8bf206b120001000"
+  final parts = header.split(';');
+  final tracePart = parts[0];
+
+  final traceSpanParts = tracePart.split('/');
+  final traceId = traceSpanParts[0];
+
+  if (traceId.isNotEmpty) {
+    context['logging.googleapis.com/trace'] =
+        'projects/$projectId/traces/$traceId';
+  }
+
+  if (traceSpanParts.length > 1) {
+    final spanIdDecimal = traceSpanParts[1];
+    // Convert decimal span ID to hex (GCP expects hex in logs)
+    final spanIdInt = int.tryParse(spanIdDecimal);
+    if (spanIdInt != null) {
+      context['logging.googleapis.com/spanId'] =
+          spanIdInt.toRadixString(16).padLeft(16, '0');
+    }
+  }
+
+  // Parse trace sampled flag
+  if (parts.length > 1) {
+    final optionsPart = parts[1];
+    if (optionsPart.startsWith('o=')) {
+      final sampled = optionsPart.substring(2) == '1';
+      context['logging.googleapis.com/trace_sampled'] = sampled;
+    }
+  }
+
+  return context;
+}
 
 /// Generates a simple request ID.
 String _generateRequestId() {

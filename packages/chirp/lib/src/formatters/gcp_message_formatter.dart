@@ -135,14 +135,16 @@ class GcpMessageFormatter extends ConsoleMessageFormatter {
     // === Labels ===
     // https://cloud.google.com/logging/docs/agent/logging/configuration#special-fields
     final labels = <String, String>{};
-    final className =
-        record.loggerName ?? record.instance?.runtimeType.toString();
-    if (className != null) {
-      labels['logger'] = className;
+    if (record.loggerName != null) {
+      labels['logger'] = record.loggerName!;
     }
-    if (record.instanceHash != null) {
-      labels['instance'] =
-          record.instanceHash!.toRadixString(16).padLeft(8, '0');
+    // Instance info: only include when instance is present
+    if (record.instance != null) {
+      labels['instance'] = record.instance.runtimeType.toString();
+      if (record.instanceHash != null) {
+        labels['instanceHash'] =
+            record.instanceHash!.toRadixString(16).padLeft(8, '0');
+      }
     }
     if (labels.isNotEmpty) {
       map['logging.googleapis.com/labels'] = labels;
@@ -157,12 +159,14 @@ class GcpMessageFormatter extends ConsoleMessageFormatter {
       map['@type'] =
           'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent';
 
-      // Add serviceContext for better Error Reporting grouping
-      final service = serviceName ?? className ?? 'unknown';
-      map['serviceContext'] = {
-        'service': service,
-        if (serviceVersion != null) 'version': serviceVersion,
-      };
+      // Add serviceContext only when serviceName is configured
+      // https://cloud.google.com/error-reporting/reference/rest/v1beta1/ServiceContext
+      if (serviceName != null) {
+        map['serviceContext'] = {
+          'service': serviceName,
+          if (serviceVersion != null) 'version': serviceVersion,
+        };
+      }
 
       // Add reportLocation if we have caller info but no stack trace
       if (includeSourceLocation && record.caller != null) {

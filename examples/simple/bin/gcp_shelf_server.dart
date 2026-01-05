@@ -23,12 +23,16 @@ void main() async {
   if (isProduction) {
     // production
     // Configure Chirp for GCP structured logging
-    Chirp.root = ChirpLogger().addConsoleWriter(
-      formatter: GcpMessageFormatter(
-        serviceName: 'my-api-service',
-        serviceVersion: '1.0.0',
-      ),
-    );
+    Chirp.root = ChirpLogger()
+        .addConsoleWriter(
+          formatter: GcpMessageFormatter(
+            serviceName: 'my-api-service',
+            serviceVersion: '1.0.0',
+          ),
+        )
+        .addConsoleWriter(
+          formatter: JsonMessageFormatter(),
+        );
   } else {
     // for development
     Chirp.root = ChirpLogger().addConsoleWriter(

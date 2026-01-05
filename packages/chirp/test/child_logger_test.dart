@@ -95,7 +95,9 @@ void main() {
 
       child.info('Named child log');
 
-      expect(messages[0], contains('"class":"PaymentService"'));
+      expect(messages[0], contains('"logger":"PaymentService"'));
+      // class comes from caller or instance, not from logger name
+      expect(messages[0], isNot(contains('"class"')));
     });
 
     test('child inherits parent name if not specified', () {
@@ -109,7 +111,9 @@ void main() {
 
       child.info('Child log');
 
-      expect(messages[0], contains('"class":"API"'));
+      expect(messages[0], contains('"logger":"API"'));
+      // class comes from caller or instance, not from logger name
+      expect(messages[0], isNot(contains('"class"')));
     });
 
     test('child can override parent name', () {
@@ -123,8 +127,10 @@ void main() {
 
       child.info('Child log');
 
-      expect(messages[0], contains('"class":"PaymentAPI"'));
-      expect(messages[0], isNot(contains('"class":"API"')));
+      expect(messages[0], contains('"logger":"PaymentAPI"'));
+      expect(messages[0], isNot(contains('"logger":"API"')));
+      // class comes from caller or instance, not from logger name
+      expect(messages[0], isNot(contains('"class"')));
     });
 
     test('child with instance parameter', () {
@@ -140,8 +146,9 @@ void main() {
       child.info('Instance child log');
 
       final instanceHash =
-          identityHashCode(myInstance).toRadixString(16).padLeft(4, '0');
-      expect(messages[0], contains('"hash":"$instanceHash"'));
+          identityHashCode(myInstance).toRadixString(16).padLeft(8, '0');
+      expect(messages[0], contains('"instance":"Object"'));
+      expect(messages[0], contains('"instanceHash":"$instanceHash"'));
     });
 
     test('child inherits parent instance if not specified', () {
@@ -159,8 +166,9 @@ void main() {
       child.info('Child log');
 
       final instanceHash =
-          identityHashCode(parentInstance).toRadixString(16).padLeft(4, '0');
-      expect(messages[0], contains('"hash":"$instanceHash"'));
+          identityHashCode(parentInstance).toRadixString(16).padLeft(8, '0');
+      expect(messages[0], contains('"instance":"Object"'));
+      expect(messages[0], contains('"instanceHash":"$instanceHash"'));
     });
 
     test('child can override parent instance', () {
@@ -179,12 +187,13 @@ void main() {
       child.info('Child log');
 
       final childHash =
-          identityHashCode(childInstance).toRadixString(16).padLeft(4, '0');
-      expect(messages[0], contains('"hash":"$childHash"'));
+          identityHashCode(childInstance).toRadixString(16).padLeft(8, '0');
+      expect(messages[0], contains('"instance":"Object"'));
+      expect(messages[0], contains('"instanceHash":"$childHash"'));
 
       final parentHash =
-          identityHashCode(parentInstance).toRadixString(16).padLeft(4, '0');
-      expect(messages[0], isNot(contains('"hash":"$parentHash"')));
+          identityHashCode(parentInstance).toRadixString(16).padLeft(8, '0');
+      expect(messages[0], isNot(contains('"instanceHash":"$parentHash"')));
     });
 
     test('child of Chirp.root inherits root writers', () {
@@ -220,8 +229,9 @@ void main() {
 
       expect(messages.length, 1);
       final instanceHash =
-          identityHashCode(instance).toRadixString(16).padLeft(4, '0');
-      expect(messages[0], contains('"hash":"$instanceHash"'));
+          identityHashCode(instance).toRadixString(16).padLeft(8, '0');
+      expect(messages[0], contains('"instance":"Object"'));
+      expect(messages[0], contains('"instanceHash":"$instanceHash"'));
     });
 
     test('child without any parameters is valid', () {
@@ -236,8 +246,10 @@ void main() {
 
       child.info('Exact copy child');
 
-      expect(messages[0], contains('"class":"Parent"'));
+      expect(messages[0], contains('"logger":"Parent"'));
       expect(messages[0], contains('"parentKey":"parentValue"'));
+      // class comes from caller or instance, not from logger name
+      expect(messages[0], isNot(contains('"class"')));
     });
 
     test('deeply nested children maintain context chain', () {

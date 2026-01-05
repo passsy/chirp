@@ -212,7 +212,7 @@ void main() {
       );
     });
 
-    test('includes labels with logger name and instance hash', () {
+    test('includes labels with logger name, instance, and instanceHash', () {
       final instance = _TestClass();
       final record = LogRecord(
         message: 'Test',
@@ -230,7 +230,29 @@ void main() {
           decoded['logging.googleapis.com/labels'] as Map<String, dynamic>;
 
       expect(labels['logger'], 'MyService');
-      expect(labels['instance'], isNotEmpty);
+      expect(labels['instance'], '_TestClass');
+      expect(labels['instanceHash'], isNotEmpty);
+    });
+
+    test('does not include instance or instanceHash when no instance provided',
+        () {
+      final record = LogRecord(
+        message: 'Test',
+        timestamp: DateTime.utc(2024, 1, 15),
+        loggerName: 'MyService',
+      );
+
+      final formatter = GcpMessageFormatter();
+      final buffer = createBuffer();
+      formatter.format(record, buffer);
+
+      final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+      final labels =
+          decoded['logging.googleapis.com/labels'] as Map<String, dynamic>;
+
+      expect(labels['logger'], 'MyService');
+      expect(labels.containsKey('instance'), isFalse);
+      expect(labels.containsKey('instanceHash'), isFalse);
     });
 
     test('adds @type field for errors without stack trace', () {
@@ -288,7 +310,7 @@ void main() {
       expect(decoded.containsKey('@type'), isFalse);
     });
 
-    test('includes serviceContext for errors without stack trace', () {
+    test('includes serviceContext when serviceName is configured', () {
       final record = LogRecord(
         message: 'Error occurred',
         timestamp: DateTime.utc(2024, 1, 15),
@@ -308,6 +330,27 @@ void main() {
 
       expect(serviceContext['service'], 'my-api');
       expect(serviceContext['version'], '1.2.3');
+    });
+
+    test('does not include serviceContext when serviceName is not configured',
+        () {
+      final record = LogRecord(
+        message: 'Error occurred',
+        timestamp: DateTime.utc(2024, 1, 15),
+        level: ChirpLogLevel.error,
+        error: Exception('Test error'),
+      );
+
+      final formatter = GcpMessageFormatter();
+      final buffer = createBuffer();
+      formatter.format(record, buffer);
+
+      final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
+
+      // @type is still included for Error Reporting
+      expect(decoded.containsKey('@type'), isTrue);
+      // But serviceContext requires explicit serviceName configuration
+      expect(decoded.containsKey('serviceContext'), isFalse);
     });
 
     test('does not include Error Reporting fields when disabled', () {
