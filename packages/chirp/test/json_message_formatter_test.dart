@@ -94,7 +94,7 @@ void main() {
       expect(decoded['logger'], 'MyService');
     });
 
-    test('includes instance and instanceHash when instance is provided', () {
+    test('includes class and instance when instance is provided', () {
       final instance = _TestClass();
       final record = LogRecord(
         message: 'Test',
@@ -110,15 +110,15 @@ void main() {
       final expectedHash =
           identityHashCode(instance).toRadixString(16).padLeft(8, '0');
 
-      // instance is the runtimeType, instanceHash is the identity hash
-      expect(decoded['instance'], '_TestClass');
-      expect(decoded['instanceHash'], expectedHash);
+      // class is just the type name
+      expect(decoded['class'], '_TestClass');
+      // instance is "ClassName@hash"
+      expect(decoded['instance'], '_TestClass@$expectedHash');
       // logger is NOT set when only instance is provided
       expect(decoded.containsKey('logger'), isFalse);
     });
 
-    test('does not include logger, instance, or instanceHash when not provided',
-        () {
+    test('does not include logger, class, or instance when not provided', () {
       final record = LogRecord(
         message: 'Test',
         timestamp: DateTime.utc(2024, 1, 15),
@@ -131,11 +131,11 @@ void main() {
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded.containsKey('logger'), isFalse);
+      expect(decoded.containsKey('class'), isFalse);
       expect(decoded.containsKey('instance'), isFalse);
-      expect(decoded.containsKey('instanceHash'), isFalse);
     });
 
-    test('logger and instance can both be present', () {
+    test('logger, class, and instance can all be present', () {
       final instance = _TestClass();
       final record = LogRecord(
         message: 'Test',
@@ -152,10 +152,10 @@ void main() {
       final expectedHash =
           identityHashCode(instance).toRadixString(16).padLeft(8, '0');
 
-      // Both logger and instance are separate fields
+      // All three fields are separate
       expect(decoded['logger'], 'MyService');
-      expect(decoded['instance'], '_TestClass');
-      expect(decoded['instanceHash'], expectedHash);
+      expect(decoded['class'], '_TestClass');
+      expect(decoded['instance'], '_TestClass@$expectedHash');
     });
 
     test('includes error when provided', () {
@@ -224,8 +224,8 @@ void main() {
           'level': 'custom-level',
           'message': 'custom-message',
           'logger': 'custom-logger',
+          'class': 'custom-class',
           'instance': 'custom-instance',
-          'instanceHash': 'custom-instanceHash',
         },
       );
 
@@ -240,8 +240,8 @@ void main() {
       expect(decoded['level'], 'custom-level');
       expect(decoded['message'], 'custom-message');
       expect(decoded['logger'], 'custom-logger');
+      expect(decoded['class'], 'custom-class');
       expect(decoded['instance'], 'custom-instance');
-      expect(decoded['instanceHash'], 'custom-instanceHash');
     });
 
     test('outputs single-line JSON', () {

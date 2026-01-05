@@ -212,7 +212,7 @@ void main() {
       );
     });
 
-    test('includes labels with logger name, instance, and instanceHash', () {
+    test('includes labels with logger, class, and instance', () {
       final instance = _TestClass();
       final record = LogRecord(
         message: 'Test',
@@ -228,14 +228,15 @@ void main() {
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
       final labels =
           decoded['logging.googleapis.com/labels'] as Map<String, dynamic>;
+      final expectedHash =
+          identityHashCode(instance).toRadixString(16).padLeft(8, '0');
 
       expect(labels['logger'], 'MyService');
-      expect(labels['instance'], '_TestClass');
-      expect(labels['instanceHash'], isNotEmpty);
+      expect(labels['class'], '_TestClass');
+      expect(labels['instance'], '_TestClass@$expectedHash');
     });
 
-    test('does not include instance or instanceHash when no instance provided',
-        () {
+    test('does not include instance when no instance provided', () {
       final record = LogRecord(
         message: 'Test',
         timestamp: DateTime.utc(2024, 1, 15),
@@ -251,8 +252,8 @@ void main() {
           decoded['logging.googleapis.com/labels'] as Map<String, dynamic>;
 
       expect(labels['logger'], 'MyService');
+      // class can still come from caller if sourceLocation is enabled
       expect(labels.containsKey('instance'), isFalse);
-      expect(labels.containsKey('instanceHash'), isFalse);
     });
 
     test('adds @type field for errors without stack trace', () {

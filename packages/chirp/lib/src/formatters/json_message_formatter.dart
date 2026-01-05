@@ -15,7 +15,8 @@ import 'package:chirp/chirp.dart';
 ///   "level": "info",
 ///   "message": "Server started",
 ///   "logger": "MyService",
-///   "instanceHash": "a1b2c3d4",
+///   "class": "UserService",
+///   "instance": "UserService@a1b2c3d4",
 ///   "error": "Exception: Something went wrong",
 ///   "stackTrace": "#0 main (file.dart:10)",
 ///   "userId": "user_123"
@@ -64,15 +65,29 @@ class JsonMessageFormatter extends ConsoleMessageFormatter {
       map['logger'] = record.loggerName;
     }
 
-    // === Instance info (class name and hash, only together) ===
-    if (record.instance != null) {
-      map['instance'] = record.instance.runtimeType.toString();
-      if (record.instanceHash != null) {
-        final hashHex =
-            record.instanceHash!.toRadixString(16).padLeft(8, '0');
-        map['instanceHash'] =
-            hashHex.length > 8 ? hashHex.substring(hashHex.length - 8) : hashHex;
+    // === Class (from instance or caller) ===
+    final className = () {
+      if (record.instance != null) {
+        return record.instance.runtimeType.toString();
       }
+      if (includeSourceLocation && record.caller != null) {
+        final callerInfo =
+            getCallerInfo(record.caller!, skipFrames: record.skipFrames ?? 0);
+        return callerInfo?.callerClassName;
+      }
+      return null;
+    }();
+    if (className != null) {
+      map['class'] = className;
+    }
+
+    // === Instance (ClassName@hash, only when instance object is present) ===
+    if (record.instance != null && record.instanceHash != null) {
+      final hashHex =
+          record.instanceHash!.toRadixString(16).padLeft(8, '0');
+      final hash =
+          hashHex.length > 8 ? hashHex.substring(hashHex.length - 8) : hashHex;
+      map['instance'] = '$className@$hash';
     }
 
     // === Source Location ===

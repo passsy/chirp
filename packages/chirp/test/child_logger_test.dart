@@ -147,8 +147,8 @@ void main() {
 
       final instanceHash =
           identityHashCode(myInstance).toRadixString(16).padLeft(8, '0');
-      expect(messages[0], contains('"instance":"Object"'));
-      expect(messages[0], contains('"instanceHash":"$instanceHash"'));
+      expect(messages[0], contains('"class":"Object"'));
+      expect(messages[0], contains('"instance":"Object@$instanceHash"'));
     });
 
     test('child inherits parent instance if not specified', () {
@@ -167,8 +167,8 @@ void main() {
 
       final instanceHash =
           identityHashCode(parentInstance).toRadixString(16).padLeft(8, '0');
-      expect(messages[0], contains('"instance":"Object"'));
-      expect(messages[0], contains('"instanceHash":"$instanceHash"'));
+      expect(messages[0], contains('"class":"Object"'));
+      expect(messages[0], contains('"instance":"Object@$instanceHash"'));
     });
 
     test('child can override parent instance', () {
@@ -188,12 +188,12 @@ void main() {
 
       final childHash =
           identityHashCode(childInstance).toRadixString(16).padLeft(8, '0');
-      expect(messages[0], contains('"instance":"Object"'));
-      expect(messages[0], contains('"instanceHash":"$childHash"'));
+      expect(messages[0], contains('"class":"Object"'));
+      expect(messages[0], contains('"instance":"Object@$childHash"'));
 
       final parentHash =
           identityHashCode(parentInstance).toRadixString(16).padLeft(8, '0');
-      expect(messages[0], isNot(contains('"instanceHash":"$parentHash"')));
+      expect(messages[0], isNot(contains('"instance":"Object@$parentHash"')));
     });
 
     test('child of Chirp.root inherits root writers', () {
@@ -230,8 +230,8 @@ void main() {
       expect(messages.length, 1);
       final instanceHash =
           identityHashCode(instance).toRadixString(16).padLeft(8, '0');
-      expect(messages[0], contains('"instance":"Object"'));
-      expect(messages[0], contains('"instanceHash":"$instanceHash"'));
+      expect(messages[0], contains('"class":"Object"'));
+      expect(messages[0], contains('"instance":"Object@$instanceHash"'));
     });
 
     test('child without any parameters is valid', () {
