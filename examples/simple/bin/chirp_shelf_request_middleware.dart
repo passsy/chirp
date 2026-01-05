@@ -117,7 +117,8 @@ String? _getGcpProjectIdFromEnv() {
 /// - TRACE_TRUE: 0 or 1 indicating if trace is sampled (optional)
 ///
 /// See: https://cloud.google.com/trace/docs/setup#force-trace
-Map<String, dynamic> _extractGcpTraceContext(Request request, String projectId) {
+Map<String, dynamic> _extractGcpTraceContext(
+    Request request, String projectId) {
   final header = request.headers['x-cloud-trace-context'];
   if (header == null || header.isEmpty) {
     return {};

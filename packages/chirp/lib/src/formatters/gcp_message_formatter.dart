@@ -157,8 +157,7 @@ class GcpMessageFormatter extends ConsoleMessageFormatter {
 
     // Instance (ClassName@hash, only when instance object is present)
     if (record.instance != null && record.instanceHash != null) {
-      final hashHex =
-          record.instanceHash!.toRadixString(16).padLeft(8, '0');
+      final hashHex = record.instanceHash!.toRadixString(16).padLeft(8, '0');
       final hash =
           hashHex.length > 8 ? hashHex.substring(hashHex.length - 8) : hashHex;
       labels['instance'] = '$className@$hash';

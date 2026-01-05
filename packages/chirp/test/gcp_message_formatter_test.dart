@@ -580,8 +580,8 @@ void main() {
         formatter.format(record, buffer);
 
         final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
-        final operation = decoded['logging.googleapis.com/operation']
-            as Map<String, dynamic>;
+        final operation =
+            decoded['logging.googleapis.com/operation'] as Map<String, dynamic>;
 
         expect(operation['id'], 'operation-123');
         expect(operation['producer'], 'my-service');
