@@ -3,7 +3,7 @@
 /// This example demonstrates how to use GcpMessageFormatter with a Shelf
 /// HTTP server for Cloud Run, Cloud Functions, or GKE deployments.
 ///
-/// Run with: dart run bin/gcp_shelf_server.dart
+/// Run with: dart run bin/shelf_server.dart
 ///
 /// In GCP, the JSON output is automatically parsed by Cloud Logging
 /// and displayed with proper severity, labels, and source location.
@@ -18,23 +18,31 @@ import 'package:shelf_router/shelf_router.dart';
 import 'chirp_shelf_request_middleware.dart';
 
 void main() async {
-  final isProduction = !bool.hasEnvironment('PORT');
+  final isProduction = bool.hasEnvironment('PORT');
 
   if (isProduction) {
     // production
-    // Configure Chirp for GCP structured logging
-    Chirp.root = ChirpLogger()
-        .addConsoleWriter(
-          formatter: GcpMessageFormatter(
-            serviceName: 'my-api-service',
-            serviceVersion: '1.0.0',
-          ),
-        )
-        .addConsoleWriter(
-          formatter: JsonMessageFormatter(),
-        );
+    Chirp.root = ChirpLogger().addConsoleWriter(
+      formatter: JsonMessageFormatter(),
+    );
+
+    assert(() {
+      // for Google Cloud Run structured logging
+      Chirp.root = ChirpLogger().addConsoleWriter(
+        formatter: GcpMessageFormatter(
+          serviceName: 'my-api-service',
+          serviceVersion: '1.0.0',
+        ),
+      );
+
+      // for AWS CloudWatch
+      Chirp.root = ChirpLogger().addConsoleWriter(
+        formatter: AwsMessageFormatter(),
+      );
+      return true;
+    }());
   } else {
-    // for development
+    // development
     Chirp.root = ChirpLogger().addConsoleWriter(
       formatter: RainbowMessageFormatter(
         options: RainbowFormatOptions(showMethod: false, showLocation: false),
@@ -132,7 +140,7 @@ Response _healthCheck(Request request) {
 /// 404 handler.
 Response _notFound(Request request) {
   request.logger.warning('Route not found');
-  Chirp.warning('Route not found, reported to root logger');
+  Chirp.warning('Route not found, reported via root logger');
   return Response.notFound('Not Found');
 }
 
@@ -143,7 +151,7 @@ Response _notFound(Request request) {
 //   "message": "Request started",
 //   "timestamp": "2024-01-15T10:30:45.123Z",
 //   "logging.googleapis.com/sourceLocation": {
-//     "file": "package:simple_example/gcp_shelf_server.dart",
+//     "file": "package:simple_example/shelf_server.dart",
 //     "line": "58",
 //     "function": "_requestLoggingMiddleware.<anonymous closure>"
 //   },
@@ -215,6 +223,7 @@ class DemoClient {
   }
 
   Future<void> options(String path) async {
+    chirp.log('Sending a pre-flight request to $path');
     final request = await client.openUrl('OPTIONS', Uri.parse('$baseUrl$path'));
     final response = await request.close();
     await response.drain<void>();
