@@ -710,7 +710,7 @@ void main() {
   });
 
   group('TimeDisplay default values', () {
-    test('SimpleConsoleMessageFormatter defaults to TimeDisplay.clock', () {
+    test('SimpleConsoleMessageFormatter defaults to TimeDisplay.auto', () {
       final formatter = SimpleConsoleMessageFormatter();
       final record = testRecord(
         timestamp: clockTime,
@@ -721,11 +721,12 @@ void main() {
       formatter.format(record, buffer);
       final result = buffer.toString();
 
-      // Should show clock time (the default)
-      expect(result, startsWith('10:30:45.123'));
+      // Should show wall-clock with clock time in brackets (auto mode, times differ)
+      expect(result, contains('10:30:47.891'));
+      expect(result, contains('[10:30:45.123]'));
     });
 
-    test('CompactChirpMessageFormatter defaults to TimeDisplay.clock', () {
+    test('CompactChirpMessageFormatter defaults to TimeDisplay.auto', () {
       final formatter = CompactChirpMessageFormatter();
       final record = testRecord(
         timestamp: clockTime,
@@ -736,8 +737,9 @@ void main() {
       formatter.format(record, buffer);
       final result = buffer.toString();
 
-      // Should show clock time (the default)
-      expect(result, startsWith('10:30:45.123'));
+      // Should show wall-clock with clock time in brackets (auto mode, times differ)
+      expect(result, contains('10:30:47.891'));
+      expect(result, contains('[10:30:45.123]'));
     });
 
     test('RainbowMessageFormatter defaults to TimeDisplay.auto', () {
@@ -763,7 +765,7 @@ void main() {
       expect(result, contains('[10:30:45.123]'));
     });
 
-    test('JsonMessageFormatter defaults to TimeDisplay.clock', () {
+    test('JsonMessageFormatter defaults to TimeDisplay.auto', () {
       final formatter = JsonMessageFormatter();
       final clockTimeUtc = DateTime.utc(2024, 1, 15, 10, 30, 45, 123);
       final wallClockTimeUtc = DateTime.utc(2024, 1, 15, 10, 30, 47, 891);
@@ -776,12 +778,12 @@ void main() {
       formatter.format(record, buffer);
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
-      // Should show clock time (the default)
-      expect(decoded['timestamp'], '2024-01-15T10:30:45.123Z');
-      expect(decoded.containsKey('clockTime'), isFalse);
+      // Auto mode shows both timestamps
+      expect(decoded['timestamp'], '2024-01-15T10:30:47.891Z');
+      expect(decoded['clockTime'], '2024-01-15T10:30:45.123Z');
     });
 
-    test('AwsMessageFormatter defaults to TimeDisplay.clock', () {
+    test('AwsMessageFormatter defaults to TimeDisplay.auto', () {
       final formatter = AwsMessageFormatter();
       final clockTimeUtc = DateTime.utc(2024, 1, 15, 10, 30, 45, 123);
       final wallClockTimeUtc = DateTime.utc(2024, 1, 15, 10, 30, 47, 891);
@@ -794,12 +796,12 @@ void main() {
       formatter.format(record, buffer);
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
-      // Should show clock time (the default)
-      expect(decoded['timestamp'], '2024-01-15T10:30:45.123Z');
-      expect(decoded.containsKey('clockTime'), isFalse);
+      // Auto mode shows both timestamps
+      expect(decoded['timestamp'], '2024-01-15T10:30:47.891Z');
+      expect(decoded['clockTime'], '2024-01-15T10:30:45.123Z');
     });
 
-    test('GcpMessageFormatter defaults to TimeDisplay.clock', () {
+    test('GcpMessageFormatter defaults to TimeDisplay.auto', () {
       final formatter = GcpMessageFormatter();
       final clockTimeUtc = DateTime.utc(2024, 1, 15, 10, 30, 45, 123);
       final wallClockTimeUtc = DateTime.utc(2024, 1, 15, 10, 30, 47, 891);
@@ -812,9 +814,9 @@ void main() {
       formatter.format(record, buffer);
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
-      // Should show clock time (the default)
-      expect(decoded['timestamp'], '2024-01-15T10:30:45.123Z');
-      expect(decoded.containsKey('clockTime'), isFalse);
+      // Auto mode shows both timestamps
+      expect(decoded['timestamp'], '2024-01-15T10:30:47.891Z');
+      expect(decoded['clockTime'], '2024-01-15T10:30:45.123Z');
     });
   });
 }

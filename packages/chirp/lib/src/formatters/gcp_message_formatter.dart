@@ -90,7 +90,7 @@ class GcpMessageFormatter extends ConsoleMessageFormatter {
     this.enableErrorReporting = true,
     this.serviceName,
     this.serviceVersion,
-    this.timeDisplay = TimeDisplay.clock,
+    this.timeDisplay = TimeDisplay.auto,
   }) : super();
 
   @override

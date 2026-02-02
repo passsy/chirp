@@ -63,7 +63,7 @@ class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
   /// All fields are shown by default. Set any `show*` parameter to `false`
   /// to hide that element from the output.
   SimpleConsoleMessageFormatter({
-    this.timeDisplay = TimeDisplay.clock,
+    this.timeDisplay = TimeDisplay.auto,
     this.showLevel = true,
     this.showLoggerName = true,
     this.showCaller = true,

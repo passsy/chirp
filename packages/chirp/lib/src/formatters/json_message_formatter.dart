@@ -54,7 +54,7 @@ class JsonMessageFormatter extends ConsoleMessageFormatter {
   /// Creates a JSON message formatter.
   JsonMessageFormatter({
     this.includeSourceLocation = false,
-    this.timeDisplay = TimeDisplay.clock,
+    this.timeDisplay = TimeDisplay.auto,
   }) : super();
 
   @override

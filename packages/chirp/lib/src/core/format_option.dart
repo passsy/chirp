@@ -88,36 +88,34 @@ class FormatOptions {
   const FormatOptions();
 }
 
-/// Controls which timestamp(s) to display in log output.
+/// Controls which timestamp(s) to include in log output.
 ///
-/// Used by formatters to determine how time information is rendered.
+/// Chirp tracks two timestamps for each log record:
+/// - **clock**: The injectable [Clock] time, which can be mocked in tests
+/// - **wallClock**: The real system time from `DateTime.now()`
+///
+/// Used by formatters to determine which timestamp source(s) to include.
+/// How timestamps are rendered (format, field names) is up to each formatter.
 enum TimeDisplay {
-  /// Show only the clock timestamp (from injectable [Clock], mockable in tests).
+  /// Include only the clock timestamp (from injectable [Clock]).
   ///
-  /// Output: `10:30:45.123`
+  /// The clock can be mocked in tests using `fakeAsync` or a custom [Clock].
   clock,
 
-  /// Show only the wall-clock timestamp (real system time from `DateTime.now()`).
+  /// Include only the wall-clock timestamp (real system time).
   ///
-  /// Output: `10:30:45.123`
+  /// Always reflects actual time, even during tests with mocked clocks.
   wallClock,
 
-  /// Always show both wall-clock and clock timestamp in brackets.
-  ///
-  /// Output: `10:30:47.891 [10:30:45.123]`
-  /// (wall-clock first, clock time in brackets)
+  /// Include both wall-clock and clock timestamps.
   both,
 
-  /// Show wall-clock, and clock timestamp in brackets if they differ by >1s.
+  /// Include wall-clock, and additionally clock if they differ significantly.
   ///
-  /// This is useful when running tests with a mocked clock - you'll see both
+  /// Useful when running tests with a mocked clock - you'll see both
   /// the real time and the mocked time when they diverge.
-  ///
-  /// Output when same: `10:30:45.123`
-  /// Output when different: `10:30:47.891 [10:30:45.123]`
-  /// (wall-clock first, clock time in brackets)
   auto,
 
-  /// Don't show any timestamp.
+  /// Don't include any timestamp.
   off,
 }

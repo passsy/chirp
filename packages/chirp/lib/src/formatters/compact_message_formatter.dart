@@ -29,7 +29,7 @@ class CompactChirpMessageFormatter extends SpanBasedFormatter {
   ///
   /// Use [spanTransformers] to customize the output structure.
   CompactChirpMessageFormatter({
-    this.timeDisplay = TimeDisplay.clock,
+    this.timeDisplay = TimeDisplay.auto,
     super.spanTransformers,
   });
 

@@ -71,7 +71,7 @@ class AwsMessageFormatter extends ConsoleMessageFormatter {
   /// Creates an AWS CloudWatch compatible JSON message formatter.
   AwsMessageFormatter({
     this.includeSourceLocation = false,
-    this.timeDisplay = TimeDisplay.clock,
+    this.timeDisplay = TimeDisplay.auto,
   }) : super();
 
   @override
