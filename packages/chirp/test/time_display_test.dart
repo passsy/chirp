@@ -3,7 +3,6 @@
 import 'dart:convert';
 
 import 'package:chirp/chirp.dart';
-import 'package:chirp/chirp_spans.dart';
 import 'package:test/test.dart';
 
 import 'test_log_record.dart';

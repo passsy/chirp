@@ -239,6 +239,7 @@ void main() {
         wallClock: DateTime(2024, 1, 15, 10, 23, 45),
         formatOptions: const [
           RainbowFormatOptions(
+            // ignore: deprecated_member_use_from_same_package
             showTime: false,
             showLocation: false,
             showLogger: false,

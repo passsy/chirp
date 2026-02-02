@@ -225,6 +225,7 @@ void main() {
       final formatter = RainbowMessageFormatter(
         options: const RainbowFormatOptions(
           data: DataPresentation.inline,
+          // ignore: deprecated_member_use_from_same_package
           showTime: false,
           showLocation: false,
           showLogger: false,
@@ -1054,6 +1055,7 @@ void main() {
 
       final formatter = RainbowMessageFormatter(
         options: const RainbowFormatOptions(
+          // ignore: deprecated_member_use_from_same_package
           showTime: false,
           showLocation: false,
           showLogger: false,
@@ -1138,6 +1140,7 @@ void main() {
         wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         formatOptions: const [
           FormatOptions(), // Not SpanFormatOptions
+          // ignore: deprecated_member_use_from_same_package
           RainbowFormatOptions(showTime: false), // Different type
         ],
       );
