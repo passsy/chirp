@@ -7,6 +7,7 @@ environment:
 dependencies:
   chirp:
     path: ../../packages/chirp
+  clock: ^1.1.0
   shelf: ^1.4.0
   shelf_router: ^1.1.0
 
