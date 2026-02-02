@@ -15,10 +15,21 @@ import 'package:chirp/chirp_spans.dart';
 /// #0      ApiClient.fetch (package:my_app/api_client.dart:87:5)
 /// ```
 class CompactChirpMessageFormatter extends SpanBasedFormatter {
+  /// Controls which timestamp(s) to display.
+  ///
+  /// - [TimeDisplay.clock]: Show only the clock timestamp (mockable in tests)
+  /// - [TimeDisplay.wallClock]: Show only the wall-clock (real system time)
+  /// - [TimeDisplay.both]: Always show both timestamps
+  /// - [TimeDisplay.auto]: Show clock timestamp, and wall-clock in brackets
+  ///   if they differ by more than 1 second
+  /// - [TimeDisplay.off]: Don't show any timestamp
+  final TimeDisplay timeDisplay;
+
   /// Creates a compact message formatter.
   ///
   /// Use [spanTransformers] to customize the output structure.
   CompactChirpMessageFormatter({
+    this.timeDisplay = TimeDisplay.auto,
     super.spanTransformers,
   });
 
@@ -27,9 +38,28 @@ class CompactChirpMessageFormatter extends SpanBasedFormatter {
 
   @override
   LogSpan buildSpan(LogRecord record) {
+    final timestampSpans = switch (timeDisplay) {
+      TimeDisplay.clock => [Timestamp(record.timestamp)],
+      TimeDisplay.wallClock => [Timestamp(record.wallClock)],
+      TimeDisplay.both => [
+          Timestamp(record.wallClock),
+          Whitespace(),
+          BracketedTimestamp(record.timestamp),
+        ],
+      TimeDisplay.auto => [
+          Timestamp(record.wallClock),
+          if (record.wallClock.difference(record.timestamp).abs() >
+              const Duration(milliseconds: 1)) ...[
+            Whitespace(),
+            BracketedTimestamp(record.timestamp),
+          ],
+        ],
+      TimeDisplay.off => <LogSpan>[],
+    };
+
     return SpanSequence(children: [
-      Timestamp(record.timestamp),
-      Whitespace(),
+      ...timestampSpans,
+      if (timestampSpans.isNotEmpty) Whitespace(),
       BracketedLogLevel(record.level),
       if (record.callerInfo?.callerLocation case final callerLocation?) ...[
         Whitespace(),

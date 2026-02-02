@@ -13,6 +13,7 @@ void main() {
         final record = LogRecord(
           message: 'Test message',
           timestamp: now,
+          wallClock: now,
         );
 
         expect(record.message, equals('Test message'));
@@ -40,6 +41,7 @@ void main() {
         final record = LogRecord(
           message: 'Full message',
           timestamp: now,
+          wallClock: now,
           level: ChirpLogLevel.error,
           error: error,
           stackTrace: stackTrace,
@@ -65,26 +67,30 @@ void main() {
       });
 
       test('can be created with minimal fields', () {
+        final now = DateTime(2025);
         final record = LogRecord(
           message: 'Message',
-          timestamp: DateTime(2025),
+          timestamp: now,
+          wallClock: now,
         );
 
         expect(record.message, equals('Message'));
-        expect(record.timestamp, equals(DateTime(2025)));
+        expect(record.timestamp, equals(now));
         expect(record.level, equals(ChirpLogLevel.info));
       });
 
       test('can be created with all fields', () {
+        final now = DateTime(2025);
         final record = LogRecord(
           message: 'Message',
-          timestamp: DateTime(2025),
+          timestamp: now,
+          wallClock: now,
           level: ChirpLogLevel.warning,
           loggerName: 'TestLogger',
         );
 
         expect(record.message, equals('Message'));
-        expect(record.timestamp, equals(DateTime(2025)));
+        expect(record.timestamp, equals(now));
         expect(record.level, equals(ChirpLogLevel.warning));
         expect(record.loggerName, equals('TestLogger'));
       });
@@ -94,33 +100,41 @@ void main() {
       test('message can be any object', () {
         final now = DateTime.now();
 
-        final stringRecord = LogRecord(message: 'string', timestamp: now);
+        final stringRecord =
+            LogRecord(message: 'string', timestamp: now, wallClock: now);
         expect(stringRecord.message, equals('string'));
 
-        final intRecord = LogRecord(message: 42, timestamp: now);
+        final intRecord =
+            LogRecord(message: 42, timestamp: now, wallClock: now);
         expect(intRecord.message, equals(42));
 
-        final listRecord = LogRecord(message: [1, 2, 3], timestamp: now);
+        final listRecord =
+            LogRecord(message: [1, 2, 3], timestamp: now, wallClock: now);
         expect(listRecord.message, equals([1, 2, 3]));
 
-        final nullRecord = LogRecord(message: null, timestamp: now);
+        final nullRecord =
+            LogRecord(message: null, timestamp: now, wallClock: now);
         expect(nullRecord.message, isNull);
       });
 
       test('date is stored exactly', () {
         final date1 = DateTime(2025, 1, 1, 12);
-        final record1 = LogRecord(message: 'test', timestamp: date1);
+        final record1 =
+            LogRecord(message: 'test', timestamp: date1, wallClock: date1);
         expect(record1.timestamp, same(date1));
 
         final date2 = DateTime.utc(2025, 12, 31, 23, 59, 59);
-        final record2 = LogRecord(message: 'test', timestamp: date2);
+        final record2 =
+            LogRecord(message: 'test', timestamp: date2, wallClock: date2);
         expect(record2.timestamp, same(date2));
       });
 
       test('level defaults to info', () {
+        final now = DateTime.now();
         final record = LogRecord(
           message: 'test',
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
         );
         expect(record.level, equals(ChirpLogLevel.info));
       });
@@ -129,45 +143,72 @@ void main() {
         final now = DateTime.now();
 
         final trace = LogRecord(
-            message: 'test', timestamp: now, level: ChirpLogLevel.trace);
+          message: 'test',
+          timestamp: now,
+          wallClock: now,
+          level: ChirpLogLevel.trace,
+        );
         expect(trace.level, equals(ChirpLogLevel.trace));
 
         final debug = LogRecord(
-            message: 'test', timestamp: now, level: ChirpLogLevel.debug);
+          message: 'test',
+          timestamp: now,
+          wallClock: now,
+          level: ChirpLogLevel.debug,
+        );
         expect(debug.level, equals(ChirpLogLevel.debug));
 
-        final info = LogRecord(message: 'test', timestamp: now);
+        final info = LogRecord(message: 'test', timestamp: now, wallClock: now);
         expect(info.level, equals(ChirpLogLevel.info));
 
         final notice = LogRecord(
-            message: 'test', timestamp: now, level: ChirpLogLevel.notice);
+          message: 'test',
+          timestamp: now,
+          wallClock: now,
+          level: ChirpLogLevel.notice,
+        );
         expect(notice.level, equals(ChirpLogLevel.notice));
 
         final warning = LogRecord(
-            message: 'test', timestamp: now, level: ChirpLogLevel.warning);
+          message: 'test',
+          timestamp: now,
+          wallClock: now,
+          level: ChirpLogLevel.warning,
+        );
         expect(warning.level, equals(ChirpLogLevel.warning));
 
         final error = LogRecord(
-            message: 'test', timestamp: now, level: ChirpLogLevel.error);
+          message: 'test',
+          timestamp: now,
+          wallClock: now,
+          level: ChirpLogLevel.error,
+        );
         expect(error.level, equals(ChirpLogLevel.error));
 
         final critical = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           level: ChirpLogLevel.critical,
         );
         expect(critical.level, equals(ChirpLogLevel.critical));
 
         final wtf = LogRecord(
-            message: 'test', timestamp: now, level: ChirpLogLevel.wtf);
+          message: 'test',
+          timestamp: now,
+          wallClock: now,
+          level: ChirpLogLevel.wtf,
+        );
         expect(wtf.level, equals(ChirpLogLevel.wtf));
       });
 
       test('level can be custom ChirpLogLevel', () {
         const customLevel = ChirpLogLevel('custom', 250);
+        final now = DateTime.now();
         final record = LogRecord(
           message: 'test',
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
           level: customLevel,
         );
         expect(record.level, equals(customLevel));
@@ -179,6 +220,7 @@ void main() {
         final exceptionRecord = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           error: Exception('error'),
         );
         expect(exceptionRecord.error, isA<Exception>());
@@ -186,19 +228,23 @@ void main() {
         final stringRecord = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           error: 'string error',
         );
         expect(stringRecord.error, equals('string error'));
 
-        final nullRecord = LogRecord(message: 'test', timestamp: now);
+        final nullRecord =
+            LogRecord(message: 'test', timestamp: now, wallClock: now);
         expect(nullRecord.error, isNull);
       });
 
       test('stackTrace can be stored', () {
         final stackTrace = StackTrace.current;
+        final now = DateTime.now();
         final record = LogRecord(
           message: 'test',
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
           stackTrace: stackTrace,
         );
         expect(record.stackTrace, same(stackTrace));
@@ -206,9 +252,11 @@ void main() {
 
       test('caller can be stored', () {
         final caller = StackTrace.current;
+        final now = DateTime.now();
         final record = LogRecord(
           message: 'test',
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
           caller: caller,
         );
         expect(record.caller, same(caller));
@@ -217,19 +265,32 @@ void main() {
       test('skipFrames can be any integer', () {
         final now = DateTime.now();
 
-        final zeroFrames =
-            LogRecord(message: 'test', timestamp: now, skipFrames: 0);
+        final zeroFrames = LogRecord(
+          message: 'test',
+          timestamp: now,
+          wallClock: now,
+          skipFrames: 0,
+        );
         expect(zeroFrames.skipFrames, equals(0));
 
-        final someFrames =
-            LogRecord(message: 'test', timestamp: now, skipFrames: 5);
+        final someFrames = LogRecord(
+          message: 'test',
+          timestamp: now,
+          wallClock: now,
+          skipFrames: 5,
+        );
         expect(someFrames.skipFrames, equals(5));
 
-        final manyFrames =
-            LogRecord(message: 'test', timestamp: now, skipFrames: 100);
+        final manyFrames = LogRecord(
+          message: 'test',
+          timestamp: now,
+          wallClock: now,
+          skipFrames: 100,
+        );
         expect(manyFrames.skipFrames, equals(100));
 
-        final nullFrames = LogRecord(message: 'test', timestamp: now);
+        final nullFrames =
+            LogRecord(message: 'test', timestamp: now, wallClock: now);
         expect(nullFrames.skipFrames, isNull);
       });
 
@@ -240,6 +301,7 @@ void main() {
         final record = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           instance: customInstance,
         );
         expect(record.instance, same(customInstance));
@@ -247,6 +309,7 @@ void main() {
         final stringInstance = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           instance: 'string instance',
         );
         expect(stringInstance.instance, equals('string instance'));
@@ -258,6 +321,7 @@ void main() {
         final named = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           loggerName: 'MyLogger',
         );
         expect(named.loggerName, equals('MyLogger'));
@@ -265,11 +329,13 @@ void main() {
         final empty = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           loggerName: '',
         );
         expect(empty.loggerName, equals(''));
 
-        final null_ = LogRecord(message: 'test', timestamp: now);
+        final null_ =
+            LogRecord(message: 'test', timestamp: now, wallClock: now);
         expect(null_.loggerName, isNull);
       });
 
@@ -279,6 +345,7 @@ void main() {
         final emptyData = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           data: {},
         );
         expect(emptyData.data, equals({}));
@@ -286,6 +353,7 @@ void main() {
         final simpleData = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           data: {'key': 'value'},
         );
         expect(simpleData.data, equals({'key': 'value'}));
@@ -293,6 +361,7 @@ void main() {
         final complexData = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           data: {
             'string': 'value',
             'int': 42,
@@ -309,7 +378,8 @@ void main() {
         expect(complexData.data['list'], equals([1, 2, 3]));
         expect(complexData.data['map'], equals({'nested': 'value'}));
 
-        final nullData = LogRecord(message: 'test', timestamp: now);
+        final nullData =
+            LogRecord(message: 'test', timestamp: now, wallClock: now);
         expect(nullData.data, isEmpty);
       });
 
@@ -319,6 +389,7 @@ void main() {
         final emptyOptions = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           formatOptions: [],
         );
         expect(emptyOptions.formatOptions, equals([]));
@@ -326,6 +397,7 @@ void main() {
         final singleOption = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           formatOptions: [const FormatOptions()],
         );
         expect(singleOption.formatOptions?.length, equals(1));
@@ -333,6 +405,7 @@ void main() {
         final multipleOptions = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           formatOptions: [
             const FormatOptions(),
             const _CustomFormatOptions(color: 'red'),
@@ -344,6 +417,7 @@ void main() {
         final nullOptions = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
         );
         expect(nullOptions.formatOptions, isNull);
       });
@@ -355,6 +429,7 @@ void main() {
         final record = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           error: Exception('error'),
           stackTrace: StackTrace.current,
           caller: StackTrace.current,
@@ -384,58 +459,71 @@ void main() {
 
     group('different message types', () {
       test('supports string messages', () {
+        final now = DateTime.now();
         final record = LogRecord(
           message: 'A simple string message',
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
         );
         expect(record.message, equals('A simple string message'));
       });
 
       test('supports numeric messages', () {
-        final intRecord = LogRecord(message: 42, timestamp: DateTime.now());
+        final now = DateTime.now();
+        final intRecord =
+            LogRecord(message: 42, timestamp: now, wallClock: now);
         expect(intRecord.message, equals(42));
 
         final doubleRecord =
-            LogRecord(message: 3.14, timestamp: DateTime.now());
+            LogRecord(message: 3.14, timestamp: now, wallClock: now);
         expect(doubleRecord.message, equals(3.14));
       });
 
       test('supports boolean messages', () {
-        final trueRecord = LogRecord(message: true, timestamp: DateTime.now());
+        final now = DateTime.now();
+        final trueRecord =
+            LogRecord(message: true, timestamp: now, wallClock: now);
         expect(trueRecord.message, isTrue);
 
         final falseRecord =
-            LogRecord(message: false, timestamp: DateTime.now());
+            LogRecord(message: false, timestamp: now, wallClock: now);
         expect(falseRecord.message, isFalse);
       });
 
       test('supports collection messages', () {
+        final now = DateTime.now();
         final listRecord = LogRecord(
           message: ['item1', 'item2', 'item3'],
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
         );
         expect(listRecord.message, equals(['item1', 'item2', 'item3']));
 
         final mapRecord = LogRecord(
           message: {'key': 'value'},
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
         );
         expect(mapRecord.message, equals({'key': 'value'}));
       });
 
       test('supports custom object messages', () {
         final customObject = _TestClass();
+        final now = DateTime.now();
         final record = LogRecord(
           message: customObject,
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
         );
         expect(record.message, same(customObject));
       });
 
       test('supports null messages', () {
+        final now = DateTime.now();
         final record = LogRecord(
           message: null,
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
         );
         expect(record.message, isNull);
       });
@@ -464,6 +552,7 @@ void main() {
           original = LogRecord(
             message: 'Original message',
             timestamp: originalTimestamp,
+            wallClock: originalTimestamp,
             level: ChirpLogLevel.warning,
             error: Exception('original error'),
             stackTrace: originalStackTrace,
@@ -692,6 +781,7 @@ void main() {
           final recordWithNullMessage = LogRecord(
             message: null,
             timestamp: originalTimestamp,
+            wallClock: originalTimestamp,
           );
           final copy = recordWithNullMessage.copyWith(
             level: ChirpLogLevel.error,
@@ -704,6 +794,7 @@ void main() {
           final recordWithNullError = LogRecord(
             message: 'test',
             timestamp: originalTimestamp,
+            wallClock: originalTimestamp,
             error: null,
           );
           final copy = recordWithNullError.copyWith(
@@ -717,6 +808,7 @@ void main() {
           final recordWithNullLogger = LogRecord(
             message: 'test',
             timestamp: originalTimestamp,
+            wallClock: originalTimestamp,
             loggerName: null,
           );
           final copy = recordWithNullLogger.copyWith(
@@ -751,18 +843,22 @@ void main() {
       test('constructor signature is stable', () {
         // This test ensures the constructor maintains its signature.
         // Any change to required parameters will break this test.
+        final now = DateTime.now();
         final record = LogRecord(
           message: 'test',
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
         );
         expect(record, isNotNull);
       });
 
       test('optional parameters remain optional', () {
         // Verify that all optional parameters can be omitted
+        final now = DateTime.now();
         final minimalRecord = LogRecord(
           message: 'minimal',
-          timestamp: DateTime.now(),
+          timestamp: now,
+          wallClock: now,
         );
         expect(minimalRecord.level, equals(ChirpLogLevel.info));
         expect(minimalRecord.error, isNull);
@@ -782,6 +878,7 @@ void main() {
         final record = LogRecord(
           message: 'test',
           timestamp: now,
+          wallClock: now,
           level: ChirpLogLevel.error,
           error: Exception('error'),
           stackTrace: stackTrace,

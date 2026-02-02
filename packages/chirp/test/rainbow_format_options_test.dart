@@ -3,6 +3,8 @@
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('RainbowFormatOptions merge behavior', () {
     test('formatter with multiline default shows data on separate lines', () {
@@ -10,9 +12,10 @@ void main() {
         options: const RainbowFormatOptions(data: DataPresentation.multiline),
       );
 
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
@@ -36,9 +39,10 @@ void main() {
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
 
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
@@ -60,9 +64,10 @@ void main() {
         options: const RainbowFormatOptions(),
       );
 
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
         formatOptions: const [
           RainbowFormatOptions(data: DataPresentation.inline),
@@ -87,9 +92,10 @@ void main() {
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
 
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123', 'action': 'login'},
         formatOptions: const [
           RainbowFormatOptions(data: DataPresentation.multiline),
@@ -117,9 +123,10 @@ void main() {
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
 
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
         formatOptions: const [
           FormatOptions(), // Not a RainbowFormatOptions
@@ -144,9 +151,10 @@ void main() {
         options: const RainbowFormatOptions(data: DataPresentation.multiline),
       );
 
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
       );
 
@@ -169,9 +177,10 @@ void main() {
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
 
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
         formatOptions: const [],
       );
@@ -194,9 +203,10 @@ void main() {
         options: const RainbowFormatOptions(),
       );
 
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45),
         data: {'userId': 'user_123'},
         formatOptions: const [
           FormatOptions(),
@@ -223,11 +233,13 @@ void main() {
         options: const RainbowFormatOptions(),
       );
 
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45),
         formatOptions: const [
           RainbowFormatOptions(
+            // ignore: deprecated_member_use_from_same_package
             showTime: false,
             showLocation: false,
             showLogger: false,

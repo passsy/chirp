@@ -87,3 +87,35 @@ class FormatOptions {
   /// Subclass this to define custom options for your formatter.
   const FormatOptions();
 }
+
+/// Controls which timestamp(s) to include in log output.
+///
+/// Chirp tracks two timestamps for each log record:
+/// - **clock**: The injectable [Clock] time, which can be mocked in tests
+/// - **wallClock**: The real system time from `DateTime.now()`
+///
+/// Used by formatters to determine which timestamp source(s) to include.
+/// How timestamps are rendered (format, field names) is up to each formatter.
+enum TimeDisplay {
+  /// Include only the clock timestamp (from injectable [Clock]).
+  ///
+  /// The clock can be mocked in tests using `fakeAsync` or a custom [Clock].
+  clock,
+
+  /// Include only the wall-clock timestamp (real system time).
+  ///
+  /// Always reflects actual time, even during tests with mocked clocks.
+  wallClock,
+
+  /// Include both wall-clock and clock timestamps.
+  both,
+
+  /// Include wall-clock, and additionally clock if they differ significantly.
+  ///
+  /// Useful when running tests with a mocked clock - you'll see both
+  /// the real time and the mocked time when they diverge.
+  auto,
+
+  /// Don't include any timestamp.
+  off,
+}

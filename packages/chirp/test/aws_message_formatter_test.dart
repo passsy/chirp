@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('AwsMessageFormatter', () {
     ConsoleMessageBuffer createBuffer() {
@@ -12,9 +14,10 @@ void main() {
     }
 
     test('formats basic log as JSON with timestamp, level, and message', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Server started',
         timestamp: DateTime.utc(2024, 1, 15, 10, 30, 45, 123),
+        wallClock: DateTime.utc(2024, 1, 15, 10, 30, 45, 123),
       );
 
       final formatter = AwsMessageFormatter();
@@ -42,9 +45,9 @@ void main() {
       };
 
       for (final entry in levels.entries) {
-        final record = LogRecord(
-          message: 'Test',
+        final record = testRecord(
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           level: entry.key,
         );
 
@@ -60,9 +63,9 @@ void main() {
 
     test('uses UTC timestamp', () {
       final localTime = DateTime(2024, 1, 15, 12, 30, 45);
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: localTime,
+        wallClock: localTime,
       );
 
       final formatter = AwsMessageFormatter();
@@ -77,9 +80,9 @@ void main() {
     });
 
     test('includes logger name when provided', () {
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         loggerName: 'MyService',
       );
 
@@ -94,9 +97,9 @@ void main() {
 
     test('includes class and instance when instance is provided', () {
       final instance = _TestClass();
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         instance: instance,
       );
 
@@ -113,9 +116,9 @@ void main() {
     });
 
     test('does not include logger, class, or instance when not provided', () {
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
       );
 
       final formatter = AwsMessageFormatter();
@@ -130,9 +133,10 @@ void main() {
     });
 
     test('includes error when provided', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Operation failed',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         error: Exception('Something went wrong'),
       );
 
@@ -146,9 +150,10 @@ void main() {
     });
 
     test('includes stackTrace when provided', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Error',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         stackTrace: StackTrace.fromString('#0      main (file.dart:10:5)'),
       );
 
@@ -162,9 +167,10 @@ void main() {
     });
 
     test('includes custom data fields at root level', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Request received',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         data: {
           'requestId': 'abc123',
           'method': 'GET',
@@ -185,9 +191,9 @@ void main() {
 
     test('allows user data to override any field', () {
       final instance = _TestClass();
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         loggerName: 'MyLogger',
         instance: instance,
         data: {
@@ -216,9 +222,9 @@ void main() {
     });
 
     test('outputs single-line JSON', () {
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         data: {'key': 'value'},
       );
 
@@ -232,9 +238,9 @@ void main() {
 
     test('converts non-serializable objects in data to string', () {
       final nonSerializable = _NonSerializableObject('test-value');
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         data: {
           'custom': nonSerializable,
         },
@@ -252,9 +258,9 @@ void main() {
 
     group('sourceLocation', () {
       test('excludes sourceLocation by default', () {
-        final record = LogRecord(
-          message: 'Test',
+        final record = testRecord(
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           caller: StackTrace.fromString(
             '#0      MyClass.method (package:my_app/src/server.dart:42:10)',
           ),
@@ -270,9 +276,9 @@ void main() {
       });
 
       test('includes sourceLocation when enabled', () {
-        final record = LogRecord(
-          message: 'Test',
+        final record = testRecord(
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           caller: StackTrace.fromString(
             '#0      MyClass.method (package:my_app/src/server.dart:42:10)',
           ),
@@ -304,9 +310,9 @@ void main() {
       });
 
       test('includes class from caller when sourceLocation is enabled', () {
-        final record = LogRecord(
-          message: 'Test',
+        final record = testRecord(
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           caller: StackTrace.fromString(
             '#0      MyClass.method (package:my_app/src/server.dart:42:10)',
           ),
@@ -325,9 +331,10 @@ void main() {
     });
 
     test('handles null message', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: null,
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
       );
 
       final formatter = AwsMessageFormatter();

@@ -1,6 +1,8 @@
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('ChirpWriter', () {
     test('can be implemented by custom classes', () {
@@ -12,16 +14,13 @@ void main() {
       final writer = ExtendingWriter();
       expect(writer, isA<ChirpWriter>());
 
-      writer.write(LogRecord(message: 'Test', timestamp: DateTime.now()));
+      writer.write(testRecord());
       expect(writer.writtenRecords, hasLength(1));
     });
 
     test('write method accepts LogRecord', () {
       final writer = FakeChirpWriter();
-      final record = LogRecord(
-        message: 'Test message',
-        timestamp: DateTime.now(),
-      );
+      final record = testRecord(message: 'Test message');
 
       // Should not throw
       writer.write(record);
@@ -31,10 +30,7 @@ void main() {
 
     test('write method signature is exactly void write(LogRecord record)', () {
       final writer = FakeChirpWriter();
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime.now(),
-      );
+      final record = testRecord();
 
       // This ensures the signature matches exactly
       final void Function(LogRecord) writeMethod = writer.write;
@@ -45,9 +41,9 @@ void main() {
 
     test('can handle multiple write calls', () {
       final writer = FakeChirpWriter();
-      final record1 = LogRecord(message: 'First', timestamp: DateTime.now());
-      final record2 = LogRecord(message: 'Second', timestamp: DateTime.now());
-      final record3 = LogRecord(message: 'Third', timestamp: DateTime.now());
+      final record1 = testRecord(message: 'First');
+      final record2 = testRecord(message: 'Second');
+      final record3 = testRecord(message: 'Third');
 
       writer.write(record1);
       writer.write(record2);
@@ -65,9 +61,8 @@ void main() {
       final caller = StackTrace.current;
       final instance = Object();
 
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Full record',
-        timestamp: DateTime.now(),
         level: ChirpLogLevel.error,
         error: Exception('test error'),
         stackTrace: stackTrace,
@@ -98,10 +93,7 @@ void main() {
 
     test('can handle log records with null/minimal fields', () {
       final writer = FakeChirpWriter();
-      final record = LogRecord(
-        message: null,
-        timestamp: DateTime.now(),
-      );
+      final record = testRecord(message: null);
 
       writer.write(record);
 
@@ -135,9 +127,8 @@ void main() {
 
       for (final level in levels) {
         writer.write(
-          LogRecord(
+          testRecord(
             message: 'Message at ${level.name}',
-            timestamp: DateTime.now(),
             level: level,
           ),
         );
@@ -180,10 +171,10 @@ void main() {
       // Verify we can access and modify state
       expect(writer.writtenRecords, isEmpty);
 
-      writer.write(LogRecord(message: 'First', timestamp: DateTime.now()));
+      writer.write(testRecord(message: 'First'));
       expect(writer.writtenRecords, hasLength(1));
 
-      writer.write(LogRecord(message: 'Second', timestamp: DateTime.now()));
+      writer.write(testRecord(message: 'Second'));
       expect(writer.writtenRecords, hasLength(2));
 
       // Verify we can clear state
@@ -196,46 +187,24 @@ void main() {
 
       expect(writer.writeCount, 0);
 
-      writer.write(LogRecord(message: 'First', timestamp: DateTime.now()));
+      writer.write(testRecord(message: 'First'));
       expect(writer.writeCount, 1);
 
-      writer.write(LogRecord(message: 'Second', timestamp: DateTime.now()));
+      writer.write(testRecord(message: 'Second'));
       expect(writer.writeCount, 2);
 
-      writer.write(LogRecord(message: 'Third', timestamp: DateTime.now()));
+      writer.write(testRecord(message: 'Third'));
       expect(writer.writeCount, 3);
     });
 
     test('implementation can filter by log level', () {
       final writer = FilteringWriter(minimumLevel: ChirpLogLevel.warning);
 
-      writer.write(
-        LogRecord(
-          message: 'Debug',
-          timestamp: DateTime.now(),
-          level: ChirpLogLevel.debug,
-        ),
-      );
-      writer.write(
-        LogRecord(
-          message: 'Info',
-          timestamp: DateTime.now(),
-        ),
-      );
-      writer.write(
-        LogRecord(
-          message: 'Warning',
-          timestamp: DateTime.now(),
-          level: ChirpLogLevel.warning,
-        ),
-      );
-      writer.write(
-        LogRecord(
-          message: 'Error',
-          timestamp: DateTime.now(),
-          level: ChirpLogLevel.error,
-        ),
-      );
+      writer.write(testRecord(message: 'Debug', level: ChirpLogLevel.debug));
+      writer.write(testRecord(message: 'Info'));
+      writer
+          .write(testRecord(message: 'Warning', level: ChirpLogLevel.warning));
+      writer.write(testRecord(message: 'Error', level: ChirpLogLevel.error));
 
       expect(writer.writtenRecords, hasLength(2));
       expect(writer.writtenRecords[0].message, 'Warning');
@@ -246,12 +215,11 @@ void main() {
       final writer = FormattingWriter();
 
       final now = DateTime(2024, 1, 15, 10, 30, 45);
-      writer.write(
-        LogRecord(
-          message: 'Test message',
-          timestamp: now,
-        ),
-      );
+      writer.write(testRecord(
+        message: 'Test message',
+        timestamp: now,
+        wallClock: now,
+      ));
 
       expect(writer.formattedLines, hasLength(1));
       expect(
@@ -263,11 +231,7 @@ void main() {
     test('records are immutable when passed to writer', () {
       final writer = FakeChirpWriter();
       final data = {'key': 'value'};
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime.now(),
-        data: data,
-      );
+      final record = testRecord(data: data);
 
       writer.write(record);
 

@@ -27,8 +27,15 @@ import 'package:chirp/chirp_spans.dart';
 /// This formatter prioritizes completeness over brevity, making it useful
 /// for debugging and development.
 class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
-  /// Whether to show the timestamp
-  final bool showTimestamp;
+  /// Controls which timestamp(s) to display.
+  ///
+  /// - [TimeDisplay.clock]: Show only the clock timestamp (mockable in tests)
+  /// - [TimeDisplay.wallClock]: Show only the wall-clock (real system time)
+  /// - [TimeDisplay.both]: Always show both timestamps
+  /// - [TimeDisplay.auto]: Show clock timestamp, and wall-clock in brackets
+  ///   if they differ by more than 1 second
+  /// - [TimeDisplay.off]: Don't show any timestamp
+  final TimeDisplay timeDisplay;
 
   /// Whether to show the log level (e.g., [INFO])
   final bool showLevel;
@@ -56,7 +63,7 @@ class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
   /// All fields are shown by default. Set any `show*` parameter to `false`
   /// to hide that element from the output.
   SimpleConsoleMessageFormatter({
-    this.showTimestamp = true,
+    this.timeDisplay = TimeDisplay.auto,
     this.showLevel = true,
     this.showLoggerName = true,
     this.showCaller = true,
@@ -70,7 +77,7 @@ class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
   LogSpan buildSpan(LogRecord record) {
     return _buildSimpleLogSpan(
       record: record,
-      showTimestamp: showTimestamp,
+      timeDisplay: timeDisplay,
       showLevel: showLevel,
       showLoggerName: showLoggerName,
       showCaller: showCaller,
@@ -84,7 +91,7 @@ class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
 /// Builds a span tree for a [LogRecord] in simple comprehensive format.
 LogSpan _buildSimpleLogSpan({
   required LogRecord record,
-  required bool showTimestamp,
+  required TimeDisplay timeDisplay,
   required bool showLevel,
   required bool showLoggerName,
   required bool showCaller,
@@ -94,9 +101,26 @@ LogSpan _buildSimpleLogSpan({
 }) {
   final spans = <LogSpan>[];
 
-  // Timestamp: 10:30:45.123
-  if (showTimestamp) {
-    spans.add(Timestamp(record.timestamp));
+  // Timestamp handling based on TimeDisplay mode
+  switch (timeDisplay) {
+    case TimeDisplay.clock:
+      spans.add(Timestamp(record.timestamp));
+    case TimeDisplay.wallClock:
+      spans.add(Timestamp(record.wallClock));
+    case TimeDisplay.both:
+      spans.add(Timestamp(record.wallClock));
+      spans.add(Whitespace());
+      spans.add(BracketedTimestamp(record.timestamp));
+    case TimeDisplay.auto:
+      spans.add(Timestamp(record.wallClock));
+      // Show clock time in brackets if it differs by more than 1 second
+      final diff = record.wallClock.difference(record.timestamp).abs();
+      if (diff > const Duration(milliseconds: 1)) {
+        spans.add(Whitespace());
+        spans.add(BracketedTimestamp(record.timestamp));
+      }
+    case TimeDisplay.off:
+      break;
   }
 
   // Level: [INFO]

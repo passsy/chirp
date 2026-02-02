@@ -35,7 +35,8 @@ export 'package:chirp/src/core/chirp_writer.dart' show ChirpWriter;
 export 'package:chirp/src/core/delegated_interceptor.dart'
     show DelegatedChirpInterceptor;
 export 'package:chirp/src/core/delegated_writer.dart' show DelegatedChirpWriter;
-export 'package:chirp/src/core/format_option.dart' show FormatOptions;
+export 'package:chirp/src/core/format_option.dart'
+    show FormatOptions, TimeDisplay;
 export 'package:chirp/src/core/log_level.dart' show ChirpLogLevel;
 export 'package:chirp/src/core/log_record.dart' show LogRecord;
 export 'package:chirp/src/formatters/aws_message_formatter.dart'

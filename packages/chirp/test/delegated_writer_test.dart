@@ -1,6 +1,8 @@
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('DelegatedChirpWriter', () {
     test('calls the provided function with the record', () {
@@ -9,7 +11,7 @@ void main() {
         receivedRecord = record;
       });
 
-      final record = LogRecord(message: 'Test', timestamp: DateTime.now());
+      final record = testRecord();
       writer.write(record);
 
       expect(receivedRecord, same(record));

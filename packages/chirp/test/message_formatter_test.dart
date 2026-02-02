@@ -3,13 +3,12 @@
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('ChirpMessageFormatter', () {
     test('CompactChirpMessageFormatter formats basic message', () {
-      final entry = LogRecord(
-        message: 'Test message',
-        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-      );
+      final entry = testRecord(message: 'Test message');
 
       final formatter = CompactChirpMessageFormatter();
       final buffer = ConsoleMessageBuffer(
@@ -21,13 +20,12 @@ void main() {
 
       // CompactChirpMessageFormatter uses callerLocation from stack trace
       // Without a stack trace, callerLocation is null and renders as empty
-      expect(result, '10:23:45.123 [info] Test message');
+      expect(result, '10:30:45.123 [info] Test message');
     });
 
     test('CompactChirpMessageFormatter handles error', () {
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
-        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Something went wrong'),
       );
 
@@ -41,15 +39,14 @@ void main() {
 
       expect(
         result,
-        '10:23:45.123 [info] Test message\n'
+        '10:30:45.123 [info] Test message\n'
         'Exception: Something went wrong',
       );
     });
 
     test('CompactChirpMessageFormatter handles stack trace', () {
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
-        timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
         stackTrace: StackTrace.fromString('#0 main (test.dart:10)'),
       );
 
@@ -63,7 +60,7 @@ void main() {
 
       expect(
         result,
-        '10:23:45.123 [info] Test message\n'
+        '10:30:45.123 [info] Test message\n'
         '#0 main (test.dart:10)',
       );
     });
