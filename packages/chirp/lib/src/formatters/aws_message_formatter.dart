@@ -60,9 +60,18 @@ class AwsMessageFormatter extends ConsoleMessageFormatter {
   /// Whether to include source location in log entries.
   final bool includeSourceLocation;
 
+  /// Controls which timestamp(s) to include in log entries.
+  ///
+  /// - [TimeDisplay.clock]: Include only `timestamp` (from injectable clock)
+  /// - [TimeDisplay.wallClock]: Include only `wallClock` (real system time)
+  /// - [TimeDisplay.both] or [TimeDisplay.auto]: Include both timestamps
+  /// - [TimeDisplay.off]: Include no timestamps
+  final TimeDisplay timeDisplay;
+
   /// Creates an AWS CloudWatch compatible JSON message formatter.
   AwsMessageFormatter({
     this.includeSourceLocation = false,
+    this.timeDisplay = TimeDisplay.clock,
   }) : super();
 
   @override
@@ -73,7 +82,18 @@ class AwsMessageFormatter extends ConsoleMessageFormatter {
     final map = <String, dynamic>{};
 
     // === Core fields ===
-    map['timestamp'] = record.timestamp.toUtc().toIso8601String();
+    switch (timeDisplay) {
+      case TimeDisplay.clock:
+        map['timestamp'] = record.timestamp.toUtc().toIso8601String();
+      case TimeDisplay.wallClock:
+        map['timestamp'] = record.wallClock.toUtc().toIso8601String();
+      case TimeDisplay.both:
+      case TimeDisplay.auto:
+        map['timestamp'] = record.wallClock.toUtc().toIso8601String();
+        map['clockTime'] = record.timestamp.toUtc().toIso8601String();
+      case TimeDisplay.off:
+        break;
+    }
     map['level'] = _awsLevel(record.level);
     map['message'] = record.message?.toString();
 

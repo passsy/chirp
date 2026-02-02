@@ -1,6 +1,8 @@
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('ChirpMessageWriter', () {
     test('ConsoleChirpMessageWriter writes to output', () {
@@ -11,8 +13,14 @@ void main() {
         output: messages.add,
       );
 
-      writer.write(_createEntry('Test message 1'));
-      writer.write(_createEntry('Test message 2'));
+      writer.write(testRecord(
+          message: 'Test message 1',
+          loggerName: 'TestClass',
+          instance: Object()));
+      writer.write(testRecord(
+          message: 'Test message 2',
+          loggerName: 'TestClass',
+          instance: Object()));
 
       expect(messages.length, 2);
       expect(messages[0], contains('Test message 1'));
@@ -25,14 +33,4 @@ void main() {
       expect(writer, isNotNull);
     });
   });
-}
-
-/// Helper to create a LogRecord for testing
-LogRecord _createEntry(Object? message) {
-  return LogRecord(
-    message: message,
-    timestamp: DateTime.now(),
-    loggerName: 'TestClass',
-    instance: Object(),
-  );
 }

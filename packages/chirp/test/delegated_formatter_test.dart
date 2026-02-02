@@ -1,6 +1,8 @@
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('DelegatedConsoleMessageFormatter', () {
     test('calls the provided function with record and buffer', () {
@@ -12,7 +14,7 @@ void main() {
         receivedBuffer = buffer;
       });
 
-      final record = LogRecord(message: 'Test', timestamp: DateTime.now());
+      final record = testRecord();
       final buffer = ConsoleMessageBuffer(
         capabilities: const TerminalCapabilities(),
       );

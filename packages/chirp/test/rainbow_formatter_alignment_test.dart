@@ -3,15 +3,18 @@
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('RainbowMessageFormatter output format', () {
     test('multiline data is formatted on separate lines', () {
       final formatter = RainbowMessageFormatter(
         options: const RainbowFormatOptions(data: DataPresentation.multiline),
       );
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
           'endpoint': '/api/profile',
@@ -38,9 +41,10 @@ void main() {
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
 
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Short',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         loggerName: 'API',
         data: {'key': 'value'},
       );
@@ -57,9 +61,10 @@ void main() {
 
     test('multiline message outputs each line', () {
       final formatter = RainbowMessageFormatter();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Line 1\nLine 2\nLine 3',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final buffer = ConsoleMessageBuffer(
@@ -74,9 +79,10 @@ void main() {
 
     test('message with metadata and data', () {
       final formatter = RainbowMessageFormatter();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         loggerName: 'VeryLongLoggerNameThatExceedsTheDefaultMetaWidth',
         caller: StackTrace.fromString(
           '#0      longMethodName (package:app/file.dart:100:5)',
@@ -102,9 +108,10 @@ void main() {
     test('removes anonymous closure from instance method', () {
       final formatter = RainbowMessageFormatter();
       final instance = _TestClass();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      DeviceManager._startAutoConnectScanning.<anonymous closure>.<anonymous closure> (package:app/device_manager.dart:809:5)',
@@ -131,9 +138,10 @@ void main() {
 
     test('removes anonymous closure from static method', () {
       final formatter = RainbowMessageFormatter();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         caller: StackTrace.fromString(
           '#0      UserService.logStatic.<anonymous closure> (package:app/user_service.dart:100:5)',
         ),
@@ -154,9 +162,10 @@ void main() {
 
     test('removes anonymous closure from top-level function', () {
       final formatter = RainbowMessageFormatter();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         caller: StackTrace.fromString(
           '#0      processData.<anonymous closure>.<anonymous closure> (package:app/utils.dart:42:5)',
         ),
@@ -178,9 +187,10 @@ void main() {
     test('removes multiple nested anonymous closures', () {
       final formatter = RainbowMessageFormatter();
       final instance = _TestClass();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      MyClass.myMethod.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:app/my_class.dart:50:5)',
@@ -204,9 +214,10 @@ void main() {
     test('preserves method name when no anonymous closure present', () {
       final formatter = RainbowMessageFormatter();
       final instance = _TestClass();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      MyClass.normalMethod (package:app/my_class.dart:50:5)',
@@ -232,9 +243,10 @@ void main() {
         () {
       final formatter = RainbowMessageFormatter();
       final instance = _TestClass();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         caller: StackTrace.fromString(
           '#0      _TestClass.processData.<anonymous closure> (package:app/test_class.dart:100:5)',
@@ -259,9 +271,10 @@ void main() {
   group('RainbowMessageFormatter color option', () {
     test('includes ANSI color codes when color is true (default)', () {
       final formatter = RainbowMessageFormatter();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final buffer = ConsoleMessageBuffer(
@@ -279,9 +292,10 @@ void main() {
 
     test('excludes ANSI color codes when color is false', () {
       final formatter = RainbowMessageFormatter();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final buffer = ConsoleMessageBuffer(
@@ -297,9 +311,10 @@ void main() {
     test('color:false produces plain text output', () {
       final formatter = RainbowMessageFormatter();
       final instance = _TestClass();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
         loggerName: 'TestLogger',
       );
@@ -324,9 +339,10 @@ void main() {
       final formatter = RainbowMessageFormatter(
         options: const RainbowFormatOptions(data: DataPresentation.multiline),
       );
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
           'action': 'login',
@@ -352,9 +368,10 @@ void main() {
       final formatter = RainbowMessageFormatter(
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
           'action': 'login',
@@ -378,9 +395,10 @@ void main() {
       final formatter = RainbowMessageFormatter(
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'User action',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'userId': 'user_123',
         },
@@ -403,9 +421,10 @@ void main() {
       final formatter = RainbowMessageFormatter(
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Request',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         data: {
           'method': 'POST',
           'endpoint': '/api/users',
@@ -430,9 +449,10 @@ void main() {
       final formatter = RainbowMessageFormatter(
         options: const RainbowFormatOptions(data: DataPresentation.inline),
       );
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final buffer = ConsoleMessageBuffer(
@@ -450,9 +470,10 @@ void main() {
     test('instance label has single @ and 4-char hash', () {
       final formatter = RainbowMessageFormatter();
       final instance = _TestClass();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Test message',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
       );
 
@@ -482,9 +503,9 @@ void main() {
     test('instance hash is exactly 4 hex characters', () {
       final formatter = RainbowMessageFormatter();
       final instance = _TestClass();
-      final entry = LogRecord(
-        message: 'Test',
+      final entry = testRecord(
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         instance: instance,
       );
 
@@ -510,9 +531,10 @@ void main() {
   group('RainbowMessageFormatter exception formatting', () {
     test('exceptions are output on new line', () {
       final formatter = RainbowMessageFormatter();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Operation failed',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Something went wrong'),
       );
 
@@ -532,9 +554,10 @@ void main() {
 
     test('stack traces are output on separate lines', () {
       final formatter = RainbowMessageFormatter();
-      final entry = LogRecord(
+      final entry = testRecord(
         message: 'Error occurred',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         error: Exception('Test error'),
         stackTrace: StackTrace.fromString(
           '#0      main (file.dart:10:5)\n#1      test (file.dart:20:3)',

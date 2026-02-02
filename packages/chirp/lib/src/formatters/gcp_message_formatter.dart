@@ -75,6 +75,14 @@ class GcpMessageFormatter extends ConsoleMessageFormatter {
   /// Service version for Error Reporting context.
   final String? serviceVersion;
 
+  /// Controls which timestamp(s) to include in log entries.
+  ///
+  /// - [TimeDisplay.clock]: Include only `timestamp` (from injectable clock)
+  /// - [TimeDisplay.wallClock]: Include only `wallClock` (real system time)
+  /// - [TimeDisplay.both] or [TimeDisplay.auto]: Include both timestamps
+  /// - [TimeDisplay.off]: Include no timestamps
+  final TimeDisplay timeDisplay;
+
   /// Creates a GCP-compatible JSON message formatter.
   GcpMessageFormatter({
     this.projectId,
@@ -82,6 +90,7 @@ class GcpMessageFormatter extends ConsoleMessageFormatter {
     this.enableErrorReporting = true,
     this.serviceName,
     this.serviceVersion,
+    this.timeDisplay = TimeDisplay.clock,
   }) : super();
 
   @override
@@ -116,7 +125,18 @@ class GcpMessageFormatter extends ConsoleMessageFormatter {
     map['message'] = messageBuffer.toString();
 
     // === Timestamp (ISO8601 with timezone) ===
-    map['timestamp'] = record.timestamp.toUtc().toIso8601String();
+    switch (timeDisplay) {
+      case TimeDisplay.clock:
+        map['timestamp'] = record.timestamp.toUtc().toIso8601String();
+      case TimeDisplay.wallClock:
+        map['timestamp'] = record.wallClock.toUtc().toIso8601String();
+      case TimeDisplay.both:
+      case TimeDisplay.auto:
+        map['timestamp'] = record.wallClock.toUtc().toIso8601String();
+        map['clockTime'] = record.timestamp.toUtc().toIso8601String();
+      case TimeDisplay.off:
+        break;
+    }
 
     // === Source Location ===
     // https://cloud.google.com/logging/docs/agent/logging/configuration#special-fields

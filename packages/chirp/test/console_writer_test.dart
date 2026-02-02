@@ -3,6 +3,8 @@
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('stripAnsiCodes', () {
     test('returns plain text unchanged', () {
@@ -741,10 +743,10 @@ void main() {
       );
 
       writer.write(
-        LogRecord(
+        testRecord(
           message: 'ignored',
-          level: ChirpLogLevel.info,
           timestamp: DateTime(2024),
+          wallClock: DateTime(2024),
         ),
       );
 
@@ -761,10 +763,10 @@ void main() {
       );
 
       writer.write(
-        LogRecord(
+        testRecord(
           message: 'ignored',
-          level: ChirpLogLevel.info,
           timestamp: DateTime(2024),
+          wallClock: DateTime(2024),
         ),
       );
 
@@ -781,10 +783,10 @@ void main() {
       );
 
       writer.write(
-        LogRecord(
+        testRecord(
           message: 'ignored',
-          level: ChirpLogLevel.info,
           timestamp: DateTime(2024),
+          wallClock: DateTime(2024),
         ),
       );
 

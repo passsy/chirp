@@ -4,14 +4,14 @@ import 'package:chirp/chirp.dart';
 import 'package:chirp/chirp_spans.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('SimpleConsoleMessageFormatter', () {
     test('formats basic log record with all fields', () {
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
+      final record = testRecord(
         message: 'User logged in',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
         loggerName: 'payment',
       );
 
@@ -27,10 +27,8 @@ void main() {
 
     test('formats with caller information', () {
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
         caller: StackTrace.fromString(
           '#0      MyClass.myMethod (file:///main.dart:42:5)\n'
           '#1      main (file:///main.dart:10:3)',
@@ -50,10 +48,7 @@ void main() {
     test('formats with instance information', () {
       final instance = _TestClass();
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         instance: instance,
       );
 
@@ -70,10 +65,8 @@ void main() {
 
     test('formats with structured data', () {
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
+      final record = testRecord(
         message: 'User action',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
         data: {'userId': 'user_123', 'action': 'login'},
       );
 
@@ -92,9 +85,8 @@ void main() {
 
     test('formats with error', () {
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Payment failed',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.error,
         error: Exception('Payment failed'),
       );
@@ -119,9 +111,8 @@ void main() {
         '#0      PaymentService.process (payment_service.dart:78:5)\n'
         '#1      handlePayment (main.dart:123:12)',
       );
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Error',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
         level: ChirpLogLevel.error,
         stackTrace: stackTrace,
       );
@@ -143,10 +134,7 @@ void main() {
 
     test('hides logger name for root logger', () {
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         loggerName: 'root',
       );
 
@@ -162,10 +150,7 @@ void main() {
 
     test('hides logger name when showLoggerName is false', () {
       final formatter = SimpleConsoleMessageFormatter(showLoggerName: false);
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         loggerName: 'payment',
       );
 
@@ -181,10 +166,7 @@ void main() {
 
     test('hides caller when showCaller is false', () {
       final formatter = SimpleConsoleMessageFormatter(showCaller: false);
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         caller: StackTrace.fromString(
           '#0      MyClass.myMethod (file:///main.dart:42:5)',
         ),
@@ -203,10 +185,7 @@ void main() {
     test('hides instance when showInstance is false', () {
       final instance = _TestClass();
       final formatter = SimpleConsoleMessageFormatter(showInstance: false);
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         instance: instance,
       );
 
@@ -222,10 +201,7 @@ void main() {
 
     test('hides data when showData is false', () {
       final formatter = SimpleConsoleMessageFormatter(showData: false);
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         data: {'key': 'value'},
       );
 
@@ -241,10 +217,7 @@ void main() {
 
     test('handles empty data map', () {
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         data: {},
       );
 
@@ -261,11 +234,7 @@ void main() {
 
     test('handles null caller', () {
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
-      );
+      final record = testRecord();
 
       final buffer = ConsoleMessageBuffer(
         capabilities:
@@ -279,10 +248,7 @@ void main() {
 
     test('extracts method name when different from class', () {
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         caller: StackTrace.fromString(
           '#0      differentMethod (file:///main.dart:42:5)',
         ),
@@ -301,10 +267,7 @@ void main() {
     test('extracts method from class.method format', () {
       final instance = _TestClass();
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         instance: instance,
         caller: StackTrace.fromString(
           '#0      _TestClass.doSomething (file:///main.dart:42:5)',
@@ -329,10 +292,8 @@ void main() {
           },
         ],
       );
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Original',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
       );
 
       final buffer = ConsoleMessageBuffer(
@@ -347,10 +308,7 @@ void main() {
 
     test('shows caller class name without hash when no instance', () {
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         caller: StackTrace.fromString(
           '#0      CallerClass.method (file:///main.dart:42:5)',
         ),
@@ -370,10 +328,7 @@ void main() {
     test('shows instance type with hash when instance present', () {
       final instance = _TestClass();
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         instance: instance,
       );
 
@@ -391,10 +346,7 @@ void main() {
     test('prioritizes instance type over caller class when both present', () {
       final instance = _TestClass();
       final formatter = SimpleConsoleMessageFormatter();
-      final record = LogRecord(
-        message: 'Test',
-        timestamp: DateTime(2024, 1, 10, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
+      final record = testRecord(
         instance: instance,
         caller: StackTrace.fromString(
           '#0      DifferentClass.method (file:///main.dart:42:5)',

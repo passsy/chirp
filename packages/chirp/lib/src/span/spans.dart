@@ -327,6 +327,35 @@ class Timestamp extends LeafSpan {
   String toString() => 'Timestamp($date)';
 }
 
+/// {@template chirp.BracketedTimestamp}
+/// Renders a timestamp in brackets: "[HH:mm:ss.mmm]".
+///
+/// Use this to show a secondary timestamp (e.g., wall-clock time) that should
+/// be visually distinct from the primary timestamp.
+///
+/// Example output: `[10:30:45.123]`
+/// {@endtemplate}
+@experimental
+class BracketedTimestamp extends LeafSpan {
+  /// The [DateTime] to extract the time from.
+  final DateTime date;
+
+  /// {@macro chirp.BracketedTimestamp}
+  BracketedTimestamp(this.date);
+
+  @override
+  LogSpan build() {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
+    final ms = date.millisecond.toString().padLeft(3, '0');
+    return PlainText('[$hour:$minute:$second.$ms]');
+  }
+
+  @override
+  String toString() => 'BracketedTimestamp($date)';
+}
+
 /// {@template chirp.DartSourceCodeLocation}
 /// Renders a source code location as "file:line".
 ///

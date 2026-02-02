@@ -22,8 +22,22 @@ class LogRecord {
   /// The log message
   final Object? message;
 
-  /// When this log was created
+  /// When this log was created (from injectable [clock]).
+  ///
+  /// This timestamp comes from the `clock` package which can be mocked in tests.
+  /// Use [wallClock] when you need the actual system time regardless of mocking.
   final DateTime timestamp;
+
+  /// The actual wall-clock time when this log was created.
+  ///
+  /// Unlike [timestamp] (which uses the injectable `clock` and can be mocked),
+  /// this always captures `DateTime.now()` - the real system time.
+  ///
+  /// Useful for:
+  /// - Production logs where you need accurate real-world timestamps
+  /// - Correlating logs with external systems that use wall-clock time
+  /// - Debugging timing issues while tests use mocked time for [timestamp]
+  final DateTime wallClock;
 
   /// Log severity level
   final ChirpLogLevel level;
@@ -75,6 +89,7 @@ class LogRecord {
   LogRecord({
     required this.message,
     required this.timestamp,
+    required this.wallClock,
     Zone? zone,
     this.level = ChirpLogLevel.info,
     this.error,
@@ -115,6 +130,7 @@ class LogRecord {
   LogRecord Function({
     Object? message,
     DateTime? timestamp,
+    DateTime? wallClock,
     Zone? zone,
     ChirpLogLevel? level,
     Object? error,
@@ -130,6 +146,7 @@ class LogRecord {
   LogRecord _copyWithImpl({
     Object? message = _undefined,
     DateTime? timestamp,
+    DateTime? wallClock,
     Zone? zone,
     ChirpLogLevel? level,
     Object? error = _undefined,
@@ -144,6 +161,7 @@ class LogRecord {
     return LogRecord(
       message: identical(message, _undefined) ? this.message : message,
       timestamp: timestamp ?? this.timestamp,
+      wallClock: wallClock ?? this.wallClock,
       zone: zone ?? this.zone,
       level: level ?? this.level,
       error: identical(error, _undefined) ? this.error : error,

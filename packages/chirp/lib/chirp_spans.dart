@@ -29,6 +29,7 @@ export 'package:chirp/src/span/spans.dart'
         BoxBorderChars,
         BoxBorderStyle,
         BracketedLogLevel,
+        BracketedTimestamp,
         ChirpLogo,
         ClassName,
         DartSourceCodeLocation,

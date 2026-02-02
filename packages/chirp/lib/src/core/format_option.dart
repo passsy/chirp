@@ -87,3 +87,37 @@ class FormatOptions {
   /// Subclass this to define custom options for your formatter.
   const FormatOptions();
 }
+
+/// Controls which timestamp(s) to display in log output.
+///
+/// Used by formatters to determine how time information is rendered.
+enum TimeDisplay {
+  /// Show only the clock timestamp (from injectable [Clock], mockable in tests).
+  ///
+  /// Output: `10:30:45.123`
+  clock,
+
+  /// Show only the wall-clock timestamp (real system time from `DateTime.now()`).
+  ///
+  /// Output: `10:30:45.123`
+  wallClock,
+
+  /// Always show both wall-clock and clock timestamp in brackets.
+  ///
+  /// Output: `10:30:47.891 [10:30:45.123]`
+  /// (wall-clock first, clock time in brackets)
+  both,
+
+  /// Show wall-clock, and clock timestamp in brackets if they differ by >1s.
+  ///
+  /// This is useful when running tests with a mocked clock - you'll see both
+  /// the real time and the mocked time when they diverge.
+  ///
+  /// Output when same: `10:30:45.123`
+  /// Output when different: `10:30:47.891 [10:30:45.123]`
+  /// (wall-clock first, clock time in brackets)
+  auto,
+
+  /// Don't show any timestamp.
+  off,
+}

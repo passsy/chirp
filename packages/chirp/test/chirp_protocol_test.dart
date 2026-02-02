@@ -1,6 +1,8 @@
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('ChirpLogLevel', () {
     test('standard log levels have correct severity values', () {
@@ -39,29 +41,24 @@ void main() {
 
   group('LogRecord', () {
     test('creates a log record with required fields', () {
-      final now = DateTime.now();
-      final record = LogRecord(
-        message: 'Test message',
-        timestamp: now,
-      );
+      final record = testRecord(message: 'Test message');
 
       expect(record.message, 'Test message');
-      expect(record.timestamp, now);
+      expect(record.timestamp, testTimestamp);
       expect(record.level, ChirpLogLevel.info);
     });
 
     test('creates a log record with all optional fields', () {
-      final now = DateTime.now();
       final stackTrace = StackTrace.current;
+      final caller = StackTrace.current;
       final instance = Object();
 
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Full message',
-        timestamp: now,
         level: ChirpLogLevel.error,
         error: Exception('test error'),
         stackTrace: stackTrace,
-        caller: StackTrace.current,
+        caller: caller,
         skipFrames: 2,
         instance: instance,
         loggerName: 'TestLogger',

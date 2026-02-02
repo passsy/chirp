@@ -4,6 +4,8 @@ import 'package:chirp/chirp.dart';
 import 'package:chirp/chirp_spans.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('Colored', () {
     test('applies color to each line of multi-line strings', () {
@@ -128,10 +130,10 @@ void main() {
 
   group('SpanTransformer', () {
     test('replaces Timestamp with level emoji', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-        level: ChirpLogLevel.info,
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final formatter = RainbowMessageFormatter(
@@ -157,10 +159,10 @@ void main() {
     });
 
     test('wraps Timestamp with custom span', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-        level: ChirpLogLevel.info,
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final formatter = RainbowMessageFormatter(
@@ -186,10 +188,10 @@ void main() {
     });
 
     test('removes Timestamp entirely', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-        level: ChirpLogLevel.info,
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final formatter = RainbowMessageFormatter(
@@ -213,9 +215,10 @@ void main() {
     });
 
     test('wraps entire WTF log with Bordered using root.wrap', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'WTF error',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.wtf,
       );
 
@@ -915,10 +918,10 @@ void main() {
 
   group('SpanFormatOptions', () {
     test('applies spanTransformers from formatOptions', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-        level: ChirpLogLevel.info,
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         formatOptions: [
           SpanFormatOptions(
             spanTransformers: [
@@ -952,10 +955,10 @@ void main() {
     test('per-log transformers run after formatter transformers', () {
       final transformerOrder = <String>[];
 
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-        level: ChirpLogLevel.info,
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         formatOptions: [
           SpanFormatOptions(
             spanTransformers: [
@@ -985,10 +988,10 @@ void main() {
     });
 
     test('multiple SpanFormatOptions are all applied', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-        level: ChirpLogLevel.info,
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         formatOptions: [
           SpanFormatOptions(
             spanTransformers: [
@@ -1028,9 +1031,10 @@ void main() {
     });
 
     test('wraps entire message with Bordered via per-log transformer', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Important',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         level: ChirpLogLevel.warning,
         formatOptions: [
           SpanFormatOptions(
@@ -1075,10 +1079,10 @@ void main() {
     });
 
     test('empty formatOptions list does not affect output', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-        level: ChirpLogLevel.info,
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         formatOptions: const [],
       );
 
@@ -1102,10 +1106,10 @@ void main() {
     });
 
     test('null formatOptions does not affect output', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-        level: ChirpLogLevel.info,
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
       );
 
       final formatter = RainbowMessageFormatter(
@@ -1128,10 +1132,10 @@ void main() {
     });
 
     test('non-SpanFormatOptions in formatOptions are ignored', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-        level: ChirpLogLevel.info,
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         formatOptions: const [
           FormatOptions(), // Not SpanFormatOptions
           RainbowFormatOptions(showTime: false), // Different type
@@ -1160,10 +1164,10 @@ void main() {
     });
 
     test('works with CompactChirpMessageFormatter', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello',
         timestamp: DateTime(2024, 1, 15, 10, 23, 45, 123),
-        level: ChirpLogLevel.info,
+        wallClock: DateTime(2024, 1, 15, 10, 23, 45, 123),
         formatOptions: [
           SpanFormatOptions(
             spanTransformers: [

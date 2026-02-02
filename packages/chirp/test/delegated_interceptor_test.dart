@@ -1,6 +1,8 @@
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('DelegatedChirpInterceptor', () {
     test('calls the provided function with the record', () {
@@ -10,7 +12,7 @@ void main() {
         return record;
       });
 
-      final record = LogRecord(message: 'Test', timestamp: DateTime.now());
+      final record = testRecord();
       interceptor.intercept(record);
 
       expect(receivedRecord, same(record));
@@ -18,7 +20,7 @@ void main() {
 
     test('returns the function result', () {
       final interceptor = DelegatedChirpInterceptor((record) => null);
-      final record = LogRecord(message: 'Test', timestamp: DateTime.now());
+      final record = testRecord();
 
       expect(interceptor.intercept(record), isNull);
     });

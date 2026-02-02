@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   group('GcpMessageFormatter', () {
     ConsoleMessageBuffer createBuffer() {
@@ -12,9 +14,10 @@ void main() {
     }
 
     test('formats basic log as JSON with severity and message', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Server started',
         timestamp: DateTime.utc(2024, 1, 15, 10, 30, 45, 123),
+        wallClock: DateTime.utc(2024, 1, 15, 10, 30, 45, 123),
       );
 
       final formatter = GcpMessageFormatter();
@@ -42,9 +45,9 @@ void main() {
       };
 
       for (final entry in levels.entries) {
-        final record = LogRecord(
-          message: 'Test',
+        final record = testRecord(
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           level: entry.key,
         );
 
@@ -59,9 +62,10 @@ void main() {
     });
 
     test('includes custom data fields at root level', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Request received',
         timestamp: DateTime.utc(2024, 1, 15, 10, 30, 45),
+        wallClock: DateTime.utc(2024, 1, 15, 10, 30, 45),
         data: {
           'requestId': 'abc123',
           'method': 'GET',
@@ -81,9 +85,10 @@ void main() {
     });
 
     test('does not overwrite core fields (severity, message, timestamp)', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Test',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         data: {
           'severity': 'SHOULD_NOT_OVERRIDE',
           'message': 'SHOULD_NOT_OVERRIDE',
@@ -106,9 +111,9 @@ void main() {
     });
 
     test('allows user to override logging.googleapis.com/labels', () {
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         loggerName: 'MyLogger', // This causes labels to be generated
         data: {
           'logging.googleapis.com/labels': {'custom': 'user-value'},
@@ -129,9 +134,10 @@ void main() {
     });
 
     test('appends error and stack trace to message for Error Reporting', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Operation failed',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         level: ChirpLogLevel.error,
         error: Exception('Something went wrong'),
         stackTrace: StackTrace.fromString('#0      main (file.dart:10:5)'),
@@ -150,9 +156,9 @@ void main() {
     });
 
     test('includes sourceLocation when caller is provided', () {
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         caller: StackTrace.fromString(
           '#0      MyClass.method (package:my_app/src/server.dart:42:10)',
         ),
@@ -172,9 +178,9 @@ void main() {
     });
 
     test('uses packageRelativePath for sourceLocation file', () {
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         caller: StackTrace.fromString(
           '#0      main (file:///Users/dev/project/bin/app.dart:10:5)',
         ),
@@ -192,9 +198,9 @@ void main() {
     });
 
     test('excludes sourceLocation when includeSourceLocation is false', () {
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         caller: StackTrace.fromString(
           '#0      MyClass.method (package:my_app/src/server.dart:42:10)',
         ),
@@ -214,9 +220,9 @@ void main() {
 
     test('includes labels with logger, class, and instance', () {
       final instance = _TestClass();
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         loggerName: 'MyService',
         instance: instance,
       );
@@ -237,9 +243,9 @@ void main() {
     });
 
     test('does not include instance when no instance provided', () {
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         loggerName: 'MyService',
       );
 
@@ -257,9 +263,10 @@ void main() {
     });
 
     test('adds @type field for errors without stack trace', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Error occurred',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         level: ChirpLogLevel.error,
         error: Exception('Test error'),
         // No stackTrace
@@ -278,9 +285,10 @@ void main() {
     });
 
     test('does not add @type field when error has stack trace', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Error occurred',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         level: ChirpLogLevel.error,
         error: Exception('Test error'),
         stackTrace: StackTrace.fromString('#0      main (file.dart:10:5)'),
@@ -296,9 +304,10 @@ void main() {
     });
 
     test('does not add @type field for non-error levels', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Warning',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         level: ChirpLogLevel.warning,
       );
 
@@ -312,9 +321,10 @@ void main() {
     });
 
     test('includes serviceContext when serviceName is configured', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Error occurred',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         level: ChirpLogLevel.error,
         error: Exception('Test error'),
       );
@@ -335,9 +345,10 @@ void main() {
 
     test('does not include serviceContext when serviceName is not configured',
         () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Error occurred',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         level: ChirpLogLevel.error,
         error: Exception('Test error'),
       );
@@ -355,9 +366,10 @@ void main() {
     });
 
     test('does not include Error Reporting fields when disabled', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Error occurred',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         level: ChirpLogLevel.error,
         error: Exception('Test error'),
       );
@@ -374,9 +386,9 @@ void main() {
 
     test('uses UTC timestamp', () {
       final localTime = DateTime(2024, 1, 15, 12, 30, 45);
-      final record = LogRecord(
-        message: 'Test',
+      final record = testRecord(
         timestamp: localTime,
+        wallClock: localTime,
       );
 
       final formatter = GcpMessageFormatter();
@@ -404,9 +416,10 @@ void main() {
     });
 
     test('outputs single-line JSON (no newlines in output)', () {
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Test message',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         data: {'key': 'value'},
       );
 
@@ -420,9 +433,10 @@ void main() {
 
     test('converts non-serializable objects in data to string', () {
       final nonSerializable = _NonSerializableObject('test-value');
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Request logged',
         timestamp: DateTime.utc(2024, 1, 15),
+        wallClock: DateTime.utc(2024, 1, 15),
         data: {
           'request': nonSerializable,
           'nested': {
@@ -457,9 +471,10 @@ void main() {
 
     group('trace fields', () {
       test('allows user to set trace ID via data', () {
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Processing request',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {
             'logging.googleapis.com/trace':
                 'projects/my-project/traces/463ac35c9f6413ad48485a3953bb6124',
@@ -479,9 +494,10 @@ void main() {
       });
 
       test('allows user to set span ID via data', () {
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Processing request',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {
             'logging.googleapis.com/spanId': '0020000000000001',
           },
@@ -497,9 +513,10 @@ void main() {
       });
 
       test('allows user to set trace_sampled via data', () {
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Processing request',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {
             'logging.googleapis.com/trace_sampled': true,
           },
@@ -515,9 +532,10 @@ void main() {
       });
 
       test('allows user to set all trace fields together', () {
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Processing request',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {
             'logging.googleapis.com/trace':
                 'projects/my-project/traces/463ac35c9f6413ad48485a3953bb6124',
@@ -541,9 +559,10 @@ void main() {
       });
 
       test('allows user to set insertId via data', () {
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Processing request',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {
             'logging.googleapis.com/insertId': 'unique-insert-id-123',
           },
@@ -562,9 +581,10 @@ void main() {
       });
 
       test('allows user to set operation via data', () {
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Processing request',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {
             'logging.googleapis.com/operation': {
               'id': 'operation-123',
@@ -604,9 +624,10 @@ void main() {
           },
         );
 
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Request received',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {'request': request},
         );
 
@@ -634,9 +655,10 @@ void main() {
           contentLength: 1234,
         );
 
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Request completed',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {'response': response},
         );
 
@@ -666,9 +688,10 @@ void main() {
           contentLength: 512,
         );
 
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Request completed',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {
             'request': request,
             'response': response,
@@ -702,9 +725,10 @@ void main() {
       test('includes latency from durationMs', () {
         final response = _MockShelfResponse(statusCode: 200);
 
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Request completed',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {
             'response': response,
             'durationMs': 1500,
@@ -722,9 +746,9 @@ void main() {
       });
 
       test('does not create httpRequest for non-shelf objects', () {
-        final record = LogRecord(
-          message: 'Test',
+        final record = testRecord(
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {
             'request': 'just a string',
             'response': 42,
@@ -749,9 +773,10 @@ void main() {
           headers: {},
         );
 
-        final record = LogRecord(
+        final record = testRecord(
           message: 'Request',
           timestamp: DateTime.utc(2024, 1, 15),
+          wallClock: DateTime.utc(2024, 1, 15),
           data: {
             'request': request,
             'requestId': 'abc123',

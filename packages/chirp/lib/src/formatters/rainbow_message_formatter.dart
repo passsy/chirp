@@ -36,12 +36,14 @@ class RainbowMessageFormatter extends SpanBasedFormatter {
   }) : options = options ?? const RainbowFormatOptions();
 
   @override
-  bool get requiresCallerInfo =>
-      options.showLocation || options.showClass || options.showMethod;
+  bool get requiresCallerInfo {
+    final o = RainbowFormatOptions.defaults.merge(options);
+    return o.showLocation! || o.showClass! || o.showMethod!;
+  }
 
   @override
   LogSpan buildSpan(LogRecord record) {
-    final effectiveOptions = options.merge(
+    final effectiveOptions = RainbowFormatOptions.defaults.merge(options).merge(
         record.formatOptions?.firstWhereTypeOrNull<RainbowFormatOptions>());
 
     return _buildRainbowLogSpan(
@@ -78,13 +80,30 @@ LogSpan _buildRainbowLogSpan({
 
   final spans = <LogSpan>[];
 
-  // Timestamp
-  if (options.showTime) {
-    spans.addAll([dimmed(Timestamp(record.timestamp))]);
+  // Timestamp handling based on TimeDisplay mode
+  switch (options.timeDisplay!) {
+    case TimeDisplay.clock:
+      spans.add(dimmed(Timestamp(record.timestamp)));
+    case TimeDisplay.wallClock:
+      spans.add(dimmed(Timestamp(record.wallClock)));
+    case TimeDisplay.both:
+      spans.add(dimmed(Timestamp(record.wallClock)));
+      spans.add(Whitespace());
+      spans.add(dimmed(BracketedTimestamp(record.timestamp)));
+    case TimeDisplay.auto:
+      spans.add(dimmed(Timestamp(record.wallClock)));
+      // Show clock time in brackets if it differs by more than 1 second
+      final diff = record.wallClock.difference(record.timestamp).abs();
+      if (diff > const Duration(seconds: 1)) {
+        spans.add(Whitespace());
+        spans.add(dimmed(BracketedTimestamp(record.timestamp)));
+      }
+    case TimeDisplay.off:
+      break;
   }
 
   // Level
-  if (options.showLogLevel) {
+  if (options.showLogLevel!) {
     spans.addAll([
       Surrounded(
         prefix: Whitespace(),
@@ -97,7 +116,7 @@ LogSpan _buildRainbowLogSpan({
   }
 
   // Location
-  if (options.showLocation) {
+  if (options.showLocation!) {
     final fileName = callerInfo?.callerFileName;
     final location = fileName == null
         ? null
@@ -110,7 +129,7 @@ LogSpan _buildRainbowLogSpan({
   }
 
   // Logger name
-  if (options.showLogger) {
+  if (options.showLogger!) {
     final name = record.loggerName;
     final loggerName = name == null
         ? null
@@ -122,7 +141,7 @@ LogSpan _buildRainbowLogSpan({
   }
 
   // Class name
-  if (options.showClass) {
+  if (options.showClass!) {
     final classNameSpan = ClassName.fromRecord(record, hashLength: 4);
     LogSpan? className;
     if (classNameSpan != null) {
@@ -136,7 +155,7 @@ LogSpan _buildRainbowLogSpan({
   }
 
   // Method name
-  if (options.showMethod) {
+  if (options.showMethod!) {
     LogSpan? methodName;
     if (callerInfo != null) {
       var name = callerInfo.callerMethod;
@@ -167,7 +186,7 @@ LogSpan _buildRainbowLogSpan({
   // Data
   final data = record.data;
   if (data.isNotEmpty) {
-    final dataSpan = switch (options.data) {
+    final dataSpan = switch (options.data!) {
       DataPresentation.inline => Surrounded(
           prefix: PlainText(' ('),
           child: InlineData(data),
@@ -213,49 +232,79 @@ LogSpan _buildRainbowLogSpan({
 /// Format options for [RainbowMessageFormatter].
 ///
 /// Controls which elements are displayed in the formatted log output.
+/// All fields are nullable - use [defaults] to get an options object with
+/// all default values, or [withDefaults] to fill in missing values.
 class RainbowFormatOptions extends FormatOptions {
   /// Creates format options for the rainbow formatter.
+  ///
+  /// The deprecated [showTime] parameter is converted to [timeDisplay]:
+  /// - `showTime: true` → `TimeDisplay.clock`
+  /// - `showTime: false` → `TimeDisplay.off`
   const RainbowFormatOptions({
-    this.data = DataPresentation.inline,
-    this.showTime = true,
-    this.showLocation = true,
-    this.showLogger = true,
-    this.showClass = true,
-    this.showMethod = true,
-    this.showLogLevel = true,
-  });
+    this.data,
+    TimeDisplay? timeDisplay,
+    @Deprecated('Use timeDisplay instead. '
+        'showTime: true maps to TimeDisplay.clock, '
+        'showTime: false maps to TimeDisplay.off')
+    bool? showTime,
+    this.showLocation,
+    this.showLogger,
+    this.showClass,
+    this.showMethod,
+    this.showLogLevel,
+  }) : timeDisplay = showTime == null
+            ? timeDisplay
+            : (showTime ? TimeDisplay.clock : TimeDisplay.off);
+
+  /// Default options with all values set.
+  static const defaults = RainbowFormatOptions(
+    data: DataPresentation.inline,
+    timeDisplay: TimeDisplay.auto,
+    showLocation: true,
+    showLogger: true,
+    showClass: true,
+    showMethod: true,
+    showLogLevel: true,
+  );
 
   /// How structured data is rendered ([DataPresentation.inline] or multiline).
-  final DataPresentation data;
+  final DataPresentation? data;
 
-  /// Whether to show the timestamp.
-  final bool showTime;
+  /// Controls which timestamp(s) to display.
+  ///
+  /// - [TimeDisplay.clock]: Show only the clock timestamp (mockable in tests)
+  /// - [TimeDisplay.wallClock]: Show only the wall-clock (real system time)
+  /// - [TimeDisplay.auto]: Show clock timestamp, and wall-clock in brackets
+  ///   if they differ by more than 1 second
+  /// - [TimeDisplay.off]: Don't show any timestamp
+  final TimeDisplay? timeDisplay;
 
   /// Whether to show the source code location.
-  final bool showLocation;
+  final bool? showLocation;
 
   /// Whether to show the logger name.
-  final bool showLogger;
+  final bool? showLogger;
 
   /// Whether to show the class name.
-  final bool showClass;
+  final bool? showClass;
 
   /// Whether to show the method name.
-  final bool showMethod;
+  final bool? showMethod;
 
   /// Whether to show the log level.
-  final bool showLogLevel;
+  final bool? showLogLevel;
 
   /// Merges [other] options into this, with [other] values taking precedence.
   RainbowFormatOptions merge(RainbowFormatOptions? other) {
+    if (other == null) return this;
     return RainbowFormatOptions(
-      data: other?.data ?? data,
-      showTime: other?.showTime ?? showTime,
-      showLocation: other?.showLocation ?? showLocation,
-      showLogger: other?.showLogger ?? showLogger,
-      showClass: other?.showClass ?? showClass,
-      showMethod: other?.showMethod ?? showMethod,
-      showLogLevel: other?.showLogLevel ?? showLogLevel,
+      data: other.data ?? data,
+      timeDisplay: other.timeDisplay ?? timeDisplay,
+      showLocation: other.showLocation ?? showLocation,
+      showLogger: other.showLogger ?? showLogger,
+      showClass: other.showClass ?? showClass,
+      showMethod: other.showMethod ?? showMethod,
+      showLogLevel: other.showLogLevel ?? showLogLevel,
     );
   }
 }

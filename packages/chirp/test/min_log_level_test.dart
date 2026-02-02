@@ -660,6 +660,7 @@ class _PrefixInterceptor extends ChirpInterceptor {
       caller: record.caller,
       skipFrames: record.skipFrames,
       timestamp: record.timestamp,
+      wallClock: record.wallClock,
       zone: record.zone,
       loggerName: record.loggerName,
       instance: record.instance,
