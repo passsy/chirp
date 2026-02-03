@@ -208,8 +208,8 @@ enum FlushStrategy {
 
   /// Buffered async - accumulates records and flushes periodically.
   ///
-  /// Records are buffered and flushed to disk asynchronously after a
-  /// debounce interval.
+  /// Records are buffered and flushed to disk asynchronously based on
+  /// [RotatingFileWriter.flushInterval] (default: 1 second).
   ///
   /// **Important:** Error-level logs and above (error, critical, wtf) are
   /// always written synchronously to ensure they're persisted immediately,
@@ -522,7 +522,7 @@ class RotatingFileWriter extends ChirpWriter {
   ///
   /// Records are buffered and flushed to disk after this interval.
   /// Shorter intervals reduce data loss risk but increase I/O frequency.
-  /// Default is 100ms.
+  /// Default is 1 second.
   ///
   /// Note: Error-level logs and above are always written synchronously,
   /// regardless of this interval.
@@ -565,7 +565,7 @@ class RotatingFileWriter extends ChirpWriter {
     this.encoding = utf8,
     this.onError,
     FlushStrategy? flushStrategy,
-    this.flushInterval = const Duration(milliseconds: 100),
+    this.flushInterval = const Duration(seconds: 1),
   })  : flushStrategy = flushStrategy ?? _defaultFlushStrategy,
         formatter = formatter ?? const SimpleFileFormatter();
 
