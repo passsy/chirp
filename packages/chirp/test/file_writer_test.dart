@@ -993,6 +993,151 @@ void main() {
       expect(failedRecords[1]?.message, 'Fail 2');
     });
   });
+
+  group('FlushStrategy.buffered', () {
+    test('buffers records and flushes on close', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(seconds: 10), // Long interval so it doesn't auto-flush
+      );
+      addTearDown(() => writer.close());
+
+      // Write several records
+      for (var i = 0; i < 5; i++) {
+        writer.write(testRecord(message: 'Buffered message $i'));
+      }
+
+      // File may not exist yet or be empty (buffered)
+      // Close should flush all records
+      await writer.close();
+
+      final content = File(logPath).readAsStringSync();
+      for (var i = 0; i < 5; i++) {
+        expect(content, contains('Buffered message $i'),
+            reason: 'All buffered messages should be written after close');
+      }
+    });
+
+    test('writes error-level logs synchronously for immediate visibility',
+        () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(seconds: 10), // Long interval
+      );
+      addTearDown(() => writer.close());
+
+      // Write only error messages (no buffered records to flush first)
+      writer.write(testRecord(message: 'Error message', level: ChirpLogLevel.error));
+      writer.write(testRecord(message: 'Critical message', level: ChirpLogLevel.critical));
+
+      // Without flushing, error messages should already be on disk
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('Error message'),
+          reason: 'Error should be written synchronously');
+      expect(content, contains('Critical message'),
+          reason: 'Critical should be written synchronously');
+
+      await writer.close();
+    });
+
+    test('flushes buffered records before writing error to maintain order',
+        () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(seconds: 10), // Long interval
+      );
+      addTearDown(() => writer.close());
+
+      // Write info messages (buffered), then an error (triggers sync flush)
+      writer.write(testRecord(message: 'Info 1', level: ChirpLogLevel.info));
+      writer.write(testRecord(message: 'Info 2', level: ChirpLogLevel.info));
+      writer.write(testRecord(message: 'Error', level: ChirpLogLevel.error));
+
+      // All messages should be on disk, in chronological order
+      final content = File(logPath).readAsStringSync();
+      final lines = content.trim().split('\n');
+
+      expect(lines.length, 3, reason: 'All 3 messages should be written');
+      expect(lines[0], contains('Info 1'),
+          reason: 'First buffered message should be first');
+      expect(lines[1], contains('Info 2'),
+          reason: 'Second buffered message should be second');
+      expect(lines[2], contains('Error'),
+          reason: 'Error message should be last');
+
+      await writer.close();
+    });
+
+    test('flush() writes all pending records', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(seconds: 10),
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'Before flush'));
+
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('Before flush'),
+          reason: 'Message should be written after explicit flush');
+    });
+
+    test('supports rotation in buffered mode', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(milliseconds: 10),
+        rotationConfig: const FileRotationConfig.daily(),
+      );
+      addTearDown(() => writer.close());
+
+      // Write on Jan 15
+      writer.write(testRecord(
+        message: 'Message on Jan 15',
+        timestamp: DateTime(2024, 1, 15, 10),
+      ));
+
+      // Write on Jan 16 (should trigger rotation)
+      writer.write(testRecord(
+        message: 'Message on Jan 16',
+        timestamp: DateTime(2024, 1, 16, 10),
+      ));
+
+      await writer.close();
+
+      final files = tempDir.listSync().whereType<File>().toList();
+      expect(files.length, 2,
+          reason: 'Daily rotation should create 2 files in buffered mode');
+    });
+  });
+
+  group('FlushStrategy default', () {
+    test('defaults to synchronous in debug mode (asserts enabled)', () {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePath: logPath);
+      addTearDown(() => writer.close());
+
+      // In test (debug) mode, default should be synchronous
+      expect(writer.flushStrategy, FlushStrategy.synchronous);
+    });
+  });
 }
 
 /// Creates a temporary directory for a test and registers cleanup.

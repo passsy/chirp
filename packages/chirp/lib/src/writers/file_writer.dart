@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:chirp/chirp.dart';
 import 'package:clock/clock.dart';
@@ -194,34 +193,46 @@ enum FileRotationInterval {
 /// Mode for how the file writer performs I/O operations.
 ///
 /// Different modes trade off simplicity, latency, and main thread blocking.
-enum FileWriteMode {
+enum FlushStrategy {
   /// Synchronous writes - blocks on every write.
   ///
-  /// This is the default mode. Every log record is immediately written to disk
-  /// synchronously, which blocks the main thread until the I/O completes.
+  /// Every log record is immediately written to disk synchronously, which
+  /// blocks the main thread until the I/O completes.
   ///
   /// **Pros:** Simple, guaranteed durability, no buffering delays.
   /// **Cons:** Can cause frame drops in UI applications with heavy logging.
-  sync,
+  ///
+  /// This is the default in debug mode (when asserts are enabled) for
+  /// immediate log visibility during development.
+  synchronous,
 
   /// Buffered async - accumulates records and flushes periodically.
   ///
-  /// Records are buffered in the main isolate and flushed to disk
-  /// asynchronously after a debounce interval or when the buffer is full.
+  /// Records are buffered and flushed to disk asynchronously after a
+  /// debounce interval.
+  ///
+  /// **Important:** Error-level logs and above (error, critical, wtf) are
+  /// always written synchronously to ensure they're persisted immediately,
+  /// which is critical for crash debugging.
   ///
   /// **Pros:** Low overhead, reduced I/O frequency, minimal blocking.
-  /// **Cons:** Small delay before logs reach disk, potential data loss on crash.
+  /// **Cons:** Small delay before non-error logs reach disk.
+  ///
+  /// This is the default in release mode for better performance.
   buffered,
+}
 
-  /// Isolate-based - offloads all I/O to a background isolate.
-  ///
-  /// Records are sent to a dedicated background isolate via [SendPort].
-  /// The background isolate handles formatting and writing, so the main
-  /// isolate never performs file I/O.
-  ///
-  /// **Pros:** Zero main-thread I/O blocking, best for 60fps apps.
-  /// **Cons:** Higher memory overhead, isolate startup cost, message passing.
-  isolate,
+/// Returns the default [FlushStrategy] based on the build mode.
+///
+/// - Debug mode (asserts enabled): [FlushStrategy.synchronous] for immediate logs
+/// - Release mode: [FlushStrategy.buffered] for better performance
+FlushStrategy get _defaultFlushStrategy {
+  var isDebug = false;
+  assert(() {
+    isDebug = true;
+    return true;
+  }());
+  return isDebug ? FlushStrategy.synchronous : FlushStrategy.buffered;
 }
 
 /// Formatter for converting [LogRecord] to plain text for file output.
@@ -461,24 +472,18 @@ class JsonFileFormatter implements FileMessageFormatter {
 /// ## Thread Safety
 ///
 /// File writes are performed synchronously by default. For high-throughput
-/// scenarios, use [FileWriteMode.buffered] or [FileWriteMode.isolate].
+/// scenarios, use [FlushStrategy.buffered] or [FlushStrategy.isolate].
 ///
-/// ## Async Write Modes
+/// ## Async Write Mode
 ///
-/// Use [writeMode] to control how I/O is performed:
+/// Use [flushStrategy] to control how I/O is performed:
 ///
 /// ```dart
 /// // Buffered: accumulates records and flushes periodically
 /// final writer = RotatingFileWriter(
 ///   baseFilePath: '/var/log/app.log',
-///   writeMode: FileWriteMode.buffered,
+///   flushStrategy: FlushStrategy.buffered,
 ///   flushInterval: Duration(milliseconds: 100),
-/// );
-///
-/// // Isolate: offloads all I/O to a background isolate
-/// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.log',
-///   writeMode: FileWriteMode.isolate,
 /// );
 /// ```
 class RotatingFileWriter extends ChirpWriter {
@@ -505,24 +510,23 @@ class RotatingFileWriter extends ChirpWriter {
 
   /// Mode for how file I/O is performed.
   ///
-  /// - [FileWriteMode.sync]: Immediate synchronous writes (default)
-  /// - [FileWriteMode.buffered]: Buffered async writes with periodic flushing
-  /// - [FileWriteMode.isolate]: Dedicated background isolate for I/O
-  final FileWriteMode writeMode;
+  /// - [FlushStrategy.synchronous]: Immediate synchronous writes
+  /// - [FlushStrategy.buffered]: Buffered async writes with periodic flushing
+  ///
+  /// Defaults to [FlushStrategy.synchronous] in debug mode (asserts enabled) for
+  /// immediate log visibility, and [FlushStrategy.buffered] in release mode
+  /// for better performance. See [_defaultFlushStrategy].
+  final FlushStrategy flushStrategy;
 
-  /// Interval between automatic buffer flushes in [FileWriteMode.buffered].
+  /// Interval between automatic buffer flushes in [FlushStrategy.buffered].
   ///
   /// Records are buffered and flushed to disk after this interval.
   /// Shorter intervals reduce data loss risk but increase I/O frequency.
   /// Default is 100ms.
-  final Duration flushInterval;
-
-  /// Maximum number of records to buffer before forcing a flush.
   ///
-  /// When the buffer reaches this size, it is flushed immediately regardless
-  /// of [flushInterval]. This prevents memory growth during logging bursts.
-  /// Default is 1000 records.
-  final int maxBufferSize;
+  /// Note: Error-level logs and above are always written synchronously,
+  /// regardless of this interval.
+  final Duration flushInterval;
 
   /// Current file handle for synchronous writes.
   RandomAccessFile? _file;
@@ -545,17 +549,6 @@ class RotatingFileWriter extends ChirpWriter {
   /// Used to wait for pending writes before close/flush.
   Future<void>? _pendingFlush;
 
-  // --- Isolate mode state ---
-
-  /// Send port to the background isolate.
-  SendPort? _isolateSendPort;
-
-  /// The background isolate instance.
-  Isolate? _isolate;
-
-  /// Completer that completes when the isolate is ready.
-  Completer<void>? _isolateReady;
-
   /// Creates a rotating file writer.
   ///
   /// - [baseFilePath]: Path to the log file (e.g., `/var/log/app.log`)
@@ -563,19 +556,18 @@ class RotatingFileWriter extends ChirpWriter {
   /// - [rotationConfig]: Rotation settings, or `null` for no rotation
   /// - [encoding]: Text encoding (default: UTF-8)
   /// - [onError]: Handler for write failures (default: prints to stderr)
-  /// - [writeMode]: How I/O is performed (default: [FileWriteMode.sync])
+  /// - [flushStrategy]: How I/O is performed (default: [_defaultFlushStrategy])
   /// - [flushInterval]: Buffer flush interval for buffered mode (default: 100ms)
-  /// - [maxBufferSize]: Max buffer size before forced flush (default: 1000)
   RotatingFileWriter({
     required this.baseFilePath,
     FileMessageFormatter? formatter,
     this.rotationConfig,
     this.encoding = utf8,
     this.onError,
-    this.writeMode = FileWriteMode.sync,
+    FlushStrategy? flushStrategy,
     this.flushInterval = const Duration(milliseconds: 100),
-    this.maxBufferSize = 1000,
-  }) : formatter = formatter ?? const SimpleFileFormatter();
+  })  : flushStrategy = flushStrategy ?? _defaultFlushStrategy,
+        formatter = formatter ?? const SimpleFileFormatter();
 
   /// Opens the log file for writing.
   ///
@@ -604,13 +596,11 @@ class RotatingFileWriter extends ChirpWriter {
 
   @override
   void write(LogRecord record) {
-    switch (writeMode) {
-      case FileWriteMode.sync:
+    switch (flushStrategy) {
+      case FlushStrategy.synchronous:
         _writeSync(record);
-      case FileWriteMode.buffered:
+      case FlushStrategy.buffered:
         _writeBuffered(record);
-      case FileWriteMode.isolate:
-        _writeIsolate(record);
     }
   }
 
@@ -640,16 +630,40 @@ class RotatingFileWriter extends ChirpWriter {
   }
 
   /// Buffered write implementation - accumulates records and flushes periodically.
+  ///
+  /// Error-level logs and above are written synchronously to ensure they're
+  /// persisted immediately (important for crash debugging). When an error
+  /// occurs, any buffered records are flushed first to maintain chronological
+  /// order.
   void _writeBuffered(LogRecord record) {
+    // Write errors synchronously - they need to be visible immediately,
+    // especially if the app is about to crash
+    if (record.level.severity >= ChirpLogLevel.error.severity) {
+      // Flush buffered records first to maintain chronological order
+      _flushBufferSync();
+      _writeSync(record);
+      return;
+    }
+
     _buffer ??= [];
     _buffer!.add(record);
 
     // Start flush timer if not already running
     _flushTimer ??= Timer.periodic(flushInterval, (_) => _flushBuffer());
+  }
 
-    // Force flush if buffer is full
-    if (_buffer!.length >= maxBufferSize) {
-      _flushBuffer();
+  /// Flushes the buffer to disk synchronously.
+  ///
+  /// Used when an error-level log needs to be written immediately,
+  /// ensuring buffered records are written first to maintain order.
+  void _flushBufferSync() {
+    if (_buffer == null || _buffer!.isEmpty) return;
+
+    final recordsToFlush = _buffer!;
+    _buffer = [];
+
+    for (final record in recordsToFlush) {
+      _writeSync(record);
     }
   }
 
@@ -691,59 +705,6 @@ class RotatingFileWriter extends ChirpWriter {
     } catch (e, stackTrace) {
       // Report error for the batch (no specific record)
       _handleError(e, stackTrace, null);
-    }
-  }
-
-  /// Isolate-based write implementation - offloads I/O to background isolate.
-  void _writeIsolate(LogRecord record) {
-    // Start isolate if not already running
-    if (_isolateReady == null) {
-      _isolateReady = Completer<void>();
-      _startIsolate();
-    }
-
-    // Format the record in the main isolate (formatter may not be isolate-safe)
-    final line = formatter.format(record);
-
-    // Send to isolate (fire and forget)
-    if (_isolateSendPort != null) {
-      _isolateSendPort!.send(_IsolateWriteMessage(
-        line: line,
-        timestamp: record.timestamp,
-      ));
-    } else {
-      // Queue for when isolate is ready
-      _isolateReady!.future.then((_) {
-        _isolateSendPort?.send(_IsolateWriteMessage(
-          line: line,
-          timestamp: record.timestamp,
-        ));
-      });
-    }
-  }
-
-  /// Starts the background isolate for I/O operations.
-  Future<void> _startIsolate() async {
-    final receivePort = ReceivePort();
-
-    _isolate = await Isolate.spawn(
-      _isolateEntryPoint,
-      _IsolateInitMessage(
-        sendPort: receivePort.sendPort,
-        baseFilePath: baseFilePath,
-        encoding: encoding.name,
-        rotationConfig: rotationConfig,
-      ),
-    );
-
-    // Wait for isolate to send back its SendPort
-    final response = await receivePort.first;
-    if (response is SendPort) {
-      _isolateSendPort = response;
-      _isolateReady?.complete();
-    } else if (response is _IsolateErrorMessage) {
-      _handleError(response.error, response.stackTrace, null);
-      _isolateReady?.completeError(response.error);
     }
   }
 
@@ -950,10 +911,10 @@ class RotatingFileWriter extends ChirpWriter {
   ///
   /// Call this to ensure all logged data is persisted.
   Future<void> flush() async {
-    switch (writeMode) {
-      case FileWriteMode.sync:
+    switch (flushStrategy) {
+      case FlushStrategy.synchronous:
         _file?.flushSync();
-      case FileWriteMode.buffered:
+      case FlushStrategy.buffered:
         // Cancel the periodic timer
         _flushTimer?.cancel();
         _flushTimer = null;
@@ -969,23 +930,6 @@ class RotatingFileWriter extends ChirpWriter {
         }
         // Use async flush since we use async writes in buffered mode
         await _file?.flush();
-      case FileWriteMode.isolate:
-        // Wait for isolate to be ready first
-        if (_isolateReady != null) {
-          await _isolateReady!.future;
-        }
-        if (_isolateSendPort != null) {
-          final completer = Completer<void>();
-          final receivePort = ReceivePort();
-          receivePort.listen((message) {
-            if (message == 'flushed') {
-              completer.complete();
-              receivePort.close();
-            }
-          });
-          _isolateSendPort!.send(_IsolateFlushMessage(receivePort.sendPort));
-          await completer.future;
-        }
     }
   }
 
@@ -993,12 +937,12 @@ class RotatingFileWriter extends ChirpWriter {
   ///
   /// Always call this when done logging to ensure data is flushed.
   Future<void> close() async {
-    switch (writeMode) {
-      case FileWriteMode.sync:
+    switch (flushStrategy) {
+      case FlushStrategy.synchronous:
         _file?.flushSync();
         _file?.closeSync();
         _file = null;
-      case FileWriteMode.buffered:
+      case FlushStrategy.buffered:
         // Cancel the periodic timer
         _flushTimer?.cancel();
         _flushTimer = null;
@@ -1016,27 +960,6 @@ class RotatingFileWriter extends ChirpWriter {
         await _file?.flush();
         await _file?.close();
         _file = null;
-      case FileWriteMode.isolate:
-        // Wait for isolate to be ready first
-        if (_isolateReady != null) {
-          await _isolateReady!.future;
-        }
-        if (_isolateSendPort != null) {
-          final completer = Completer<void>();
-          final receivePort = ReceivePort();
-          receivePort.listen((message) {
-            if (message == 'closed') {
-              completer.complete();
-              receivePort.close();
-            }
-          });
-          _isolateSendPort!.send(_IsolateCloseMessage(receivePort.sendPort));
-          await completer.future;
-        }
-        _isolate?.kill();
-        _isolate = null;
-        _isolateSendPort = null;
-        _isolateReady = null;
     }
   }
 
@@ -1044,240 +967,8 @@ class RotatingFileWriter extends ChirpWriter {
   ///
   /// Useful for log rotation triggered by external events (e.g., SIGHUP).
   Future<void> forceRotate() async {
-    switch (writeMode) {
-      case FileWriteMode.sync:
-      case FileWriteMode.buffered:
-        if (_file != null) {
-          _rotate(null);
-        }
-      case FileWriteMode.isolate:
-        // Wait for isolate to be ready first
-        if (_isolateReady != null) {
-          await _isolateReady!.future;
-        }
-        if (_isolateSendPort != null) {
-          final completer = Completer<void>();
-          final receivePort = ReceivePort();
-          receivePort.listen((message) {
-            if (message == 'rotated') {
-              completer.complete();
-              receivePort.close();
-            }
-          });
-          _isolateSendPort!.send(_IsolateRotateMessage(receivePort.sendPort));
-          await completer.future;
-        }
+    if (_file != null) {
+      _rotate(null);
     }
   }
-}
-
-// --- Isolate message classes ---
-
-/// Message to initialize the background isolate.
-class _IsolateInitMessage {
-  final SendPort sendPort;
-  final String baseFilePath;
-  final String encoding;
-  final FileRotationConfig? rotationConfig;
-
-  _IsolateInitMessage({
-    required this.sendPort,
-    required this.baseFilePath,
-    required this.encoding,
-    required this.rotationConfig,
-  });
-}
-
-/// Message to write a log line to the file.
-class _IsolateWriteMessage {
-  final String line;
-  final DateTime timestamp;
-
-  _IsolateWriteMessage({required this.line, required this.timestamp});
-}
-
-/// Message to flush the file.
-class _IsolateFlushMessage {
-  final SendPort replyPort;
-
-  _IsolateFlushMessage(this.replyPort);
-}
-
-/// Message to close the file.
-class _IsolateCloseMessage {
-  final SendPort replyPort;
-
-  _IsolateCloseMessage(this.replyPort);
-}
-
-/// Message to force rotation.
-class _IsolateRotateMessage {
-  final SendPort replyPort;
-
-  _IsolateRotateMessage(this.replyPort);
-}
-
-/// Message to report an error from the isolate.
-class _IsolateErrorMessage {
-  final Object error;
-  final StackTrace stackTrace;
-
-  _IsolateErrorMessage(this.error, this.stackTrace);
-}
-
-/// Entry point for the background isolate.
-void _isolateEntryPoint(_IsolateInitMessage init) {
-  final receivePort = ReceivePort();
-  final encoding = Encoding.getByName(init.encoding) ?? utf8;
-
-  RandomAccessFile? file;
-  int currentFileSize = 0;
-  DateTime? lastRotationCheck;
-
-  void ensureOpen() {
-    if (file != null) return;
-
-    final f = File(init.baseFilePath);
-    final parent = f.parent;
-    if (!parent.existsSync()) {
-      parent.createSync(recursive: true);
-    }
-
-    if (f.existsSync()) {
-      currentFileSize = f.lengthSync();
-    } else {
-      currentFileSize = 0;
-    }
-
-    file = f.openSync(mode: FileMode.append);
-  }
-
-  bool shouldRotateByTime(DateTime now, FileRotationInterval interval) {
-    final last = lastRotationCheck!;
-
-    return switch (interval) {
-      FileRotationInterval.hourly => now.year != last.year ||
-          now.month != last.month ||
-          now.day != last.day ||
-          now.hour != last.hour,
-      FileRotationInterval.daily =>
-        now.year != last.year || now.month != last.month || now.day != last.day,
-      FileRotationInterval.weekly =>
-        _isolateWeekNumber(now) != _isolateWeekNumber(last) ||
-            now.year != last.year,
-      FileRotationInterval.monthly =>
-        now.year != last.year || now.month != last.month,
-    };
-  }
-
-  String generateRotatedPath(DateTime timestamp) {
-    final f = File(init.baseFilePath);
-    final dir = f.parent.path;
-    final name = f.uri.pathSegments.last;
-
-    final dotIndex = name.lastIndexOf('.');
-    final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
-    final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
-
-    final ts = timestamp
-        .toIso8601String()
-        .replaceAll(':', '-')
-        .replaceAll('T', '_')
-        .split('.')[0];
-
-    var path = '$dir/$baseName.$ts$extension';
-    var counter = 1;
-    while (File(path).existsSync()) {
-      path = '$dir/$baseName.${ts}_$counter$extension';
-      counter++;
-    }
-
-    return path;
-  }
-
-  void rotate(DateTime timestamp) {
-    file?.flushSync();
-    file?.closeSync();
-    file = null;
-
-    final rotatedPath = generateRotatedPath(lastRotationCheck ?? timestamp);
-    final currentFile = File(init.baseFilePath);
-
-    if (currentFile.existsSync()) {
-      currentFile.renameSync(rotatedPath);
-
-      if (init.rotationConfig?.compress == true) {
-        final f = File(rotatedPath);
-        if (f.existsSync()) {
-          final bytes = f.readAsBytesSync();
-          final compressed = gzip.encode(bytes);
-          File('$rotatedPath.gz').writeAsBytesSync(compressed);
-          f.deleteSync();
-        }
-      }
-    }
-
-    currentFileSize = 0;
-    lastRotationCheck = timestamp;
-
-    ensureOpen();
-  }
-
-  void checkRotation(DateTime timestamp) {
-    final config = init.rotationConfig;
-    if (config == null) return;
-
-    var shouldRotate = false;
-
-    if (config.maxFileSize != null && currentFileSize >= config.maxFileSize!) {
-      shouldRotate = true;
-    }
-
-    if (config.rotationInterval != null && lastRotationCheck != null) {
-      shouldRotate =
-          shouldRotate || shouldRotateByTime(timestamp, config.rotationInterval!);
-    }
-
-    if (shouldRotate) {
-      rotate(timestamp);
-    }
-  }
-
-  // Send our receive port back to main isolate
-  init.sendPort.send(receivePort.sendPort);
-
-  receivePort.listen((message) {
-    try {
-      if (message is _IsolateWriteMessage) {
-        ensureOpen();
-        lastRotationCheck ??= message.timestamp;
-        checkRotation(message.timestamp);
-
-        final bytes = encoding.encode('${message.line}\n');
-        file!.writeFromSync(bytes);
-        currentFileSize = currentFileSize + bytes.length;
-      } else if (message is _IsolateFlushMessage) {
-        file?.flushSync();
-        message.replyPort.send('flushed');
-      } else if (message is _IsolateCloseMessage) {
-        file?.flushSync();
-        file?.closeSync();
-        file = null;
-        message.replyPort.send('closed');
-      } else if (message is _IsolateRotateMessage) {
-        if (file != null) {
-          rotate(DateTime.now());
-        }
-        message.replyPort.send('rotated');
-      }
-    } catch (e, stackTrace) {
-      init.sendPort.send(_IsolateErrorMessage(e, stackTrace));
-    }
-  });
-}
-
-/// Week number calculation for isolate (cannot access instance methods).
-int _isolateWeekNumber(DateTime date) {
-  final dayOfYear = date.difference(DateTime(date.year)).inDays;
-  return ((dayOfYear - date.weekday + 10) / 7).floor();
 }

@@ -77,6 +77,7 @@ export 'package:chirp/src/writers/file_writer.dart'
         FileMessageFormatter,
         FileRotationConfig,
         FileRotationInterval,
+        FlushStrategy,
         FileWriterErrorHandler,
         JsonFileFormatter,
         RotatingFileWriter,
