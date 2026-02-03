@@ -715,7 +715,7 @@ class RotatingFileWriter extends ChirpWriter {
   /// Forces an immediate rotation regardless of size/time thresholds.
   ///
   /// Useful for log rotation triggered by external events (e.g., SIGHUP).
-  void forceRotate() {
+  Future<void> forceRotate() async {
     if (_file != null) {
       _rotate(null);
     }
