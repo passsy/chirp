@@ -258,7 +258,7 @@ void main() {
 
     test('uses custom formatter when provided', () async {
       final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
+      final logPath = '${tempDir.path}/app.jsonl';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
         formatter: const JsonFileFormatter(),

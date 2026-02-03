@@ -9,7 +9,7 @@ void main() async {
   // Create a temporary directory for the example
   final logDir = Directory.systemTemp.createTempSync('chirp_example_');
   final simplePath = '${logDir.path}/app.log';
-  final jsonPath = '${logDir.path}/app.json';
+  final jsonPath = '${logDir.path}/app.jsonl';
 
   print('Log directory: ${logDir.path}\n');
 
@@ -64,7 +64,7 @@ void main() async {
   print('\n--- app.log (simple format) ---');
   print(File(simplePath).readAsStringSync());
 
-  print('\n--- app.json (JSON format) ---');
+  print('\n--- app.jsonl (JSON Lines format) ---');
   for (final line in File(jsonPath).readAsStringSync().trim().split('\n')) {
     print(line);
   }

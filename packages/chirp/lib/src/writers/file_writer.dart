@@ -268,6 +268,15 @@ class SimpleFileFormatter implements FileMessageFormatter {
 ///
 /// Produces one JSON object per line (JSONL/NDJSON format), suitable for
 /// log aggregation systems like Elasticsearch, Splunk, or CloudWatch.
+///
+/// Use `.jsonl` or `.ndjson` file extension when using this formatter:
+///
+/// ```dart
+/// final writer = RotatingFileWriter(
+///   baseFilePath: '/var/log/app.jsonl',
+///   formatter: JsonFileFormatter(),
+/// );
+/// ```
 class JsonFileFormatter implements FileMessageFormatter {
   /// Creates a JSON file formatter.
   const JsonFileFormatter();
@@ -377,13 +386,30 @@ class JsonFileFormatter implements FileMessageFormatter {
 /// );
 /// ```
 ///
+/// ## JSON Lines Format
+///
+/// ```dart
+/// // Write structured JSON logs
+/// final writer = RotatingFileWriter(
+///   baseFilePath: '/var/log/app.jsonl',
+///   formatter: JsonFileFormatter(),
+///   rotationConfig: FileRotationConfig.daily(maxFiles: 7),
+/// );
+/// ```
+///
+/// ## File Extensions
+///
+/// Choose the file extension based on the formatter:
+/// - `.log` for [SimpleFileFormatter] (plain text)
+/// - `.jsonl` or `.ndjson` for [JsonFileFormatter] (JSON Lines format)
+///
 /// ## File Naming
 ///
 /// Rotated files are named with timestamps:
-/// - `app.log` - current log file
-/// - `app.2024-01-15_10-30-45.log` - rotated file
-/// - `app.2024-01-15_10-30-45_1.log` - second rotation in the same second
-/// - `app.2024-01-15_10-30-45.log.gz` - compressed rotated file
+/// - `app.jsonl` - current log file
+/// - `app.2024-01-15_10-30-45.jsonl` - rotated file
+/// - `app.2024-01-15_10-30-45_1.jsonl` - second rotation in the same second
+/// - `app.2024-01-15_10-30-45.jsonl.gz` - compressed rotated file
 ///
 /// When multiple rotations occur within the same second (e.g., when
 /// [FileRotationConfig.maxFileSize] is very small), a counter suffix is
