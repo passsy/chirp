@@ -40,22 +40,22 @@ void addEmojiPrefix(LogSpan tree, LogRecord record) {
     _ => '🔍 ', // debug, trace
   };
 
-  tree.findFirst<LogMessage>()?.wrap(
-        (child) => SpanSequence(children: [PlainText(emoji), child]),
-      );
+  tree.findFirst<LogMessage>()?.wrap((child) {
+    return SpanSequence(children: [PlainText(emoji), child]);
+  });
 }
 
 /// Wraps critical messages in a bordered box.
 void boxCriticalMessages(LogSpan tree, LogRecord record) {
   if (record.level.severity < 600) return;
 
-  tree.wrap(
-    (child) => Bordered(
+  tree.wrap((child) {
+    return Bordered(
       child: child,
       style: BoxBorderStyle.rounded,
       borderColor: Ansi256.indianRed_167,
-    ),
-  );
+    );
+  });
 }
 
 // Output:

@@ -13,15 +13,19 @@ void main() {
   Chirp.error('This is an error', error: Exception('Something went wrong'));
 
   // Instance logging also works
-  final service = MyService();
-  service.doWork();
+  final serviceA = MyService();
+  serviceA.doWork();
+  final serviceB = MyService();
+  serviceB.doWork();
 
   // Library loggers have minLogLevel set - only warnings+ shown by default
   libraryLogger.info('This is silent due to minLogLevel');
   libraryLogger.warning('This warning is visible from the library');
 
+  Chirp.root = ChirpLogger().addConsoleWriter();
+
   // Adopt the library logger to use app's writers/formatting
-  Chirp.root = ChirpLogger().addConsoleWriter().adopt(libraryLogger);
+  Chirp.root.adopt(libraryLogger);
   libraryLogger.warning('Now using Chirp.root writers (printed once)');
 
   // Library's minLogLevel still applies - info is filtered
