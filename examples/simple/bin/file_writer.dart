@@ -17,7 +17,7 @@ void main() async {
   final simpleWriter = RotatingFileWriter(
     baseFilePath: simplePath,
     formatter: const SimpleFileFormatter(),
-    rotationConfig: const FileRotationConfig.size(
+    rotationConfig: FileRotationConfig.size(
       maxSize: 500, // 500 bytes - tiny for demo
       maxFiles: 3,
     ),
@@ -27,7 +27,7 @@ void main() async {
   final jsonWriter = RotatingFileWriter(
     baseFilePath: jsonPath,
     formatter: const JsonFileFormatter(),
-    rotationConfig: const FileRotationConfig.size(
+    rotationConfig: FileRotationConfig.size(
       maxSize: 500, // 500 bytes - tiny for demo
       maxFiles: 3,
     ),

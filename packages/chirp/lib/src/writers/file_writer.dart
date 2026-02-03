@@ -52,13 +52,17 @@ class FileRotationConfig {
   /// - 100 MB = 100 * 1024 * 1024 = 104857600
   final int? maxFileSize;
 
-  /// Maximum number of rotated log files to keep.
+  /// Maximum number of log files to keep (including current).
   ///
   /// When the number of log files exceeds this limit, the oldest files are
   /// deleted. Set to `null` to keep all files (no limit).
   ///
-  /// The count includes the current log file. For example, `maxFileCount: 5`
+  /// Must be at least 2 (1 current + 1 rotated). For example, `maxFileCount: 5`
   /// keeps the current file plus 4 rotated files.
+  ///
+  /// Note: This is not a ring buffer. Rotation creates new files; it doesn't
+  /// remove old entries from a single file. Use `null` if you don't want
+  /// automatic deletion of old log files.
   final int? maxFileCount;
 
   /// Maximum age of log files before deletion.
@@ -94,15 +98,25 @@ class FileRotationConfig {
   /// - [rotationInterval] for time-based rotation
   ///
   /// Retention can be controlled with:
-  /// - [maxFileCount] to limit the number of files
+  /// - [maxFileCount] to limit the number of files (must be >= 2)
   /// - [maxAge] to delete files older than a duration
-  const FileRotationConfig({
+  ///
+  /// Throws [ArgumentError] if [maxFileCount] is less than 2.
+  FileRotationConfig({
     this.maxFileSize,
     this.maxFileCount,
     this.maxAge,
     this.rotationInterval,
     this.compress = false,
-  });
+  }) {
+    if (maxFileCount != null && maxFileCount! < 2) {
+      throw ArgumentError.value(
+        maxFileCount,
+        'maxFileCount',
+        'must be null or >= 2 (1 current + at least 1 rotated)',
+      );
+    }
+  }
 
   /// Convenience constructor for size-only rotation.
   ///
@@ -117,7 +131,7 @@ class FileRotationConfig {
   ///   maxFiles: 5,
   /// )
   /// ```
-  const FileRotationConfig.size({
+  FileRotationConfig.size({
     required int maxSize,
     int? maxFiles,
     Duration? maxAge,
@@ -139,7 +153,7 @@ class FileRotationConfig {
   /// // Rotate daily, keep 7 days of logs
   /// FileRotationConfig.daily(maxFiles: 7)
   /// ```
-  const FileRotationConfig.daily({
+  FileRotationConfig.daily({
     int? maxFiles,
     Duration? maxAge,
     int? maxFileSize,
@@ -161,7 +175,7 @@ class FileRotationConfig {
   /// // Rotate hourly, keep 24 hours of logs
   /// FileRotationConfig.hourly(maxFiles: 24)
   /// ```
-  const FileRotationConfig.hourly({
+  FileRotationConfig.hourly({
     int? maxFiles,
     Duration? maxAge,
     int? maxFileSize,

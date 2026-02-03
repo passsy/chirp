@@ -325,7 +325,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig.size(
+        rotationConfig: FileRotationConfig.size(
           maxSize: 100, // Very small for testing
           maxFiles: 10,
         ),
@@ -363,7 +363,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig.size(
+        rotationConfig: FileRotationConfig.size(
           maxSize: 50,
           maxFiles: 3,
         ),
@@ -387,13 +387,37 @@ void main() {
               'maxFiles=3 should keep at most 3 files (1 current + 2 rotated)');
     });
 
+    test('maxFileCount=1 throws ArgumentError', () {
+      expect(
+        () => FileRotationConfig.size(maxSize: 50, maxFiles: 1),
+        throwsArgumentError,
+        reason: 'maxFileCount=1 is invalid (need at least 2: current + 1 rotated)',
+      );
+    });
+
+    test('maxFileCount=0 throws ArgumentError', () {
+      expect(
+        () => FileRotationConfig.size(maxSize: 50, maxFiles: 0),
+        throwsArgumentError,
+        reason: 'maxFileCount=0 is invalid and should throw',
+      );
+    });
+
+    test('negative maxFileCount throws ArgumentError', () {
+      expect(
+        () => FileRotationConfig.size(maxSize: 50, maxFiles: -5),
+        throwsArgumentError,
+        reason: 'Negative maxFileCount is invalid and should throw',
+      );
+    });
+
     test('adds counter suffix when multiple rotations occur in same second',
         () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig.size(
+        rotationConfig: FileRotationConfig.size(
           maxSize: 10, // Smaller than any log entry
           maxFiles: 10,
         ),
@@ -434,7 +458,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig.hourly(),
+        rotationConfig: FileRotationConfig.hourly(),
       );
       addTearDown(() => writer.close());
 
@@ -472,7 +496,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig.daily(),
+        rotationConfig: FileRotationConfig.daily(),
       );
       addTearDown(() => writer.close());
 
@@ -511,7 +535,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig.daily(),
+        rotationConfig: FileRotationConfig.daily(),
       );
       addTearDown(() => writer.close());
 
@@ -540,7 +564,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig(
+        rotationConfig: FileRotationConfig(
           rotationInterval: FileRotationInterval.weekly,
         ),
       );
@@ -577,7 +601,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig(
+        rotationConfig: FileRotationConfig(
           rotationInterval: FileRotationInterval.monthly,
         ),
       );
@@ -616,7 +640,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig.daily(compress: true),
+        rotationConfig: FileRotationConfig.daily(compress: true),
       );
       addTearDown(() => writer.close());
 
@@ -667,7 +691,7 @@ void main() {
         // Use size-based config to avoid time-based rotation complications
         final writer = RotatingFileWriter(
           baseFilePath: logPath,
-          rotationConfig: const FileRotationConfig.size(
+          rotationConfig: FileRotationConfig.size(
             maxSize: 1024 * 1024, // Large enough to not trigger
           ),
         );
@@ -713,7 +737,7 @@ void main() {
       // Create writer and write first message (creates file at real time)
       final writer1 = RotatingFileWriter(
         baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig.size(
+        rotationConfig: FileRotationConfig.size(
           maxSize: 50,
           maxAge: Duration(days: 7),
         ),
@@ -742,7 +766,7 @@ void main() {
       await withClock(Clock.fixed(futureTime), () async {
         final writer2 = RotatingFileWriter(
           baseFilePath: logPath,
-          rotationConfig: const FileRotationConfig.size(
+          rotationConfig: FileRotationConfig.size(
             maxSize: 50,
             maxAge: Duration(days: 7),
           ),
@@ -1103,7 +1127,7 @@ void main() {
         baseFilePath: logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(milliseconds: 10),
-        rotationConfig: const FileRotationConfig.daily(),
+        rotationConfig: FileRotationConfig.daily(),
       );
       addTearDown(() => writer.close());
 

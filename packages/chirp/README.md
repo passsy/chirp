@@ -316,7 +316,7 @@ Chirp.root = ChirpLogger()
 final writer = RotatingFileWriter(
   baseFilePath: '/var/log/app.jsonl',
   formatter: const JsonFileFormatter(),
-  rotationConfig: const FileRotationConfig.size(
+  rotationConfig: FileRotationConfig.size(
     maxSize: 100 * 1024 * 1024,
     maxFiles: 10,
     compress: true,
@@ -333,7 +333,7 @@ Chirp.root = ChirpLogger()
 final writer = RotatingFileWriter(
   baseFilePath: '/var/log/app.jsonl',
   formatter: const JsonFileFormatter(),
-  rotationConfig: const FileRotationConfig.daily(
+  rotationConfig: FileRotationConfig.daily(
     maxAge: Duration(days: 30),
     compress: true,
   ),
