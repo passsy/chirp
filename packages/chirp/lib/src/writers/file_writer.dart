@@ -4,6 +4,33 @@ import 'dart:io';
 import 'package:chirp/chirp.dart';
 import 'package:clock/clock.dart';
 
+/// Callback for handling errors during file write operations.
+///
+/// Called when [RotatingFileWriter] fails to write a log record due to
+/// I/O errors such as disk full, permission denied, or file system failures.
+///
+/// Parameters:
+/// - [error]: The exception that occurred (e.g., [FileSystemException])
+/// - [stackTrace]: Stack trace for debugging
+/// - [record]: The log record that failed to write (may be `null` if error
+///   occurred during cleanup or rotation triggered by [RotatingFileWriter.forceRotate])
+typedef FileWriterErrorHandler = void Function(
+  Object error,
+  StackTrace stackTrace,
+  LogRecord? record,
+);
+
+/// Default error handler that prints errors to stderr.
+///
+/// This is used when [RotatingFileWriter.onError] is `null`.
+void defaultFileWriterErrorHandler(
+  Object error,
+  StackTrace stackTrace,
+  LogRecord? record,
+) {
+  stderr.writeln('[RotatingFileWriter] Write failed: $error');
+}
+
 /// Configuration for file-based log rotation.
 ///
 /// Supports both size-based and time-based rotation strategies.
@@ -390,6 +417,12 @@ class RotatingFileWriter extends ChirpWriter {
   /// Encoding for writing text to files.
   final Encoding encoding;
 
+  /// Error handler for write failures.
+  ///
+  /// Called when a log record cannot be written due to I/O errors.
+  /// Defaults to [defaultFileWriterErrorHandler] which prints to stderr.
+  final FileWriterErrorHandler? onError;
+
   /// Current file handle for synchronous writes.
   RandomAccessFile? _file;
 
@@ -405,11 +438,13 @@ class RotatingFileWriter extends ChirpWriter {
   /// - [formatter]: How to format log records (default: [SimpleFileFormatter])
   /// - [rotationConfig]: Rotation settings, or `null` for no rotation
   /// - [encoding]: Text encoding (default: UTF-8)
+  /// - [onError]: Handler for write failures (default: prints to stderr)
   RotatingFileWriter({
     required this.baseFilePath,
     FileMessageFormatter? formatter,
     this.rotationConfig,
     this.encoding = utf8,
+    this.onError,
   }) : formatter = formatter ?? const SimpleFileFormatter();
 
   /// Opens the log file for writing.
@@ -439,28 +474,39 @@ class RotatingFileWriter extends ChirpWriter {
 
   @override
   void write(LogRecord record) {
-    _ensureOpen();
+    try {
+      _ensureOpen();
 
-    // Initialize last rotation check on first write using record's timestamp
-    // This ensures time-based rotation works correctly regardless of wall clock
-    _lastRotationCheck ??= record.timestamp;
+      // Initialize last rotation check on first write using record's timestamp
+      // This ensures time-based rotation works correctly regardless of wall clock
+      _lastRotationCheck ??= record.timestamp;
 
-    // Check if rotation is needed before writing
-    if (rotationConfig != null) {
-      _checkRotation(record.timestamp);
+      // Check if rotation is needed before writing
+      if (rotationConfig != null) {
+        _checkRotation(record);
+      }
+
+      // Format and write the record
+      final line = formatter.format(record);
+      final bytes = encoding.encode('$line\n');
+
+      _file!.writeFromSync(bytes);
+      _currentFileSize = _currentFileSize + bytes.length;
+    } catch (e, stackTrace) {
+      _handleError(e, stackTrace, record);
     }
+  }
 
-    // Format and write the record
-    final line = formatter.format(record);
-    final bytes = encoding.encode('$line\n');
-
-    _file!.writeFromSync(bytes);
-    _currentFileSize = _currentFileSize + bytes.length;
+  /// Handles write errors by calling [onError] or the default handler.
+  void _handleError(Object error, StackTrace stackTrace, LogRecord? record) {
+    final handler = onError ?? defaultFileWriterErrorHandler;
+    handler(error, stackTrace, record);
   }
 
   /// Checks if rotation is needed and performs it if so.
-  void _checkRotation(DateTime timestamp) {
+  void _checkRotation(LogRecord record) {
     final config = rotationConfig!;
+    final timestamp = record.timestamp;
     var shouldRotate = false;
 
     // Check size-based rotation
@@ -475,7 +521,7 @@ class RotatingFileWriter extends ChirpWriter {
     }
 
     if (shouldRotate) {
-      _rotate(timestamp);
+      _rotate(record);
     }
   }
 
@@ -504,7 +550,11 @@ class RotatingFileWriter extends ChirpWriter {
   }
 
   /// Performs file rotation.
-  void _rotate(DateTime timestamp) {
+  ///
+  /// [record] may be null when called from [forceRotate].
+  void _rotate(LogRecord? record) {
+    final timestamp = record?.timestamp ?? clock.now();
+
     // Flush and close current file synchronously
     _file?.flushSync();
     _file?.closeSync();
@@ -526,7 +576,7 @@ class RotatingFileWriter extends ChirpWriter {
     }
 
     // Clean up old files based on retention policy
-    _applyRetentionPolicy();
+    _applyRetentionPolicy(record);
 
     // Reset state for new file
     _currentFileSize = 0;
@@ -580,7 +630,7 @@ class RotatingFileWriter extends ChirpWriter {
   }
 
   /// Applies retention policy to remove old log files.
-  void _applyRetentionPolicy() {
+  void _applyRetentionPolicy(LogRecord? record) {
     final config = rotationConfig;
     if (config == null) return;
 
@@ -619,9 +669,7 @@ class RotatingFileWriter extends ChirpWriter {
       try {
         file.deleteSync();
       } catch (e, stackTrace) {
-        // Log but don't throw - deletion failure shouldn't break logging
-        print('[RotatingFileWriter] Failed to delete old log file: $e');
-        print(stackTrace);
+        _handleError(e, stackTrace, record);
       }
     }
   }
@@ -669,7 +717,7 @@ class RotatingFileWriter extends ChirpWriter {
   /// Useful for log rotation triggered by external events (e.g., SIGHUP).
   void forceRotate() {
     if (_file != null) {
-      _rotate(clock.now());
+      _rotate(null);
     }
   }
 }

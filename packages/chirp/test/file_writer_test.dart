@@ -901,6 +901,150 @@ void main() {
           reason: 'Russian characters should be preserved');
     });
   });
+
+  group('Error handling', () {
+    test('calls onError callback when write fails', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+
+      Object? capturedError;
+      StackTrace? capturedStackTrace;
+      LogRecord? capturedRecord;
+
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        onError: (error, stackTrace, record) {
+          capturedError = error;
+          capturedStackTrace = stackTrace;
+          capturedRecord = record;
+        },
+      );
+
+      // Write once to open the file
+      final record = testRecord(message: 'Test');
+      writer.write(record);
+      await writer.flush();
+
+      // Make the file read-only to cause write failure
+      final file = File(logPath);
+      await Process.run('chmod', ['000', logPath]);
+      addTearDown(() => Process.run('chmod', ['644', logPath]));
+
+      // Close and reopen to force a new file handle
+      await writer.close();
+
+      // Create a new writer that will fail to open
+      final failingWriter = RotatingFileWriter(
+        baseFilePath: logPath,
+        onError: (error, stackTrace, record) {
+          capturedError = error;
+          capturedStackTrace = stackTrace;
+          capturedRecord = record;
+        },
+      );
+      addTearDown(() => failingWriter.close());
+
+      final failingRecord = testRecord(message: 'This should fail');
+      failingWriter.write(failingRecord);
+
+      expect(capturedError, isNotNull, reason: 'onError should be called');
+      expect(capturedStackTrace, isNotNull,
+          reason: 'Stack trace should be provided');
+      expect(capturedRecord, equals(failingRecord),
+          reason: 'The failing record should be passed to onError');
+    });
+
+    test('prints to stderr by default when onError is null', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/readonly/app.log';
+
+      // Create a writer pointing to a non-existent directory without write permission
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        // onError is null - prints to stderr by default
+      );
+      addTearDown(() => writer.close());
+
+      // Create parent but make it read-only
+      Directory('${tempDir.path}/readonly').createSync();
+      await Process.run('chmod', ['444', '${tempDir.path}/readonly']);
+      addTearDown(
+          () => Process.run('chmod', ['755', '${tempDir.path}/readonly']));
+
+      // This should not throw - error goes to stderr
+      expect(
+        () => writer.write(testRecord(message: 'Test')),
+        returnsNormally,
+        reason: 'Write should not throw - error should go to stderr',
+      );
+    });
+
+    test('can silence errors with empty onError handler', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/readonly/app.log';
+
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        onError: (_, __, ___) {}, // Silence errors
+      );
+      addTearDown(() => writer.close());
+
+      Directory('${tempDir.path}/readonly').createSync();
+      await Process.run('chmod', ['444', '${tempDir.path}/readonly']);
+      addTearDown(
+          () => Process.run('chmod', ['755', '${tempDir.path}/readonly']));
+
+      // Should not throw and no stderr output
+      expect(
+        () => writer.write(testRecord(message: 'Test')),
+        returnsNormally,
+      );
+    });
+
+    test('onError receives correct record when write fails mid-stream',
+        () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+
+      final failedRecords = <LogRecord?>[];
+
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        onError: (error, stackTrace, record) {
+          failedRecords.add(record);
+        },
+      );
+
+      // Write successfully first
+      writer.write(testRecord(message: 'Success 1'));
+      writer.write(testRecord(message: 'Success 2'));
+      await writer.flush();
+
+      // Now break the file
+      await writer.close();
+      await Process.run('chmod', ['000', logPath]);
+      addTearDown(() => Process.run('chmod', ['644', logPath]));
+
+      // New writer will fail
+      final failingWriter = RotatingFileWriter(
+        baseFilePath: logPath,
+        onError: (error, stackTrace, record) {
+          failedRecords.add(record);
+        },
+      );
+      addTearDown(() => failingWriter.close());
+
+      final record1 = testRecord(message: 'Fail 1');
+      final record2 = testRecord(message: 'Fail 2');
+      failingWriter.write(record1);
+      failingWriter.write(record2);
+
+      expect(failedRecords.length, 2,
+          reason: 'Both failed writes should trigger onError');
+      expect(failedRecords[0]?.message, 'Fail 1');
+      expect(failedRecords[1]?.message, 'Fail 2');
+    });
+  });
 }
 
 /// Creates a temporary directory for a test and registers cleanup.
