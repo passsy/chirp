@@ -794,6 +794,50 @@ void main() {
       expect(outputs[0].length, 1000);
     });
   });
+
+  group('PrintConsoleWriter minLevel', () {
+    test('minLevel constructor parameter sets minLogLevel', () {
+      final writer = PrintConsoleWriter(
+        minLevel: ChirpLogLevel.warning,
+      );
+      expect(writer.minLogLevel, ChirpLogLevel.warning);
+    });
+
+    test('minLevel null does not set minLogLevel', () {
+      final writer = PrintConsoleWriter();
+      expect(writer.minLogLevel, isNull);
+    });
+
+    test('minLevel filters messages when used with logger', () {
+      final outputs = <String>[];
+      final writer = PrintConsoleWriter(
+        formatter: _TestFormatter('test'),
+        output: outputs.add,
+        minLevel: ChirpLogLevel.warning,
+      );
+
+      final logger = ChirpLogger(name: 'Test').addWriter(writer);
+
+      logger.info('should not appear');
+      logger.warning('should appear');
+
+      expect(outputs.length, 1);
+    });
+  });
+
+  group('DeveloperLogConsoleWriter minLevel', () {
+    test('minLevel constructor parameter sets minLogLevel', () {
+      final writer = DeveloperLogConsoleWriter(
+        minLevel: ChirpLogLevel.error,
+      );
+      expect(writer.minLogLevel, ChirpLogLevel.error);
+    });
+
+    test('minLevel null does not set minLogLevel', () {
+      final writer = DeveloperLogConsoleWriter();
+      expect(writer.minLogLevel, isNull);
+    });
+  });
 }
 
 /// Test formatter that always outputs the given text.

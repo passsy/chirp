@@ -397,6 +397,16 @@ class JsonFileFormatter implements FileMessageFormatter {
 /// );
 /// ```
 ///
+/// ## Level Filtering
+///
+/// ```dart
+/// // Only write warnings and above to file
+/// final writer = RotatingFileWriter(
+///   baseFilePath: '/var/log/errors.log',
+///   minLevel: ChirpLogLevel.warning,
+/// );
+/// ```
+///
 /// ## File Extensions
 ///
 /// Choose the file extension based on the formatter:
@@ -465,13 +475,19 @@ class RotatingFileWriter extends ChirpWriter {
   /// - [rotationConfig]: Rotation settings, or `null` for no rotation
   /// - [encoding]: Text encoding (default: UTF-8)
   /// - [onError]: Handler for write failures (default: prints to stderr)
+  /// - [minLevel]: Minimum log level to write (default: `null` - accept all)
   RotatingFileWriter({
     required this.baseFilePath,
     FileMessageFormatter? formatter,
     this.rotationConfig,
     this.encoding = utf8,
     this.onError,
-  }) : formatter = formatter ?? const SimpleFileFormatter();
+    ChirpLogLevel? minLevel,
+  }) : formatter = formatter ?? const SimpleFileFormatter() {
+    if (minLevel != null) {
+      setMinLogLevel(minLevel);
+    }
+  }
 
   /// Opens the log file for writing.
   ///
