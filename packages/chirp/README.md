@@ -307,6 +307,41 @@ Chirp.root = ChirpLogger()
   .addWriter(DeveloperLogConsoleWriter(name: 'myapp'));  // Unlimited when debugging
 ```
 
+### File Writers
+
+`RotatingFileWriter` writes logs to files with automatic rotation. Always configure rotation to prevent unbounded disk usage.
+
+```dart
+// Size-based: rotate at 100 MB, keep 10 files, compress old logs
+final writer = RotatingFileWriter(
+  baseFilePath: '/var/log/app.jsonl',
+  formatter: const JsonFileFormatter(),
+  rotationConfig: const FileRotationConfig.size(
+    maxSize: 100 * 1024 * 1024,
+    maxFiles: 10,
+    compress: true,
+  ),
+);
+
+Chirp.root = ChirpLogger()
+  .addConsoleWriter()
+  .addWriter(writer);
+```
+
+```dart
+// Time-based: rotate daily, keep 30 days
+final writer = RotatingFileWriter(
+  baseFilePath: '/var/log/app.jsonl',
+  formatter: const JsonFileFormatter(),
+  rotationConfig: const FileRotationConfig.daily(
+    maxAge: Duration(days: 30),
+    compress: true,
+  ),
+);
+```
+
+Call `await writer.close()` on shutdown to flush buffers. See [`examples/simple/bin/file_writer.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/file_writer.dart) for a complete example.
+
 ### Available Formatters
 
 **CompactChirpMessageFormatter** - Colorful, human-readable format for development
@@ -849,6 +884,7 @@ See [`examples/simple/bin/`](https://github.com/passsy/chirp/tree/main/examples/
 | [`child_loggers.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/child_loggers.dart) | Context inheritance |
 | [`instance_tracking.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/instance_tracking.dart) | The `.chirp` extension |
 | [`multiple_writers.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/multiple_writers.dart) | Console + JSON output |
+| [`file_writer.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/file_writer.dart) | File logging with rotation |
 | [`interceptors.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/interceptors.dart) | Filtering and transforming logs |
 | [`library.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/library.dart) / [`app.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/app.dart) | Library logger adoption |
 | [`main.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/main.dart) | Span transformers (advanced) |
