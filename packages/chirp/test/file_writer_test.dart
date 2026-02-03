@@ -1151,6 +1151,272 @@ void main() {
     });
   });
 
+  group('FlushStrategy.buffered timer behavior', () {
+    test('first write starts timer, flushes after flushInterval', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(milliseconds: 50),
+      );
+      addTearDown(() => writer.close());
+
+      // Write - starts timer
+      writer.write(testRecord(message: 'Message 1'));
+
+      // Immediately after write, file should not exist (buffered)
+      expect(File(logPath).existsSync(), isFalse,
+          reason: 'File should not exist immediately after write');
+
+      // Wait for timer to fire
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      // Now file should exist
+      expect(File(logPath).existsSync(), isTrue,
+          reason: 'File should exist after flushInterval');
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('Message 1'));
+    });
+
+    test('multiple writes before timer fires are batched together', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(() => writer.close());
+
+      // Write multiple messages quickly (before timer fires)
+      writer.write(testRecord(message: 'Message 1'));
+      writer.write(testRecord(message: 'Message 2'));
+      writer.write(testRecord(message: 'Message 3'));
+
+      // Immediately, nothing written yet
+      expect(File(logPath).existsSync(), isFalse);
+
+      // Wait for timer
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+
+      // All 3 messages should be written in one batch
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('Message 1'));
+      expect(content, contains('Message 2'));
+      expect(content, contains('Message 3'));
+
+      final lines = content.trim().split('\n');
+      expect(lines.length, 3, reason: 'All 3 messages batched in one flush');
+    });
+
+    test('timer resets after flush, next write starts new timer', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(milliseconds: 50),
+      );
+      addTearDown(() => writer.close());
+
+      // First batch
+      writer.write(testRecord(message: 'Batch 1'));
+
+      // Wait for first flush
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      var content = File(logPath).readAsStringSync();
+      expect(content.trim().split('\n').length, 1);
+
+      // Second batch - starts new timer
+      writer.write(testRecord(message: 'Batch 2'));
+
+      // Immediately, batch 2 not flushed yet
+      content = File(logPath).readAsStringSync();
+      expect(content.trim().split('\n').length, 1,
+          reason: 'Batch 2 not yet flushed');
+
+      // Wait for second timer
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      content = File(logPath).readAsStringSync();
+      expect(content.trim().split('\n').length, 2,
+          reason: 'Batch 2 should be flushed now');
+      expect(content, contains('Batch 2'));
+    });
+
+    test('no timer fires when no writes happen', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(milliseconds: 50),
+      );
+      addTearDown(() => writer.close());
+
+      // Wait without writing anything
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      // No file should be created
+      expect(File(logPath).existsSync(), isFalse,
+          reason: 'No file should be created when no writes happen');
+    });
+
+    test('error cancels pending timer and flushes buffer immediately',
+        () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(seconds: 10), // Long interval
+      );
+      addTearDown(() => writer.close());
+
+      // Write info messages (buffered, timer starts)
+      writer.write(testRecord(message: 'Info 1'));
+      writer.write(testRecord(message: 'Info 2'));
+
+      // Nothing flushed yet
+      expect(File(logPath).existsSync(), isFalse);
+
+      // Write error - should flush buffer immediately, then write error
+      writer.write(testRecord(message: 'Error', level: ChirpLogLevel.error));
+
+      // All messages should be on disk now, in order
+      final content = File(logPath).readAsStringSync();
+      final lines = content.trim().split('\n');
+      expect(lines.length, 3);
+      expect(lines[0], contains('Info 1'));
+      expect(lines[1], contains('Info 2'));
+      expect(lines[2], contains('Error'));
+    });
+
+    test('writes after error start a new timer', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(milliseconds: 50),
+      );
+      addTearDown(() => writer.close());
+
+      // Write error (flushes immediately)
+      writer.write(testRecord(message: 'Error', level: ChirpLogLevel.error));
+
+      expect(File(logPath).readAsStringSync().trim().split('\n').length, 1);
+
+      // Write info after error - starts new timer
+      writer.write(testRecord(message: 'Info after error'));
+
+      // Info not flushed yet
+      expect(File(logPath).readAsStringSync().trim().split('\n').length, 1);
+
+      // Wait for new timer
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(File(logPath).readAsStringSync().trim().split('\n').length, 2);
+    });
+
+    test('close() flushes pending buffer even if timer not fired', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(seconds: 10), // Long interval
+      );
+
+      // Write (timer starts but won't fire for 10s)
+      writer.write(testRecord(message: 'Message 1'));
+      writer.write(testRecord(message: 'Message 2'));
+
+      // Nothing flushed yet
+      expect(File(logPath).existsSync(), isFalse);
+
+      // Close should flush
+      await writer.close();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('Message 1'));
+      expect(content, contains('Message 2'));
+    });
+
+    test('flush() flushes pending buffer and cancels timer', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(milliseconds: 100),
+      );
+      addTearDown(() => writer.close());
+
+      // Write (timer starts)
+      writer.write(testRecord(message: 'Message 1'));
+
+      // Flush manually before timer fires
+      await writer.flush();
+
+      expect(File(logPath).readAsStringSync(), contains('Message 1'));
+      final lineCount =
+          File(logPath).readAsStringSync().trim().split('\n').length;
+
+      // Wait past original timer time
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+
+      // No duplicate write from timer (it was cancelled)
+      final newLineCount =
+          File(logPath).readAsStringSync().trim().split('\n').length;
+      expect(newLineCount, lineCount,
+          reason: 'Timer should be cancelled, no duplicate write');
+    });
+
+    test('sustained logging: each flush resets timer for next batch', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(milliseconds: 30),
+      );
+      addTearDown(() => writer.close());
+
+      // Write message, wait for flush, repeat
+      writer.write(testRecord(message: 'Batch 1 - Msg 1'));
+      writer.write(testRecord(message: 'Batch 1 - Msg 2'));
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // First batch flushed
+      expect(File(logPath).readAsStringSync().trim().split('\n').length, 2);
+
+      // Second batch
+      writer.write(testRecord(message: 'Batch 2 - Msg 1'));
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Second batch flushed
+      expect(File(logPath).readAsStringSync().trim().split('\n').length, 3);
+
+      // Third batch
+      writer.write(testRecord(message: 'Batch 3 - Msg 1'));
+      writer.write(testRecord(message: 'Batch 3 - Msg 2'));
+      writer.write(testRecord(message: 'Batch 3 - Msg 3'));
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Third batch flushed
+      final finalLines =
+          File(logPath).readAsStringSync().trim().split('\n').length;
+      expect(finalLines, 6, reason: 'All 6 messages across 3 batches');
+    });
+  });
+
   group('FlushStrategy default', () {
     test('defaults to synchronous in debug mode (asserts enabled)', () {
       final tempDir = createTempDir();

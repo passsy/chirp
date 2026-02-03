@@ -662,8 +662,10 @@ class RotatingFileWriter extends ChirpWriter {
     _buffer ??= [];
     _buffer!.add(record);
 
-    // Start flush timer if not already running
-    _flushTimer ??= Timer.periodic(flushInterval, (_) => _flushBuffer());
+    // Start one-shot timer on first buffered record.
+    // Timer fires after flushInterval, flushes all accumulated records.
+    // Next write will start a new timer.
+    _flushTimer ??= Timer(flushInterval, _flushBuffer);
   }
 
   /// Flushes the buffer to disk synchronously.
@@ -671,6 +673,10 @@ class RotatingFileWriter extends ChirpWriter {
   /// Used when an error-level log needs to be written immediately,
   /// ensuring buffered records are written first to maintain order.
   void _flushBufferSync() {
+    // Cancel pending timer since we're flushing now
+    _flushTimer?.cancel();
+    _flushTimer = null;
+
     if (_buffer == null || _buffer!.isEmpty) return;
 
     final recordsToFlush = _buffer!;
@@ -683,6 +689,9 @@ class RotatingFileWriter extends ChirpWriter {
 
   /// Flushes the buffer to disk asynchronously.
   void _flushBuffer() {
+    // Clear timer - it either fired (one-shot) or was cancelled
+    _flushTimer = null;
+
     if (_pendingFlush != null || _buffer == null || _buffer!.isEmpty) return;
 
     final recordsToFlush = _buffer!;
