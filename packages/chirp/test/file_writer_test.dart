@@ -903,7 +903,7 @@ void main() {
   });
 
   group('Error handling', () {
-    test('calls onError callback when write fails', () async {
+    test('calls onError callback when formatter throws', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
 
@@ -913,63 +913,54 @@ void main() {
 
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
+        formatter: _ThrowingFormatter(),
         onError: (error, stackTrace, record) {
           capturedError = error;
           capturedStackTrace = stackTrace;
           capturedRecord = record;
         },
       );
-
-      // Write once to open the file
-      final record = testRecord(message: 'Test');
-      writer.write(record);
-      await writer.flush();
-
-      // Make the file read-only to cause write failure
-      final file = File(logPath);
-      await Process.run('chmod', ['000', logPath]);
-      addTearDown(() => Process.run('chmod', ['644', logPath]));
-
-      // Close and reopen to force a new file handle
-      await writer.close();
-
-      // Create a new writer that will fail to open
-      final failingWriter = RotatingFileWriter(
-        baseFilePath: logPath,
-        onError: (error, stackTrace, record) {
-          capturedError = error;
-          capturedStackTrace = stackTrace;
-          capturedRecord = record;
-        },
-      );
-      addTearDown(() => failingWriter.close());
+      addTearDown(() => writer.close());
 
       final failingRecord = testRecord(message: 'This should fail');
-      failingWriter.write(failingRecord);
+      writer.write(failingRecord);
 
       expect(capturedError, isNotNull, reason: 'onError should be called');
+      expect(capturedError, isA<StateError>());
       expect(capturedStackTrace, isNotNull,
           reason: 'Stack trace should be provided');
       expect(capturedRecord, equals(failingRecord),
           reason: 'The failing record should be passed to onError');
     });
 
-    test('prints to stderr by default when onError is null', () async {
+    test('does not throw when onError handles the error', () async {
       final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/readonly/app.log';
+      final logPath = '${tempDir.path}/app.log';
 
-      // Create a writer pointing to a non-existent directory without write permission
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        // onError is null - prints to stderr by default
+        formatter: _ThrowingFormatter(),
+        onError: (_, __, ___) {}, // Silence errors
       );
       addTearDown(() => writer.close());
 
-      // Create parent but make it read-only
-      Directory('${tempDir.path}/readonly').createSync();
-      await Process.run('chmod', ['444', '${tempDir.path}/readonly']);
-      addTearDown(
-          () => Process.run('chmod', ['755', '${tempDir.path}/readonly']));
+      // Should not throw - error is handled by onError
+      expect(
+        () => writer.write(testRecord(message: 'Test')),
+        returnsNormally,
+      );
+    });
+
+    test('prints to stderr by default when onError is null', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        formatter: _ThrowingFormatter(),
+        // onError is null - prints to stderr by default
+      );
+      addTearDown(() => writer.close());
 
       // This should not throw - error goes to stderr
       expect(
@@ -979,30 +970,7 @@ void main() {
       );
     });
 
-    test('can silence errors with empty onError handler', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/readonly/app.log';
-
-      final writer = RotatingFileWriter(
-        baseFilePath: logPath,
-        onError: (_, __, ___) {}, // Silence errors
-      );
-      addTearDown(() => writer.close());
-
-      Directory('${tempDir.path}/readonly').createSync();
-      await Process.run('chmod', ['444', '${tempDir.path}/readonly']);
-      addTearDown(
-          () => Process.run('chmod', ['755', '${tempDir.path}/readonly']));
-
-      // Should not throw and no stderr output
-      expect(
-        () => writer.write(testRecord(message: 'Test')),
-        returnsNormally,
-      );
-    });
-
-    test('onError receives correct record when write fails mid-stream',
-        () async {
+    test('onError receives correct record for each failed write', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
 
@@ -1010,34 +978,17 @@ void main() {
 
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
+        formatter: _ThrowingFormatter(),
         onError: (error, stackTrace, record) {
           failedRecords.add(record);
         },
       );
-
-      // Write successfully first
-      writer.write(testRecord(message: 'Success 1'));
-      writer.write(testRecord(message: 'Success 2'));
-      await writer.flush();
-
-      // Now break the file
-      await writer.close();
-      await Process.run('chmod', ['000', logPath]);
-      addTearDown(() => Process.run('chmod', ['644', logPath]));
-
-      // New writer will fail
-      final failingWriter = RotatingFileWriter(
-        baseFilePath: logPath,
-        onError: (error, stackTrace, record) {
-          failedRecords.add(record);
-        },
-      );
-      addTearDown(() => failingWriter.close());
+      addTearDown(() => writer.close());
 
       final record1 = testRecord(message: 'Fail 1');
       final record2 = testRecord(message: 'Fail 2');
-      failingWriter.write(record1);
-      failingWriter.write(record2);
+      writer.write(record1);
+      writer.write(record2);
 
       expect(failedRecords.length, 2,
           reason: 'Both failed writes should trigger onError');
@@ -1057,4 +1008,12 @@ Directory createTempDir() {
     }
   });
   return tempDir;
+}
+
+/// A formatter that always throws, used to test error handling.
+class _ThrowingFormatter implements FileMessageFormatter {
+  @override
+  String format(LogRecord record) {
+    throw StateError('Simulated formatter error');
+  }
 }
