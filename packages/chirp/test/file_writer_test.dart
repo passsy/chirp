@@ -10,11 +10,10 @@ import 'test_log_record.dart';
 void main() {
   group('SimpleFileFormatter', () {
     test('formats basic log record with timestamp, level, and message', () {
-      final formatter = const SimpleFileFormatter();
+      const formatter = SimpleFileFormatter();
       final record = testRecord(
         message: 'Hello, World!',
         timestamp: DateTime(2024, 1, 15, 10, 30, 45, 123),
-        level: ChirpLogLevel.info,
       );
 
       final result = formatter.format(record);
@@ -26,7 +25,7 @@ void main() {
     });
 
     test('includes logger name when present', () {
-      final formatter = const SimpleFileFormatter();
+      const formatter = SimpleFileFormatter();
       final record = testRecord(
         message: 'Test',
         loggerName: 'MyApp.Service',
@@ -38,7 +37,7 @@ void main() {
     });
 
     test('excludes logger name when includeLoggerName is false', () {
-      final formatter = const SimpleFileFormatter(includeLoggerName: false);
+      const formatter = SimpleFileFormatter(includeLoggerName: false);
       final record = testRecord(
         message: 'Test',
         loggerName: 'MyApp.Service',
@@ -50,7 +49,7 @@ void main() {
     });
 
     test('includes structured data', () {
-      final formatter = const SimpleFileFormatter();
+      const formatter = SimpleFileFormatter();
       final record = testRecord(
         message: 'User logged in',
         data: {'userId': 'abc123', 'role': 'admin'},
@@ -63,7 +62,7 @@ void main() {
     });
 
     test('excludes data when includeData is false', () {
-      final formatter = const SimpleFileFormatter(includeData: false);
+      const formatter = SimpleFileFormatter(includeData: false);
       final record = testRecord(
         message: 'Test',
         data: {'key': 'value'},
@@ -75,7 +74,7 @@ void main() {
     });
 
     test('includes error and stack trace', () {
-      final formatter = const SimpleFileFormatter();
+      const formatter = SimpleFileFormatter();
       final record = testRecord(
         message: 'Operation failed',
         level: ChirpLogLevel.error,
@@ -91,7 +90,7 @@ void main() {
     });
 
     test('formats all log levels correctly', () {
-      final formatter = const SimpleFileFormatter();
+      const formatter = SimpleFileFormatter();
       final levels = [
         ChirpLogLevel.trace,
         ChirpLogLevel.debug,
@@ -118,12 +117,11 @@ void main() {
 
   group('JsonFileFormatter', () {
     test('formats as valid JSON with required fields', () {
-      final formatter = const JsonFileFormatter();
+      const formatter = JsonFileFormatter();
       final ts = DateTime(2024, 1, 15, 10, 30, 45);
       final record = testRecord(
         message: 'Test message',
         timestamp: ts,
-        level: ChirpLogLevel.info,
       );
 
       final result = formatter.format(record);
@@ -139,7 +137,7 @@ void main() {
     });
 
     test('includes all optional fields when present', () {
-      final formatter = const JsonFileFormatter();
+      const formatter = JsonFileFormatter();
       final record = testRecord(
         message: 'Test',
         level: ChirpLogLevel.error,
@@ -159,8 +157,8 @@ void main() {
     });
 
     test('escapes special characters in strings to produce valid JSON', () {
-      final formatter = const JsonFileFormatter();
-      final originalMessage = 'Line1\nLine2\tTabbed\r"Quoted"\\Escaped';
+      const formatter = JsonFileFormatter();
+      const originalMessage = 'Line1\nLine2\tTabbed\r"Quoted"\\Escaped';
       final record = testRecord(message: originalMessage);
 
       final result = formatter.format(record);
@@ -172,7 +170,7 @@ void main() {
     });
 
     test('handles nested data structures', () {
-      final formatter = const JsonFileFormatter();
+      const formatter = JsonFileFormatter();
       final record = testRecord(
         message: 'Test',
         data: {
@@ -191,7 +189,7 @@ void main() {
     });
 
     test('handles null message', () {
-      final formatter = const JsonFileFormatter();
+      const formatter = JsonFileFormatter();
       final record = testRecord(message: null);
 
       final result = formatter.format(record);
@@ -415,8 +413,7 @@ void main() {
           reason: 'Should have 5 files: 4 rotated + 1 current');
 
       // Verify no data loss - all messages should exist across files
-      final allContent =
-          files.map((f) => (f as File).readAsStringSync()).join();
+      final allContent = files.map((f) => f.readAsStringSync()).join();
       for (var i = 1; i <= 5; i++) {
         expect(allContent, contains('Message $i'),
             reason: 'Message $i should not be lost due to filename collision');
@@ -444,13 +441,13 @@ void main() {
       // Write at 10:00
       writer.write(testRecord(
         message: 'Message at 10:00',
-        timestamp: DateTime(2024, 1, 15, 10, 0, 0),
+        timestamp: DateTime(2024, 1, 15, 10),
       ));
 
       // Write at 11:00 (should trigger rotation)
       writer.write(testRecord(
         message: 'Message at 11:00',
-        timestamp: DateTime(2024, 1, 15, 11, 0, 0),
+        timestamp: DateTime(2024, 1, 15, 11),
       ));
 
       await writer.close();
@@ -482,13 +479,13 @@ void main() {
       // Write on Jan 15
       writer.write(testRecord(
         message: 'Message on Jan 15',
-        timestamp: DateTime(2024, 1, 15, 10, 0, 0),
+        timestamp: DateTime(2024, 1, 15, 10),
       ));
 
       // Write on Jan 16 (should trigger rotation)
       writer.write(testRecord(
         message: 'Message on Jan 16',
-        timestamp: DateTime(2024, 1, 16, 10, 0, 0),
+        timestamp: DateTime(2024, 1, 16, 10),
       ));
 
       await writer.close();
@@ -520,7 +517,7 @@ void main() {
 
       // Write multiple times on same day (different hours)
       for (var i = 0; i < 5; i++) {
-        final ts = DateTime(2024, 1, 15, 10 + i, 0, 0);
+        final ts = DateTime(2024, 1, 15, 10 + i);
         writer.write(testRecord(message: 'Message $i', timestamp: ts));
       }
 
@@ -552,13 +549,13 @@ void main() {
       // Write on Saturday Jan 13, 2024
       writer.write(testRecord(
         message: 'Message on Saturday',
-        timestamp: DateTime(2024, 1, 13, 10, 0, 0),
+        timestamp: DateTime(2024, 1, 13, 10),
       ));
 
       // Write on Monday Jan 15, 2024 (new week, should trigger rotation)
       writer.write(testRecord(
         message: 'Message on Monday',
-        timestamp: DateTime(2024, 1, 15, 10, 0, 0),
+        timestamp: DateTime(2024, 1, 15, 10),
       ));
 
       await writer.close();
@@ -589,13 +586,13 @@ void main() {
       // Write on Jan 31
       writer.write(testRecord(
         message: 'Message in January',
-        timestamp: DateTime(2024, 1, 31, 10, 0, 0),
+        timestamp: DateTime(2024, 1, 31, 10),
       ));
 
       // Write on Feb 1 (new month, should trigger rotation)
       writer.write(testRecord(
         message: 'Message in February',
-        timestamp: DateTime(2024, 2, 1, 10, 0, 0),
+        timestamp: DateTime(2024, 2, 1, 10),
       ));
 
       await writer.close();
@@ -626,13 +623,13 @@ void main() {
       // Write on Jan 15
       writer.write(testRecord(
         message: 'Message to compress',
-        timestamp: DateTime(2024, 1, 15, 10, 0, 0),
+        timestamp: DateTime(2024, 1, 15, 10),
       ));
 
       // Write on Jan 16 (triggers rotation and compression)
       writer.write(testRecord(
         message: 'New day message',
-        timestamp: DateTime(2024, 1, 16, 10, 0, 0),
+        timestamp: DateTime(2024, 1, 16, 10),
       ));
 
       await writer.close();
@@ -662,7 +659,7 @@ void main() {
   group('Force rotation', () {
     test('forceRotate triggers immediate rotation', () async {
       // Use withClock to control time
-      final fixedTime = DateTime(2024, 1, 15, 10, 0, 0);
+      final fixedTime = DateTime(2024, 1, 15, 10);
 
       await withClock(Clock.fixed(fixedTime), () async {
         final tempDir = createTempDir();
@@ -903,7 +900,7 @@ void main() {
   });
 
   group('Error handling', () {
-    test('calls onError callback when formatter throws', () async {
+    test('calls onError callback when formatter throws', () {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
 
@@ -933,7 +930,7 @@ void main() {
           reason: 'The failing record should be passed to onError');
     });
 
-    test('does not throw when onError handles the error', () async {
+    test('does not throw when onError handles the error', () {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
 
@@ -951,7 +948,7 @@ void main() {
       );
     });
 
-    test('prints to stderr by default when onError is null', () async {
+    test('prints to stderr by default when onError is null', () {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
 
@@ -970,7 +967,7 @@ void main() {
       );
     });
 
-    test('onError receives correct record for each failed write', () async {
+    test('onError receives correct record for each failed write', () {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
 

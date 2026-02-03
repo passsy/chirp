@@ -545,7 +545,7 @@ class RotatingFileWriter extends ChirpWriter {
 
   /// Calculates ISO week number.
   int _weekNumber(DateTime date) {
-    final dayOfYear = date.difference(DateTime(date.year, 1, 1)).inDays;
+    final dayOfYear = date.difference(DateTime(date.year)).inDays;
     return ((dayOfYear - date.weekday + 10) / 7).floor();
   }
 
@@ -642,7 +642,7 @@ class RotatingFileWriter extends ChirpWriter {
         .sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
 
     final now = clock.now();
-    var filesToDelete = <File>[];
+    final filesToDelete = <File>[];
 
     // Apply max file count policy
     if (config.maxFileCount != null) {
