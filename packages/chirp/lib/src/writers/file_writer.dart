@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:chirp/chirp.dart';
 import 'package:clock/clock.dart';
@@ -563,6 +564,10 @@ class RotatingFileWriter extends ChirpWriter {
   /// Used to wait for pending writes before close/flush.
   Future<void>? _pendingFlush;
 
+  /// Pending file compression futures.
+  /// Tracked so [close] can wait for all compressions to complete.
+  final List<Future<void>> _pendingCompressions = [];
+
   /// Creates a rotating file writer.
   ///
   /// - [baseFilePath]: Path to the log file (e.g., `/var/log/app.log`)
@@ -803,7 +808,7 @@ class RotatingFileWriter extends ChirpWriter {
       // Rename current file to rotated name
       currentFile.renameSync(rotatedPath);
 
-      // Compress if configured
+      // Compress if configured (runs in separate isolate, non-blocking)
       if (rotationConfig?.compress == true) {
         _compressFile(rotatedPath);
       }
@@ -852,15 +857,22 @@ class RotatingFileWriter extends ChirpWriter {
     return path;
   }
 
-  /// Compresses a file using gzip.
+  /// Compresses a file using gzip in a separate isolate.
+  ///
+  /// Runs compression asynchronously to avoid blocking the main isolate
+  /// during large file compression. Errors are reported via [onError].
   void _compressFile(String path) {
-    final file = File(path);
-    if (!file.existsSync()) return;
-
-    final bytes = file.readAsBytesSync();
-    final compressed = gzip.encode(bytes);
-    File('$path.gz').writeAsBytesSync(compressed);
-    file.deleteSync();
+    // Capture error handler before async gap to avoid capturing 'this'
+    // or any zone-bound objects in the isolate closure.
+    final errorHandler = onError ?? defaultFileWriterErrorHandler;
+    final future = _compressFileInIsolate(path).then(
+      (_) {},
+      onError: (Object e, StackTrace stackTrace) {
+        errorHandler(e, stackTrace, null);
+      },
+    );
+    _pendingCompressions.add(future);
+    future.whenComplete(() => _pendingCompressions.remove(future));
   }
 
   /// Applies retention policy to remove old log files.
@@ -984,6 +996,11 @@ class RotatingFileWriter extends ChirpWriter {
         await _file?.close();
         _file = null;
     }
+
+    // Wait for any pending compressions to complete
+    if (_pendingCompressions.isNotEmpty) {
+      await Future.wait(_pendingCompressions);
+    }
   }
 
   /// Forces an immediate rotation regardless of size/time thresholds.
@@ -994,4 +1011,25 @@ class RotatingFileWriter extends ChirpWriter {
       _rotate(null);
     }
   }
+}
+
+/// Runs file compression in a separate isolate.
+///
+/// Top-level function to avoid capturing any class context or zone-bound
+/// objects that can't be sent across isolate boundaries.
+Future<void> _compressFileInIsolate(String path) {
+  return Isolate.run(() => _compressFileSync(path));
+}
+
+/// Compresses a file using gzip synchronously.
+///
+/// This is a top-level function so it can be passed to [Isolate.run].
+void _compressFileSync(String path) {
+  final file = File(path);
+  if (!file.existsSync()) return;
+
+  final bytes = file.readAsBytesSync();
+  final compressed = gzip.encode(bytes);
+  File('$path.gz').writeAsBytesSync(compressed);
+  file.deleteSync();
 }

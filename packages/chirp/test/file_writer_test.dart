@@ -391,7 +391,8 @@ void main() {
       expect(
         () => FileRotationConfig.size(maxSize: 50, maxFiles: 1),
         throwsArgumentError,
-        reason: 'maxFileCount=1 is invalid (need at least 2: current + 1 rotated)',
+        reason:
+            'maxFileCount=1 is invalid (need at least 2: current + 1 rotated)',
       );
     });
 
@@ -739,7 +740,7 @@ void main() {
         baseFilePath: logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 50,
-          maxAge: Duration(days: 7),
+          maxAge: const Duration(days: 7),
         ),
       );
 
@@ -768,7 +769,7 @@ void main() {
           baseFilePath: logPath,
           rotationConfig: FileRotationConfig.size(
             maxSize: 50,
-            maxAge: Duration(days: 7),
+            maxAge: const Duration(days: 7),
           ),
         );
 
@@ -1025,7 +1026,8 @@ void main() {
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
         flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(seconds: 10), // Long interval so it doesn't auto-flush
+        flushInterval: const Duration(
+            seconds: 10), // Long interval so it doesn't auto-flush
       );
       addTearDown(() => writer.close());
 
@@ -1057,8 +1059,10 @@ void main() {
       addTearDown(() => writer.close());
 
       // Write only error messages (no buffered records to flush first)
-      writer.write(testRecord(message: 'Error message', level: ChirpLogLevel.error));
-      writer.write(testRecord(message: 'Critical message', level: ChirpLogLevel.critical));
+      writer.write(
+          testRecord(message: 'Error message', level: ChirpLogLevel.error));
+      writer.write(testRecord(
+          message: 'Critical message', level: ChirpLogLevel.critical));
 
       // Without flushing, error messages should already be on disk
       final content = File(logPath).readAsStringSync();
@@ -1082,8 +1086,8 @@ void main() {
       addTearDown(() => writer.close());
 
       // Write info messages (buffered), then an error (triggers sync flush)
-      writer.write(testRecord(message: 'Info 1', level: ChirpLogLevel.info));
-      writer.write(testRecord(message: 'Info 2', level: ChirpLogLevel.info));
+      writer.write(testRecord(message: 'Info 1'));
+      writer.write(testRecord(message: 'Info 2'));
       writer.write(testRecord(message: 'Error', level: ChirpLogLevel.error));
 
       // All messages should be on disk, in chronological order
@@ -1265,8 +1269,7 @@ void main() {
           reason: 'No file should be created when no writes happen');
     });
 
-    test('error cancels pending timer and flushes buffer immediately',
-        () async {
+    test('error cancels pending timer and flushes buffer immediately', () {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
