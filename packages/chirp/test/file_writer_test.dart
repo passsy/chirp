@@ -388,6 +388,47 @@ void main() {
           reason:
               'maxFiles=3 should keep at most 3 files (1 current + 2 rotated)');
     });
+
+    test('adds counter suffix when multiple rotations occur in same second',
+        () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        rotationConfig: const FileRotationConfig.size(
+          maxSize: 10, // Smaller than any log entry
+          maxFiles: 10,
+        ),
+      );
+      addTearDown(() => writer.close());
+
+      // Write 5 entries with same timestamp - each triggers rotation
+      final ts = DateTime(2024, 1, 15, 10, 30, 45);
+      for (var i = 1; i <= 5; i++) {
+        writer.write(testRecord(message: 'Message $i', timestamp: ts));
+      }
+
+      await writer.close();
+
+      final files = tempDir.listSync().whereType<File>().toList();
+      expect(files.length, 5,
+          reason: 'Should have 5 files: 4 rotated + 1 current');
+
+      // Verify no data loss - all messages should exist across files
+      final allContent =
+          files.map((f) => (f as File).readAsStringSync()).join();
+      for (var i = 1; i <= 5; i++) {
+        expect(allContent, contains('Message $i'),
+            reason: 'Message $i should not be lost due to filename collision');
+      }
+
+      // Verify counter suffixes are used (match _1.log, _2.log etc at end)
+      final fileNames = files.map((f) => f.uri.pathSegments.last).toList();
+      expect(fileNames.where((n) => RegExp(r'_1\.log$').hasMatch(n)).length, 1,
+          reason: 'Should have one file with _1 suffix');
+      expect(fileNames.where((n) => RegExp(r'_2\.log$').hasMatch(n)).length, 1,
+          reason: 'Should have one file with _2 suffix');
+    });
   });
 
   group('Time-based rotation', () {

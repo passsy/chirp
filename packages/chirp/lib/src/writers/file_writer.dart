@@ -10,8 +10,13 @@ import 'package:clock/clock.dart';
 class FileRotationConfig {
   /// Maximum size of a single log file in bytes before rotation.
   ///
-  /// When the current log file exceeds this size, it is rotated and a new
-  /// file is created. Set to `null` to disable size-based rotation.
+  /// When the current log file exceeds this size, it is rotated on the next
+  /// write. Set to `null` to disable size-based rotation.
+  ///
+  /// **Note:** Log entries are never dropped or truncated. If a single log
+  /// entry is larger than [maxFileSize], it is still written in full, and
+  /// rotation occurs before the next entry. This means individual files may
+  /// temporarily exceed [maxFileSize].
   ///
   /// Common values:
   /// - 1 MB = 1024 * 1024 = 1048576
@@ -350,7 +355,12 @@ class JsonFileFormatter implements FileMessageFormatter {
 /// Rotated files are named with timestamps:
 /// - `app.log` - current log file
 /// - `app.2024-01-15_10-30-45.log` - rotated file
+/// - `app.2024-01-15_10-30-45_1.log` - second rotation in the same second
 /// - `app.2024-01-15_10-30-45.log.gz` - compressed rotated file
+///
+/// When multiple rotations occur within the same second (e.g., when
+/// [FileRotationConfig.maxFileSize] is very small), a counter suffix is
+/// appended to avoid overwriting previous rotated files.
 ///
 /// ## Resource Management
 ///
@@ -527,6 +537,9 @@ class RotatingFileWriter extends ChirpWriter {
   }
 
   /// Generates a path for the rotated file.
+  ///
+  /// If a file with the timestamp already exists (multiple rotations in the
+  /// same second), appends a counter suffix: `app.2024-01-15_10-30-45_1.log`
   String _generateRotatedPath(DateTime timestamp) {
     final file = File(baseFilePath);
     final dir = file.parent.path;
@@ -544,7 +557,15 @@ class RotatingFileWriter extends ChirpWriter {
         .replaceAll('T', '_')
         .split('.')[0];
 
-    return '$dir/$baseName.$ts$extension';
+    // Check if file already exists, add counter suffix if needed
+    var path = '$dir/$baseName.$ts$extension';
+    var counter = 1;
+    while (File(path).existsSync()) {
+      path = '$dir/$baseName.${ts}_$counter$extension';
+      counter++;
+    }
+
+    return path;
   }
 
   /// Compresses a file using gzip.
