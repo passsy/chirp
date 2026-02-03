@@ -5,22 +5,13 @@ import 'package:chirp/chirp.dart';
 import 'package:clock/clock.dart';
 import 'package:test/test.dart';
 
-/// Creates a temporary directory for a test and registers cleanup.
-Directory createTempDir() {
-  final tempDir = Directory.systemTemp.createTempSync('chirp_file_writer_test_');
-  addTearDown(() {
-    if (tempDir.existsSync()) {
-      tempDir.deleteSync(recursive: true);
-    }
-  });
-  return tempDir;
-}
+import 'test_log_record.dart';
 
 void main() {
   group('SimpleFileFormatter', () {
-    test('formats basic log record', () {
+    test('formats basic log record with timestamp, level, and message', () {
       final formatter = const SimpleFileFormatter();
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Hello, World!',
         timestamp: DateTime(2024, 1, 15, 10, 30, 45, 123),
         level: ChirpLogLevel.info,
@@ -28,16 +19,16 @@ void main() {
 
       final result = formatter.format(record);
 
-      expect(result, contains('2024-01-15T10:30:45.123'));
-      expect(result, contains('[INFO    ]'));
-      expect(result, contains('Hello, World!'));
+      expect(
+        result,
+        equals('2024-01-15T10:30:45.123 [INFO    ] Hello, World!'),
+      );
     });
 
     test('includes logger name when present', () {
       final formatter = const SimpleFileFormatter();
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Test',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
         loggerName: 'MyApp.Service',
       );
 
@@ -48,9 +39,8 @@ void main() {
 
     test('excludes logger name when includeLoggerName is false', () {
       final formatter = const SimpleFileFormatter(includeLoggerName: false);
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Test',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
         loggerName: 'MyApp.Service',
       );
 
@@ -61,9 +51,8 @@ void main() {
 
     test('includes structured data', () {
       final formatter = const SimpleFileFormatter();
-      final record = LogRecord(
+      final record = testRecord(
         message: 'User logged in',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
         data: {'userId': 'abc123', 'role': 'admin'},
       );
 
@@ -75,9 +64,8 @@ void main() {
 
     test('excludes data when includeData is false', () {
       final formatter = const SimpleFileFormatter(includeData: false);
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Test',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
         data: {'key': 'value'},
       );
 
@@ -88,9 +76,8 @@ void main() {
 
     test('includes error and stack trace', () {
       final formatter = const SimpleFileFormatter();
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Operation failed',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
         level: ChirpLogLevel.error,
         error: Exception('Something went wrong'),
         stackTrace: StackTrace.current,
@@ -117,11 +104,7 @@ void main() {
       ];
 
       for (final level in levels) {
-        final record = LogRecord(
-          message: 'Test',
-          timestamp: DateTime(2024, 1, 15, 10, 30, 45),
-          level: level,
-        );
+        final record = testRecord(message: 'Test', level: level);
 
         final result = formatter.format(record);
         expect(
@@ -134,28 +117,31 @@ void main() {
   });
 
   group('JsonFileFormatter', () {
-    test('formats as JSON', () {
+    test('formats as valid JSON with required fields', () {
       final formatter = const JsonFileFormatter();
-      final record = LogRecord(
+      final ts = DateTime(2024, 1, 15, 10, 30, 45);
+      final record = testRecord(
         message: 'Test message',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
+        timestamp: ts,
         level: ChirpLogLevel.info,
       );
 
       final result = formatter.format(record);
+      final json = jsonDecode(result) as Map<String, Object?>;
 
-      expect(result, startsWith('{'));
-      expect(result, endsWith('}'));
-      expect(result, contains('"timestamp":"2024-01-15T10:30:45.000"'));
-      expect(result, contains('"level":"info"'));
-      expect(result, contains('"message":"Test message"'));
+      expect(json['timestamp'], '2024-01-15T10:30:45.000');
+      expect(json['level'], 'info');
+      expect(json['message'], 'Test message');
+      expect(json.containsKey('logger'), isFalse,
+          reason: 'logger should be omitted when null');
+      expect(json.containsKey('data'), isFalse,
+          reason: 'data should be omitted when empty');
     });
 
     test('includes all optional fields when present', () {
       final formatter = const JsonFileFormatter();
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Test',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
         level: ChirpLogLevel.error,
         loggerName: 'MyLogger',
         data: {'key': 'value'},
@@ -164,35 +150,31 @@ void main() {
       );
 
       final result = formatter.format(record);
+      final json = jsonDecode(result) as Map<String, Object?>;
 
-      expect(result, contains('"logger":"MyLogger"'));
-      expect(result, contains('"data":{'));
-      expect(result, contains('"key":"value"'));
-      expect(result, contains('"error":'));
-      expect(result, contains('"stackTrace":'));
+      expect(json['logger'], 'MyLogger');
+      expect(json['data'], {'key': 'value'});
+      expect(json['error'], contains('Test error'));
+      expect(json['stackTrace'], isNotEmpty);
     });
 
-    test('escapes special characters in strings', () {
+    test('escapes special characters in strings to produce valid JSON', () {
       final formatter = const JsonFileFormatter();
-      final record = LogRecord(
-        message: 'Line1\nLine2\tTabbed\r"Quoted"\\Escaped',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
-      );
+      final originalMessage = 'Line1\nLine2\tTabbed\r"Quoted"\\Escaped';
+      final record = testRecord(message: originalMessage);
 
       final result = formatter.format(record);
 
-      expect(result, contains(r'\n'));
-      expect(result, contains(r'\t'));
-      expect(result, contains(r'\r'));
-      expect(result, contains(r'\"'));
-      expect(result, contains(r'\\'));
+      // Verify it's valid JSON and message survives round-trip
+      final json = jsonDecode(result) as Map<String, Object?>;
+      expect(json['message'], originalMessage,
+          reason: 'Message should survive JSON encode/decode round-trip');
     });
 
     test('handles nested data structures', () {
       final formatter = const JsonFileFormatter();
-      final record = LogRecord(
+      final record = testRecord(
         message: 'Test',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
         data: {
           'user': {'id': 123, 'name': 'John'},
           'tags': ['a', 'b', 'c'],
@@ -200,86 +182,83 @@ void main() {
       );
 
       final result = formatter.format(record);
+      final json = jsonDecode(result) as Map<String, Object?>;
 
-      expect(result, contains('"user":{'));
-      expect(result, contains('"id":123'));
-      expect(result, contains('"tags":["a","b","c"]'));
+      expect(json['data'], {
+        'user': {'id': 123, 'name': 'John'},
+        'tags': ['a', 'b', 'c'],
+      });
     });
 
     test('handles null message', () {
       final formatter = const JsonFileFormatter();
-      final record = LogRecord(
-        message: null,
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
-      );
+      final record = testRecord(message: null);
 
       final result = formatter.format(record);
+      final json = jsonDecode(result) as Map<String, Object?>;
 
-      expect(result, contains('"message":null'));
+      expect(json['message'], isNull);
     });
   });
 
   group('RotatingFileWriter', () {
-    test('writes to file', () async {
+    test('writes formatted log record to file', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(baseFilePath: logPath);
       addTearDown(() => writer.close());
 
-      writer.write(LogRecord(
-        message: 'Test message',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
-      ));
+      writer.write(testRecord(message: 'Test message'));
 
       await writer.flush();
 
       final content = File(logPath).readAsStringSync();
-      expect(content, contains('Test message'));
+      expect(content, contains('Test message'),
+          reason: 'Log file should contain the written message');
+      expect(content, contains('[INFO'),
+          reason: 'Log file should contain formatted level');
     });
 
-    test('creates parent directories if needed', () async {
+    test('creates parent directories recursively if they do not exist',
+        () async {
       final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/logs/subdir/app.log';
+      final logPath = '${tempDir.path}/logs/subdir/deep/app.log';
       final writer = RotatingFileWriter(baseFilePath: logPath);
       addTearDown(() => writer.close());
 
-      writer.write(LogRecord(
-        message: 'Test',
-        timestamp: DateTime.now(),
-      ));
+      writer.write(testRecord(message: 'Test'));
 
       await writer.flush();
 
-      expect(File(logPath).existsSync(), isTrue);
+      expect(File(logPath).existsSync(), isTrue,
+          reason: 'File should exist after write even with nested directories');
+      expect(Directory('${tempDir.path}/logs/subdir/deep').existsSync(), isTrue,
+          reason: 'Parent directories should be created');
     });
 
-    test('appends to existing file', () async {
+    test('appends to existing file instead of overwriting', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
 
-      // Write first message
+      // Write first message with one writer instance
       final writer1 = RotatingFileWriter(baseFilePath: logPath);
-      writer1.write(LogRecord(
-        message: 'First message',
-        timestamp: DateTime.now(),
-      ));
+      writer1.write(testRecord(message: 'First message'));
       await writer1.close();
 
-      // Write second message with new writer
+      // Write second message with new writer instance
       final writer2 = RotatingFileWriter(baseFilePath: logPath);
       addTearDown(() => writer2.close());
-      writer2.write(LogRecord(
-        message: 'Second message',
-        timestamp: DateTime.now(),
-      ));
+      writer2.write(testRecord(message: 'Second message'));
       await writer2.flush();
 
       final content = File(logPath).readAsStringSync();
-      expect(content, contains('First message'));
-      expect(content, contains('Second message'));
+      final lines = content.trim().split('\n');
+      expect(lines.length, 2, reason: 'File should have 2 log lines');
+      expect(lines[0], contains('First message'));
+      expect(lines[1], contains('Second message'));
     });
 
-    test('uses custom formatter', () async {
+    test('uses custom formatter when provided', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
@@ -288,35 +267,37 @@ void main() {
       );
       addTearDown(() => writer.close());
 
-      writer.write(LogRecord(
-        message: 'JSON test',
-        timestamp: DateTime(2024, 1, 15, 10, 30, 45),
-      ));
+      writer.write(testRecord(message: 'JSON test'));
 
       await writer.flush();
 
       final content = File(logPath).readAsStringSync();
-      expect(content, contains('"message":"JSON test"'));
+      final json = jsonDecode(content.trim()) as Map<String, Object?>;
+      expect(json['message'], 'JSON test',
+          reason: 'JsonFileFormatter should produce valid JSON');
     });
 
-    test('can be used with ChirpLogger', () async {
+    test('integrates with ChirpLogger for real logging workflow', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(baseFilePath: logPath);
       addTearDown(() => writer.close());
 
-      final logger = ChirpLogger(name: 'Test').addWriter(writer);
+      final logger = ChirpLogger(name: 'TestLogger').addWriter(writer);
 
-      logger.info('Logger integration test');
+      logger.info('Integration test message');
 
       await writer.flush();
 
       final content = File(logPath).readAsStringSync();
-      expect(content, contains('Logger integration test'));
-      expect(content, contains('[Test]'));
+      expect(content, contains('Integration test message'));
+      expect(content, contains('[TestLogger]'),
+          reason: 'Logger name should appear in output');
+      expect(content, contains('[INFO'),
+          reason: 'Log level should appear in output');
     });
 
-    test('inherits ChirpWriter min log level filtering', () async {
+    test('respects minLogLevel filtering inherited from ChirpWriter', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(baseFilePath: logPath)
@@ -325,14 +306,18 @@ void main() {
 
       final logger = ChirpLogger(name: 'Test').addWriter(writer);
 
-      logger.info('This should be filtered');
-      logger.warning('This should appear');
+      logger.info('INFO - should be filtered');
+      logger.debug('DEBUG - should be filtered');
+      logger.warning('WARNING - should appear');
+      logger.error('ERROR - should appear');
 
       await writer.flush();
 
       final content = File(logPath).readAsStringSync();
-      expect(content, isNot(contains('This should be filtered')));
-      expect(content, contains('This should appear'));
+      expect(content, isNot(contains('should be filtered')),
+          reason: 'Messages below warning level should not be written');
+      expect(content, contains('WARNING - should appear'));
+      expect(content, contains('ERROR - should appear'));
     });
   });
 
@@ -344,35 +329,38 @@ void main() {
         baseFilePath: logPath,
         rotationConfig: const FileRotationConfig.size(
           maxSize: 100, // Very small for testing
-          maxFiles: 5,
+          maxFiles: 10,
         ),
       );
       addTearDown(() => writer.close());
 
       // Write enough to trigger rotation
       for (var i = 0; i < 10; i++) {
-        writer.write(LogRecord(
+        final ts = DateTime(2024, 1, 15, 10, 30, i);
+        writer.write(testRecord(
           message: 'Message $i - This is a longer message to trigger rotation',
-          timestamp: DateTime(2024, 1, 15, 10, 30, i),
+          timestamp: ts,
         ));
       }
 
       await writer.close();
 
-      // Check that rotated files exist
       final files = tempDir.listSync().whereType<File>().toList();
-      expect(files.length, greaterThan(1));
+      final rotatedFiles = files.where((f) => f.path != logPath).toList();
 
-      // Current log file should exist
-      expect(File(logPath).existsSync(), isTrue);
+      expect(File(logPath).existsSync(), isTrue,
+          reason: 'Current log file should always exist');
+      expect(rotatedFiles.length, greaterThanOrEqualTo(1),
+          reason: 'At least one rotated file should be created');
 
-      // Should have some rotated files with timestamps
-      final rotatedFiles =
-          files.where((f) => f.path.contains('2024-01-15')).toList();
-      expect(rotatedFiles, isNotEmpty);
+      // Rotated files should have timestamp in name
+      for (final file in rotatedFiles) {
+        expect(file.path, contains('2024-01-15'),
+            reason: 'Rotated filename should contain timestamp');
+      }
     });
 
-    test('respects max file count', () async {
+    test('respects max file count by deleting oldest files', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
@@ -384,24 +372,26 @@ void main() {
       );
       addTearDown(() => writer.close());
 
-      // Write enough to create many rotated files
+      // Write enough to create many rotations (should trigger cleanup)
       for (var i = 0; i < 20; i++) {
-        writer.write(LogRecord(
+        final ts = DateTime(2024, 1, 15, 10, 30, i);
+        writer.write(testRecord(
           message: 'Message $i - Extra padding for size',
-          timestamp: DateTime(2024, 1, 15, 10, 30, i),
+          timestamp: ts,
         ));
       }
 
       await writer.close();
 
-      // Should have at most 3 files total (including current)
       final files = tempDir.listSync().whereType<File>().toList();
-      expect(files.length, lessThanOrEqualTo(3));
+      expect(files.length, lessThanOrEqualTo(3),
+          reason:
+              'maxFiles=3 should keep at most 3 files (1 current + 2 rotated)');
     });
   });
 
   group('Time-based rotation', () {
-    test('rotates on hour change', () async {
+    test('rotates on hour change with hourly config', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
@@ -411,25 +401,35 @@ void main() {
       addTearDown(() => writer.close());
 
       // Write at 10:00
-      writer.write(LogRecord(
+      writer.write(testRecord(
         message: 'Message at 10:00',
         timestamp: DateTime(2024, 1, 15, 10, 0, 0),
       ));
 
       // Write at 11:00 (should trigger rotation)
-      writer.write(LogRecord(
+      writer.write(testRecord(
         message: 'Message at 11:00',
         timestamp: DateTime(2024, 1, 15, 11, 0, 0),
       ));
 
       await writer.close();
 
-      // Should have current file and rotated file
       final files = tempDir.listSync().whereType<File>().toList();
-      expect(files.length, greaterThanOrEqualTo(2));
+      expect(files.length, 2,
+          reason:
+              'Hour change should create exactly 2 files: current + rotated');
+
+      // Verify content separation
+      final currentContent = File(logPath).readAsStringSync();
+      expect(currentContent, contains('Message at 11:00'),
+          reason: 'Current file should have the newer message');
+
+      final rotatedFile = files.firstWhere((f) => f.path != logPath);
+      expect(rotatedFile.readAsStringSync(), contains('Message at 10:00'),
+          reason: 'Rotated file should have the older message');
     });
 
-    test('rotates on day change', () async {
+    test('rotates on day change with daily config', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
@@ -439,32 +439,36 @@ void main() {
       addTearDown(() => writer.close());
 
       // Write on Jan 15
-      writer.write(LogRecord(
+      writer.write(testRecord(
         message: 'Message on Jan 15',
         timestamp: DateTime(2024, 1, 15, 10, 0, 0),
       ));
 
       // Write on Jan 16 (should trigger rotation)
-      writer.write(LogRecord(
+      writer.write(testRecord(
         message: 'Message on Jan 16',
         timestamp: DateTime(2024, 1, 16, 10, 0, 0),
       ));
 
       await writer.close();
 
-      // Should have current file and rotated file
       final files = tempDir.listSync().whereType<File>().toList();
-      expect(files.length, greaterThanOrEqualTo(2));
+      expect(files.length, 2,
+          reason: 'Day change should create exactly 2 files');
 
-      // Rotated file should contain Jan 15 message
+      // Rotated file should have date in name and contain old message
       final rotatedFile = files.firstWhere(
         (f) => f.path.contains('2024-01-15'),
-        orElse: () => throw StateError('No rotated file found'),
+        orElse: () => throw StateError(
+            'Expected rotated file with 2024-01-15 in name. Found: ${files.map((f) => f.path).join(", ")}'),
       );
       expect(rotatedFile.readAsStringSync(), contains('Message on Jan 15'));
+
+      // Current file should have new message
+      expect(File(logPath).readAsStringSync(), contains('Message on Jan 16'));
     });
 
-    test('does not rotate within same time period', () async {
+    test('does not rotate when all writes are in same time period', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
@@ -473,24 +477,103 @@ void main() {
       );
       addTearDown(() => writer.close());
 
-      // Write multiple times on same day
+      // Write multiple times on same day (different hours)
       for (var i = 0; i < 5; i++) {
-        writer.write(LogRecord(
-          message: 'Message $i',
-          timestamp: DateTime(2024, 1, 15, 10 + i, 0, 0),
-        ));
+        final ts = DateTime(2024, 1, 15, 10 + i, 0, 0);
+        writer.write(testRecord(message: 'Message $i', timestamp: ts));
       }
 
       await writer.close();
 
-      // Should only have current file (no rotation)
       final files = tempDir.listSync().whereType<File>().toList();
-      expect(files.length, 1);
+      expect(files.length, 1,
+          reason: 'No rotation should occur within same day');
+
+      // All messages should be in the single file
+      final content = File(logPath).readAsStringSync();
+      for (var i = 0; i < 5; i++) {
+        expect(content, contains('Message $i'),
+            reason: 'All messages should be in the single file');
+      }
+    });
+
+    test('rotates on week change with weekly config', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        rotationConfig: const FileRotationConfig(
+          rotationInterval: FileRotationInterval.weekly,
+        ),
+      );
+      addTearDown(() => writer.close());
+
+      // Write on Saturday Jan 13, 2024
+      writer.write(testRecord(
+        message: 'Message on Saturday',
+        timestamp: DateTime(2024, 1, 13, 10, 0, 0),
+      ));
+
+      // Write on Monday Jan 15, 2024 (new week, should trigger rotation)
+      writer.write(testRecord(
+        message: 'Message on Monday',
+        timestamp: DateTime(2024, 1, 15, 10, 0, 0),
+      ));
+
+      await writer.close();
+
+      final files = tempDir.listSync().whereType<File>().toList();
+      expect(files.length, 2,
+          reason: 'Week change should create 2 files: current + rotated');
+
+      // Verify content separation
+      final currentContent = File(logPath).readAsStringSync();
+      expect(currentContent, contains('Message on Monday'));
+
+      final rotatedFile = files.firstWhere((f) => f.path != logPath);
+      expect(rotatedFile.readAsStringSync(), contains('Message on Saturday'));
+    });
+
+    test('rotates on month change with monthly config', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        rotationConfig: const FileRotationConfig(
+          rotationInterval: FileRotationInterval.monthly,
+        ),
+      );
+      addTearDown(() => writer.close());
+
+      // Write on Jan 31
+      writer.write(testRecord(
+        message: 'Message in January',
+        timestamp: DateTime(2024, 1, 31, 10, 0, 0),
+      ));
+
+      // Write on Feb 1 (new month, should trigger rotation)
+      writer.write(testRecord(
+        message: 'Message in February',
+        timestamp: DateTime(2024, 2, 1, 10, 0, 0),
+      ));
+
+      await writer.close();
+
+      final files = tempDir.listSync().whereType<File>().toList();
+      expect(files.length, 2,
+          reason: 'Month change should create 2 files: current + rotated');
+
+      // Verify content separation
+      final currentContent = File(logPath).readAsStringSync();
+      expect(currentContent, contains('Message in February'));
+
+      final rotatedFile = files.firstWhere((f) => f.path != logPath);
+      expect(rotatedFile.readAsStringSync(), contains('Message in January'));
     });
   });
 
   group('Compression', () {
-    test('compresses rotated files when enabled', () async {
+    test('compresses rotated files to .gz when compress=true', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
@@ -500,65 +583,38 @@ void main() {
       addTearDown(() => writer.close());
 
       // Write on Jan 15
-      writer.write(LogRecord(
+      writer.write(testRecord(
         message: 'Message to compress',
         timestamp: DateTime(2024, 1, 15, 10, 0, 0),
       ));
 
       // Write on Jan 16 (triggers rotation and compression)
-      writer.write(LogRecord(
+      writer.write(testRecord(
         message: 'New day message',
         timestamp: DateTime(2024, 1, 16, 10, 0, 0),
       ));
 
       await writer.close();
 
-      // Should have .gz file
-      final gzFiles = tempDir
-          .listSync()
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.gz'))
+      final files = tempDir.listSync().whereType<File>().toList();
+      final gzFiles = files.where((f) => f.path.endsWith('.gz')).toList();
+      final uncompressedRotated = files
+          .where((f) => f.path != logPath && !f.path.endsWith('.gz'))
           .toList();
-      expect(gzFiles, isNotEmpty);
 
-      // Verify it's valid gzip
+      expect(gzFiles.length, 1,
+          reason: 'Exactly one compressed rotated file should exist');
+      expect(uncompressedRotated, isEmpty,
+          reason: 'Original rotated file should be deleted after compression');
+
+      // Verify gzip file contains the old message after decompression
       final gzContent = gzFiles.first.readAsBytesSync();
       final decompressed = gzip.decode(gzContent);
       final text = utf8.decode(decompressed);
-      expect(text, contains('Message to compress'));
-    });
-  });
-
-  group('Max age retention', () {
-    test('deletes files older than max age', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-
-      // Create old rotated file manually
-      final oldFile = File('${tempDir.path}/app.2024-01-01_10-00-00.log');
-      oldFile.writeAsStringSync('Old log content');
-
-      // Set modification time to old date
-      // Note: We can't easily set file times, so we test the logic differently
-      // by using the retention check directly
-
-      final writer = RotatingFileWriter(
-        baseFilePath: logPath,
-        rotationConfig: const FileRotationConfig.daily(
-          maxAge: Duration(days: 7),
-        ),
-      );
-      addTearDown(() => writer.close());
-
-      writer.write(LogRecord(
-        message: 'Current message',
-        timestamp: DateTime.now(),
-      ));
-
-      await writer.close();
-
-      // Note: Full max age testing requires file system time manipulation
-      // which is complex. The implementation is tested via the retention logic.
+      expect(text, contains('Message to compress'),
+          reason: 'Decompressed content should contain the rotated message');
+      expect(text, isNot(contains('New day message')),
+          reason: 'Compressed file should not contain new day message');
     });
   });
 
@@ -580,7 +636,7 @@ void main() {
         addTearDown(() => writer.close());
 
         // Write some content
-        writer.write(LogRecord(
+        writer.write(testRecord(
           message: 'Before force rotate',
           timestamp: fixedTime,
         ));
@@ -589,7 +645,7 @@ void main() {
         writer.forceRotate();
 
         // Write after rotation
-        writer.write(LogRecord(
+        writer.write(testRecord(
           message: 'After force rotate',
           timestamp: fixedTime,
         ));
@@ -601,7 +657,8 @@ void main() {
         expect(files.length, 2);
 
         // Current file should have "After" message
-        expect(File(logPath).readAsStringSync(), contains('After force rotate'));
+        expect(
+            File(logPath).readAsStringSync(), contains('After force rotate'));
 
         // Rotated file should have "Before" message
         final rotatedFile = files.firstWhere((f) => f.path != logPath);
@@ -610,125 +667,209 @@ void main() {
     });
   });
 
-  group('FileRotationConfig', () {
-    test('size constructor sets correct values', () {
-      final config = const FileRotationConfig.size(
-        maxSize: 1024,
-        maxFiles: 5,
-        maxAge: Duration(days: 7),
-        compress: true,
+  group('Max age retention', () {
+    test('deletes rotated files older than maxAge', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+
+      // Create writer and write first message (creates file at real time)
+      final writer1 = RotatingFileWriter(
+        baseFilePath: logPath,
+        rotationConfig: const FileRotationConfig.size(
+          maxSize: 50,
+          maxAge: Duration(days: 7),
+        ),
       );
 
-      expect(config.maxFileSize, 1024);
-      expect(config.maxFileCount, 5);
-      expect(config.maxAge, const Duration(days: 7));
-      expect(config.compress, isTrue);
-      expect(config.rotationInterval, isNull);
-    });
+      // Write enough to trigger rotation (creates rotated file at real time)
+      for (var i = 0; i < 5; i++) {
+        writer1.write(testRecord(
+          message: 'Old message $i - padding',
+          timestamp: DateTime(2024, 1, 15, 10, 0, i),
+        ));
+      }
+      await writer1.close();
 
-    test('daily constructor sets correct values', () {
-      final config = const FileRotationConfig.daily(
-        maxFiles: 30,
-        maxFileSize: 1024,
+      // Verify rotated files exist
+      final filesBeforeAging = tempDir.listSync().whereType<File>().toList();
+      final rotatedBefore =
+          filesBeforeAging.where((f) => f.path != logPath).toList();
+      expect(rotatedBefore, isNotEmpty,
+          reason: 'Should have rotated files before aging');
+
+      // Now open new writer with clock far in the future (10 days later)
+      // The rotated files' real modification time is "now", but clock says
+      // it's 10 days from now, so files appear older than 7 day maxAge
+      final futureTime = DateTime.now().add(const Duration(days: 10));
+      await withClock(Clock.fixed(futureTime), () async {
+        final writer2 = RotatingFileWriter(
+          baseFilePath: logPath,
+          rotationConfig: const FileRotationConfig.size(
+            maxSize: 50,
+            maxAge: Duration(days: 7),
+          ),
+        );
+
+        // Write to trigger rotation which applies retention policy
+        for (var i = 0; i < 5; i++) {
+          writer2.write(testRecord(
+            message: 'New message $i - padding',
+            timestamp: futureTime.add(Duration(seconds: i)),
+          ));
+        }
+        await writer2.close();
+      });
+
+      // Should still have current log file
+      expect(File(logPath).existsSync(), isTrue);
+
+      // Old rotated files (from writer1) should be deleted due to maxAge
+      // Only new rotated files (from writer2) and current file should remain
+      for (final oldFile in rotatedBefore) {
+        expect(oldFile.existsSync(), isFalse,
+            reason:
+                'Old rotated file ${oldFile.path} should be deleted by maxAge policy');
+      }
+    });
+  });
+
+  group('Encoding', () {
+    test('uses custom encoding when provided', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        encoding: latin1,
       );
+      addTearDown(() => writer.close());
 
-      expect(config.rotationInterval, FileRotationInterval.daily);
-      expect(config.maxFileCount, 30);
-      expect(config.maxFileSize, 1024);
+      // Write ASCII message (works with both utf8 and latin1)
+      writer.write(testRecord(message: 'Hello ASCII'));
+
+      await writer.flush();
+
+      // Read file as raw bytes and decode with latin1
+      final bytes = File(logPath).readAsBytesSync();
+      final content = latin1.decode(bytes);
+      expect(content, contains('Hello ASCII'));
     });
 
-    test('hourly constructor sets correct values', () {
-      final config = const FileRotationConfig.hourly(maxFiles: 24);
+    test('writes with default utf8 encoding', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePath: logPath);
+      addTearDown(() => writer.close());
 
-      expect(config.rotationInterval, FileRotationInterval.hourly);
-      expect(config.maxFileCount, 24);
+      // Write UTF-8 specific characters
+      const message = 'UTF-8: äöü ñ 你好';
+      writer.write(testRecord(message: message));
+
+      await writer.flush();
+
+      // Read as UTF-8 and verify
+      final bytes = File(logPath).readAsBytesSync();
+      final content = utf8.decode(bytes);
+      expect(content, contains(message));
     });
   });
 
   group('Edge cases', () {
-    test('handles empty message', () async {
+    test('writes log line with empty message without error', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(baseFilePath: logPath);
       addTearDown(() => writer.close());
 
-      writer.write(LogRecord(
-        message: '',
-        timestamp: DateTime.now(),
-      ));
+      writer.write(testRecord(message: ''));
 
-      await writer.close();
+      await writer.flush();
 
-      expect(File(logPath).existsSync(), isTrue);
+      expect(File(logPath).existsSync(), isTrue,
+          reason: 'File should be created even with empty message');
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('[INFO    ]'),
+          reason:
+              'Log line should have timestamp and level even with empty message');
     });
 
-    test('handles null message', () async {
+    test('writes null message as "null" string', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(baseFilePath: logPath);
       addTearDown(() => writer.close());
 
-      writer.write(LogRecord(
-        message: null,
-        timestamp: DateTime.now(),
-      ));
+      writer.write(testRecord(message: null));
 
-      await writer.close();
+      await writer.flush();
 
-      expect(File(logPath).existsSync(), isTrue);
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('null'),
+          reason: 'null message should be written as "null"');
     });
 
-    test('handles very long messages', () async {
+    test('writes very long messages completely', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(baseFilePath: logPath);
       addTearDown(() => writer.close());
 
       final longMessage = 'x' * 10000;
-      writer.write(LogRecord(
-        message: longMessage,
-        timestamp: DateTime.now(),
-      ));
+      writer.write(testRecord(message: longMessage));
 
       await writer.flush();
 
       final content = File(logPath).readAsStringSync();
-      expect(content, contains(longMessage));
+      expect(content, contains(longMessage),
+          reason: '10000 char message should be written completely');
     });
 
-    test('handles special characters in messages', () async {
+    test('preserves special characters in messages', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(baseFilePath: logPath);
       addTearDown(() => writer.close());
 
-      writer.write(LogRecord(
-        message: 'Special chars: \n\t\r"quotes" and \\backslashes',
-        timestamp: DateTime.now(),
-      ));
+      const message = 'Tabs:\there Quotes:"here" Backslash:\\here';
+      writer.write(testRecord(message: message));
 
       await writer.flush();
 
       final content = File(logPath).readAsStringSync();
-      expect(content, contains('Special chars'));
+      expect(content, contains(message),
+          reason: 'Special characters should be preserved in file');
     });
 
-    test('handles unicode in messages', () async {
+    test('preserves unicode characters (emoji, CJK, Cyrillic)', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(baseFilePath: logPath);
       addTearDown(() => writer.close());
 
-      writer.write(LogRecord(
-        message: 'Unicode: \u{1F600} \u{1F389} \u4E2D\u6587 \u0420\u0443\u0441\u0441\u043A\u0438\u0439',
-        timestamp: DateTime.now(),
-      ));
+      const emoji = '\u{1F600}';
+      const chinese = '\u4E2D\u6587';
+      const russian = '\u0420\u0443\u0441\u0441\u043A\u0438\u0439';
+      writer.write(testRecord(message: 'Unicode: $emoji $chinese $russian'));
 
       await writer.flush();
 
       final content = File(logPath).readAsStringSync();
-      expect(content, contains('\u{1F600}')); // emoji
-      expect(content, contains('\u4E2D\u6587')); // Chinese
+      expect(content, contains(emoji), reason: 'Emoji should be preserved');
+      expect(content, contains(chinese),
+          reason: 'Chinese characters should be preserved');
+      expect(content, contains(russian),
+          reason: 'Russian characters should be preserved');
     });
   });
+}
+
+/// Creates a temporary directory for a test and registers cleanup.
+Directory createTempDir() {
+  final tempDir =
+      Directory.systemTemp.createTempSync('chirp_file_writer_test_');
+  addTearDown(() {
+    if (tempDir.existsSync()) {
+      tempDir.deleteSync(recursive: true);
+    }
+  });
+  return tempDir;
 }

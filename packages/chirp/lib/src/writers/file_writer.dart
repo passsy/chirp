@@ -460,7 +460,8 @@ class RotatingFileWriter extends ChirpWriter {
 
     // Check time-based rotation
     if (config.rotationInterval != null && _lastRotationCheck != null) {
-      shouldRotate = shouldRotate || _shouldRotateByTime(timestamp, config.rotationInterval!);
+      shouldRotate = shouldRotate ||
+          _shouldRotateByTime(timestamp, config.rotationInterval!);
     }
 
     if (shouldRotate) {
@@ -473,15 +474,12 @@ class RotatingFileWriter extends ChirpWriter {
     final last = _lastRotationCheck!;
 
     return switch (interval) {
-      FileRotationInterval.hourly =>
-        now.year != last.year ||
-        now.month != last.month ||
-        now.day != last.day ||
-        now.hour != last.hour,
+      FileRotationInterval.hourly => now.year != last.year ||
+          now.month != last.month ||
+          now.day != last.day ||
+          now.hour != last.hour,
       FileRotationInterval.daily =>
-        now.year != last.year ||
-        now.month != last.month ||
-        now.day != last.day,
+        now.year != last.year || now.month != last.month || now.day != last.day,
       FileRotationInterval.weekly =>
         _weekNumber(now) != _weekNumber(last) || now.year != last.year,
       FileRotationInterval.monthly =>
@@ -569,7 +567,8 @@ class RotatingFileWriter extends ChirpWriter {
     if (rotatedFiles.isEmpty) return;
 
     // Sort by modification time (newest first)
-    rotatedFiles.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    rotatedFiles
+        .sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
 
     final now = clock.now();
     var filesToDelete = <File>[];
@@ -618,18 +617,14 @@ class RotatingFileWriter extends ChirpWriter {
 
     if (!dir.existsSync()) return [];
 
-    return dir
-        .listSync()
-        .whereType<File>()
-        .where((f) {
-          final fileName = f.uri.pathSegments.last;
-          // Match rotated files: baseName.TIMESTAMP.extension or baseName.TIMESTAMP.extension.gz
-          return fileName.startsWith('$baseName.') &&
-              fileName != name &&
-              (fileName.contains(RegExp(r'\d{4}-\d{2}-\d{2}')) ||
-                  fileName.endsWith('.gz'));
-        })
-        .toList();
+    return dir.listSync().whereType<File>().where((f) {
+      final fileName = f.uri.pathSegments.last;
+      // Match rotated files: baseName.TIMESTAMP.extension or baseName.TIMESTAMP.extension.gz
+      return fileName.startsWith('$baseName.') &&
+          fileName != name &&
+          (fileName.contains(RegExp(r'\d{4}-\d{2}-\d{2}')) ||
+              fileName.endsWith('.gz'));
+    }).toList();
   }
 
   /// Flushes buffered data to disk.
