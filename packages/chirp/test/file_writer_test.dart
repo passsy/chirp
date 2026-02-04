@@ -451,6 +451,40 @@ void main() {
       expect(fileNames.where((n) => RegExp(r'_2\.log$').hasMatch(n)).length, 1,
           reason: 'Should have one file with _2 suffix');
     });
+
+    test('retention counts rotated files with counter suffix', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        rotationConfig: FileRotationConfig.size(
+          maxSize: 1024 * 1024,
+          maxFiles: 2,
+        ),
+      );
+      addTearDown(() => writer.close());
+
+      final rotated = File('${tempDir.path}/app.2024-01-15_10-30-45.log');
+      final rotatedCounter =
+          File('${tempDir.path}/app.2024-01-15_10-30-45_1.log');
+      rotated.writeAsStringSync('older');
+      rotatedCounter.writeAsStringSync('oldest');
+      rotated.setLastModifiedSync(DateTime(2024, 1, 2));
+      // ignore: avoid_redundant_argument_values
+      rotatedCounter.setLastModifiedSync(DateTime(2024, 1, 1));
+
+      writer.write(testRecord(
+        message: 'Trigger rotation',
+        timestamp: DateTime(2024, 1, 15, 10, 30, 46),
+      ));
+      await writer.forceRotate();
+      await writer.close();
+
+      expect(rotated.existsSync(), isFalse,
+          reason: 'Rotated file should be deleted when maxFiles is exceeded');
+      expect(rotatedCounter.existsSync(), isFalse,
+          reason: 'Counter-suffix rotated file should be deleted by retention');
+    });
   });
 
   group('Time-based rotation', () {
@@ -921,6 +955,25 @@ void main() {
           reason: 'Chinese characters should be preserved');
       expect(content, contains(russian),
           reason: 'Russian characters should be preserved');
+    });
+
+    test('calling close() multiple times does not throw', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePath: logPath);
+
+      writer.write(testRecord(message: 'Test message'));
+
+      // First close
+      await writer.close();
+
+      // Second and third close should not throw
+      await writer.close();
+      await writer.close();
+
+      // File should still contain the message
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('Test message'));
     });
   });
 
