@@ -18,6 +18,9 @@ class JsonFileFormatter implements FileMessageFormatter {
   const JsonFileFormatter();
 
   @override
+  bool get requiresCallerInfo => false;
+
+  @override
   String format(LogRecord record) {
     final map = <String, Object?>{
       'timestamp': record.timestamp.toIso8601String(),

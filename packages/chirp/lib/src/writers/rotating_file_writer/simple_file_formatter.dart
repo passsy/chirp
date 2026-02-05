@@ -19,6 +19,9 @@ class SimpleFileFormatter implements FileMessageFormatter {
   });
 
   @override
+  bool get requiresCallerInfo => false;
+
+  @override
   String format(LogRecord record) {
     final buffer = StringBuffer();
 

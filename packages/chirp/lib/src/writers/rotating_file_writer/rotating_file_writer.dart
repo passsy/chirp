@@ -131,6 +131,9 @@ abstract class RotatingFileWriter extends ChirpWriter {
 
   RotatingFileWriter.internal();
 
+  @override
+  bool get requiresCallerInfo => formatter.requiresCallerInfo;
+
   /// Base path for log files.
   ///
   /// This is the path to the current log file. Rotated files are created
@@ -427,6 +430,14 @@ enum FlushStrategy {
 /// Unlike [ConsoleMessageFormatter], this produces plain text without
 /// ANSI color codes, suitable for log files.
 abstract class FileMessageFormatter {
+  /// Whether this formatter requires caller info (file, line, class, method).
+  ///
+  /// If `true`, the logger will capture `StackTrace.current` for each log call.
+  /// If `false`, the expensive stack trace capture can be skipped.
+  ///
+  /// Default is `false`. Override in subclasses that display caller info.
+  bool get requiresCallerInfo => false;
+
   /// Formats a [LogRecord] to a string for file output.
   ///
   /// The returned string should be a complete log line (without trailing

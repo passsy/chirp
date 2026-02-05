@@ -9,6 +9,12 @@ import 'test_log_record.dart';
 
 void main() {
   group('SimpleFileFormatter', () {
+    test('requiresCallerInfo defaults to false', () {
+      const formatter = SimpleFileFormatter();
+
+      expect(formatter.requiresCallerInfo, isFalse);
+    });
+
     test('formats basic log record with timestamp, level, and message', () {
       const formatter = SimpleFileFormatter();
       final record = testRecord(
@@ -86,7 +92,7 @@ void main() {
 
       expect(result, contains('Error:'));
       expect(result, contains('Something went wrong'));
-      expect(result, contains('file_writer_test.dart'));
+      expect(result, contains('rotating_file_writer_test.dart'));
     });
 
     test('formats all log levels correctly', () {
@@ -116,6 +122,12 @@ void main() {
   });
 
   group('JsonFileFormatter', () {
+    test('requiresCallerInfo defaults to false', () {
+      const formatter = JsonFileFormatter();
+
+      expect(formatter.requiresCallerInfo, isFalse);
+    });
+
     test('formats as valid JSON with required fields', () {
       const formatter = JsonFileFormatter();
       final ts = DateTime(2024, 1, 15, 10, 30, 45);
@@ -293,6 +305,86 @@ void main() {
           reason: 'Logger name should appear in output');
       expect(content, contains('[INFO'),
           reason: 'Log level should appear in output');
+    });
+
+    test('formatter can require caller info', () {
+      final formatter = _CapturingFormatter([]);
+
+      expect(formatter.requiresCallerInfo, isFalse);
+
+      final withCallerInfo = _CapturingFormatter([], requiresCallerInfo: true);
+      expect(withCallerInfo.requiresCallerInfo, isTrue);
+    });
+
+    test('requiresCallerInfo false does not capture caller', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final records = <LogRecord>[];
+      final formatter = _CapturingFormatter(records);
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        formatter: formatter,
+      );
+      addTearDown(() => writer.close());
+
+      final logger = ChirpLogger(name: 'TestLogger').addWriter(writer);
+
+      logger.info('Caller info test');
+
+      await writer.flush();
+
+      expect(writer.requiresCallerInfo, isFalse);
+      expect(records, hasLength(1));
+      expect(records[0].caller, isNull);
+    });
+
+    test('requiresCallerInfo delegates to formatter and captures caller',
+        () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final records = <LogRecord>[];
+      final formatter = _CapturingFormatter(
+        records,
+        requiresCallerInfo: true,
+      );
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        formatter: formatter,
+      );
+      addTearDown(() => writer.close());
+
+      final logger = ChirpLogger(name: 'TestLogger').addWriter(writer);
+
+      logger.info('Caller info test');
+
+      await writer.flush();
+
+      expect(writer.requiresCallerInfo, isTrue);
+      expect(records, hasLength(1));
+      expect(records[0].caller, isNotNull);
+      expect(
+        records[0].caller.toString(),
+        contains('rotating_file_writer_test.dart'),
+      );
+    });
+
+    test('requiresCallerInfo captures caller in file output', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePath: logPath,
+        formatter: const _CallerLocationFormatter(),
+      );
+      addTearDown(() => writer.close());
+
+      final logger = ChirpLogger(name: 'TestLogger').addWriter(writer);
+
+      logger.info('Caller info test');
+
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('rotating_file_writer_test'));
     });
 
     test('respects minLogLevel filtering inherited from ChirpWriter', () async {
@@ -1501,7 +1593,45 @@ Directory createTempDir() {
 /// A formatter that always throws, used to test error handling.
 class _ThrowingFormatter implements FileMessageFormatter {
   @override
+  bool get requiresCallerInfo => false;
+
+  @override
   String format(LogRecord record) {
     throw StateError('Simulated formatter error');
+  }
+}
+
+class _CapturingFormatter implements FileMessageFormatter {
+  final List<LogRecord> records;
+  final bool _requiresCallerInfo;
+
+  _CapturingFormatter(
+    this.records, {
+    bool requiresCallerInfo = false,
+  }) : _requiresCallerInfo = requiresCallerInfo;
+
+  @override
+  bool get requiresCallerInfo => _requiresCallerInfo;
+
+  @override
+  String format(LogRecord record) {
+    records.add(record);
+    return record.message?.toString() ?? '';
+  }
+}
+
+class _CallerLocationFormatter implements FileMessageFormatter {
+  const _CallerLocationFormatter();
+
+  @override
+  bool get requiresCallerInfo => true;
+
+  @override
+  String format(LogRecord record) {
+    final callerInfo = record.callerInfo;
+    if (callerInfo == null) {
+      return 'no-caller';
+    }
+    return callerInfo.callerLocation;
   }
 }
