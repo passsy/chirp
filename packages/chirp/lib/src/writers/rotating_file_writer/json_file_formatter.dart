@@ -21,7 +21,7 @@ class JsonFileFormatter implements FileMessageFormatter {
   bool get requiresCallerInfo => false;
 
   @override
-  String format(LogRecord record) {
+  void format(LogRecord record, FileMessageBuffer buffer) {
     final map = <String, Object?>{
       'timestamp': record.timestamp.toIso8601String(),
       'level': record.level.name,
@@ -45,7 +45,7 @@ class JsonFileFormatter implements FileMessageFormatter {
     }
 
     // Simple JSON encoding without external dependency
-    return _encodeJson(map);
+    buffer.write(_encodeJson(map));
   }
 }
 

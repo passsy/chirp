@@ -22,9 +22,7 @@ class SimpleFileFormatter implements FileMessageFormatter {
   bool get requiresCallerInfo => false;
 
   @override
-  String format(LogRecord record) {
-    final buffer = StringBuffer();
-
+  void format(LogRecord record, FileMessageBuffer buffer) {
     // Timestamp
     buffer.write(record.timestamp.toIso8601String());
     buffer.write(' ');
@@ -47,7 +45,7 @@ class SimpleFileFormatter implements FileMessageFormatter {
     // Structured data
     if (includeData && record.data.isNotEmpty) {
       buffer.write(' ');
-      buffer.write(record.data);
+      buffer.writeData(record.data);
     }
 
     // Error
@@ -61,7 +59,5 @@ class SimpleFileFormatter implements FileMessageFormatter {
       buffer.write('\n');
       buffer.write(record.stackTrace);
     }
-
-    return buffer.toString();
   }
 }

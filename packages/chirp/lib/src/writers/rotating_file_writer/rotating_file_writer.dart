@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chirp/chirp.dart';
+import 'package:chirp/src/formatters/yaml_formatter.dart';
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_stub.dart'
     if (dart.library.io) 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.dart'
     as platform;
@@ -425,6 +426,87 @@ enum FlushStrategy {
   buffered,
 }
 
+/// Buffer for building plain text file output.
+///
+/// This provides a minimal, allocation-friendly API for formatters to build
+/// log lines without allocating intermediate strings.
+class FileMessageBuffer {
+  final StringBuffer _buffer = StringBuffer();
+  bool _endsWithNewline = false;
+
+  /// Writes [value] to the buffer.
+  void write(Object? value) {
+    final text = value?.toString() ?? 'null';
+    _buffer.write(text);
+    if (text.isNotEmpty) {
+      _endsWithNewline = text.endsWith('\n');
+    }
+  }
+
+  /// Writes [value] and a newline to the buffer.
+  void writeln([Object? value = '']) {
+    write(value);
+    _buffer.write('\n');
+    _endsWithNewline = true;
+  }
+
+  /// Writes a map as inline key-value data.
+  ///
+  /// Keys and values are formatted using [formatYamlKey] and [formatYamlValue]
+  /// to match [InlineData] formatting.
+  void writeData(
+    Map<String, Object?>? data, {
+    String entrySeparator = ', ',
+    String keyValueSeparator = ': ',
+  }) {
+    if (data == null || data.isEmpty) {
+      return;
+    }
+
+    var isFirst = true;
+    for (final entry in data.entries) {
+      if (isFirst) {
+        isFirst = false;
+      } else {
+        write(entrySeparator);
+      }
+
+      write(formatYamlKey(entry.key));
+      write(keyValueSeparator);
+      write(formatYamlValue(entry.value));
+    }
+  }
+
+  /// Ensures the buffer ends with a newline.
+  void ensureLineBreak() {
+    if (_buffer.isEmpty) {
+      return;
+    }
+
+    if (_endsWithNewline) {
+      return;
+    }
+
+    _buffer.write('\n');
+    _endsWithNewline = true;
+  }
+
+  /// Clears the buffer contents.
+  void clear() {
+    _buffer.clear();
+    _endsWithNewline = false;
+  }
+
+  /// Whether the buffer has no contents.
+  bool get isEmpty => _buffer.isEmpty;
+
+  /// The current character length of the buffer.
+  int get length => _buffer.length;
+
+  @override
+  String toString() => _buffer.toString();
+}
+
 /// Formatter for converting [LogRecord] to plain text for file output.
 ///
 /// Unlike [ConsoleMessageFormatter], this produces plain text without
@@ -438,9 +520,9 @@ abstract class FileMessageFormatter {
   /// Default is `false`. Override in subclasses that display caller info.
   bool get requiresCallerInfo => false;
 
-  /// Formats a [LogRecord] to a string for file output.
+  /// Formats a [LogRecord] into the [buffer] for file output.
   ///
-  /// The returned string should be a complete log line (without trailing
-  /// newline - the writer adds that).
-  String format(LogRecord record);
+  /// The buffer should contain a complete log line (without trailing newline -
+  /// the writer adds that).
+  void format(LogRecord record, FileMessageBuffer buffer);
 }

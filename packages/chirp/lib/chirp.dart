@@ -74,6 +74,7 @@ export 'package:chirp/src/writers/developer_log_console_writer.dart'
     show DeveloperLogConsoleWriter;
 export 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer.dart'
     show
+        FileMessageBuffer,
         FileMessageFormatter,
         FileRotationConfig,
         FileRotationInterval,

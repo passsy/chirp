@@ -22,7 +22,7 @@ void main() {
         timestamp: DateTime(2024, 1, 15, 10, 30, 45, 123),
       );
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
 
       expect(
         result,
@@ -37,7 +37,7 @@ void main() {
         loggerName: 'MyApp.Service',
       );
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
 
       expect(result, contains('[MyApp.Service]'));
     });
@@ -49,7 +49,7 @@ void main() {
         loggerName: 'MyApp.Service',
       );
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
 
       expect(result, isNot(contains('[MyApp.Service]')));
     });
@@ -61,7 +61,7 @@ void main() {
         data: {'userId': 'abc123', 'role': 'admin'},
       );
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
 
       expect(result, contains('userId'));
       expect(result, contains('abc123'));
@@ -74,7 +74,7 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
 
       expect(result, isNot(contains('key')));
     });
@@ -88,7 +88,7 @@ void main() {
         stackTrace: StackTrace.current,
       );
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
 
       expect(result, contains('Error:'));
       expect(result, contains('Something went wrong'));
@@ -111,13 +111,50 @@ void main() {
       for (final level in levels) {
         final record = testRecord(message: 'Test', level: level);
 
-        final result = formatter.format(record);
+        final result = formatRecord(formatter, record);
         expect(
           result,
           contains('[${level.name.toUpperCase().padRight(8)}]'),
           reason: 'Level $level should be formatted correctly',
         );
       }
+    });
+  });
+
+  group('FileMessageBuffer', () {
+    test('writeData formats inline yaml data', () {
+      final buffer = FileMessageBuffer();
+
+      buffer.writeData({'user id': 'abc123', 'count': 2});
+
+      expect(buffer.toString(), '"user id": "abc123", count: 2');
+    });
+
+    test('writeData ignores null and empty data', () {
+      final buffer = FileMessageBuffer();
+
+      buffer.writeData(null);
+      buffer.writeData({});
+
+      expect(buffer.toString(), isEmpty);
+    });
+
+    test('ensureLineBreak adds newline only when needed', () {
+      final empty = FileMessageBuffer();
+
+      empty.ensureLineBreak();
+      expect(empty.toString(), isEmpty);
+
+      final buffer = FileMessageBuffer();
+      buffer.write('line');
+      buffer.ensureLineBreak();
+      buffer.ensureLineBreak();
+      expect(buffer.toString(), 'line\n');
+
+      final withNewline = FileMessageBuffer();
+      withNewline.writeln('line');
+      withNewline.ensureLineBreak();
+      expect(withNewline.toString(), 'line\n');
     });
   });
 
@@ -136,7 +173,7 @@ void main() {
         timestamp: ts,
       );
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
       final json = jsonDecode(result) as Map<String, Object?>;
 
       expect(json['timestamp'], '2024-01-15T10:30:45.000');
@@ -159,7 +196,7 @@ void main() {
         stackTrace: StackTrace.current,
       );
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
       final json = jsonDecode(result) as Map<String, Object?>;
 
       expect(json['logger'], 'MyLogger');
@@ -173,7 +210,7 @@ void main() {
       const originalMessage = 'Line1\nLine2\tTabbed\r"Quoted"\\Escaped';
       final record = testRecord(message: originalMessage);
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
 
       // Verify it's valid JSON and message survives round-trip
       final json = jsonDecode(result) as Map<String, Object?>;
@@ -191,7 +228,7 @@ void main() {
         },
       );
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
       final json = jsonDecode(result) as Map<String, Object?>;
 
       expect(json['data'], {
@@ -204,7 +241,7 @@ void main() {
       const formatter = JsonFileFormatter();
       final record = testRecord(message: null);
 
-      final result = formatter.format(record);
+      final result = formatRecord(formatter, record);
       final json = jsonDecode(result) as Map<String, Object?>;
 
       expect(json['message'], isNull);
@@ -1590,13 +1627,19 @@ Directory createTempDir() {
   return tempDir;
 }
 
+String formatRecord(FileMessageFormatter formatter, LogRecord record) {
+  final buffer = FileMessageBuffer();
+  formatter.format(record, buffer);
+  return buffer.toString();
+}
+
 /// A formatter that always throws, used to test error handling.
 class _ThrowingFormatter implements FileMessageFormatter {
   @override
   bool get requiresCallerInfo => false;
 
   @override
-  String format(LogRecord record) {
+  void format(LogRecord record, FileMessageBuffer buffer) {
     throw StateError('Simulated formatter error');
   }
 }
@@ -1614,9 +1657,9 @@ class _CapturingFormatter implements FileMessageFormatter {
   bool get requiresCallerInfo => _requiresCallerInfo;
 
   @override
-  String format(LogRecord record) {
+  void format(LogRecord record, FileMessageBuffer buffer) {
     records.add(record);
-    return record.message?.toString() ?? '';
+    buffer.write(record.message?.toString() ?? '');
   }
 }
 
@@ -1627,11 +1670,12 @@ class _CallerLocationFormatter implements FileMessageFormatter {
   bool get requiresCallerInfo => true;
 
   @override
-  String format(LogRecord record) {
+  void format(LogRecord record, FileMessageBuffer buffer) {
     final callerInfo = record.callerInfo;
     if (callerInfo == null) {
-      return 'no-caller';
+      buffer.write('no-caller');
+      return;
     }
-    return callerInfo.callerLocation;
+    buffer.write(callerInfo.callerLocation);
   }
 }

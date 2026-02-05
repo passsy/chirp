@@ -188,7 +188,7 @@ class RotatingFileWriterIo extends RotatingFileWriter {
       }
 
       // Format and write the record
-      final line = formatter.format(record);
+      final line = _formatRecord(record);
       final bytes = encoding.encode('$line\n');
 
       _file!.writeFromSync(bytes);
@@ -273,7 +273,7 @@ class RotatingFileWriterIo extends RotatingFileWriter {
         }
 
         // Format and write the record
-        final line = formatter.format(record);
+        final line = _formatRecord(record);
         final bytes = encoding.encode('$line\n');
 
         // Use async write
@@ -290,6 +290,12 @@ class RotatingFileWriterIo extends RotatingFileWriter {
   void _handleError(Object error, StackTrace stackTrace, LogRecord? record) {
     final handler = onError ?? defaultFileWriterErrorHandler;
     handler(error, stackTrace, record);
+  }
+
+  String _formatRecord(LogRecord record) {
+    final buffer = FileMessageBuffer();
+    formatter.format(record, buffer);
+    return buffer.toString();
   }
 
   /// Checks if rotation is needed and performs it if so.
