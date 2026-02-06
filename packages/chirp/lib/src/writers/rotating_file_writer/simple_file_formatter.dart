@@ -5,7 +5,7 @@ import 'package:chirp/chirp.dart';
 /// Output format: `2024-01-15T10:30:45.123 [INFO] Message`
 ///
 /// With error: `2024-01-15T10:30:45.123 [ERROR] Message\nError: Something failed\n<stacktrace>`
-class SimpleFileFormatter implements FileMessageFormatter {
+class SimpleFileFormatter extends ChirpFormatter {
   /// Whether to include the logger name in output.
   final bool includeLoggerName;
 
@@ -22,7 +22,7 @@ class SimpleFileFormatter implements FileMessageFormatter {
   bool get requiresCallerInfo => false;
 
   @override
-  void format(LogRecord record, FileMessageBuffer buffer) {
+  void format(LogRecord record, MessageBuffer buffer) {
     // Timestamp
     buffer.write(record.timestamp.toIso8601String());
     buffer.write(' ');
@@ -45,7 +45,7 @@ class SimpleFileFormatter implements FileMessageFormatter {
     // Structured data
     if (includeData && record.data.isNotEmpty) {
       buffer.write(' ');
-      buffer.writeData(record.data);
+      buffer.file!.writeData(record.data);
     }
 
     // Error

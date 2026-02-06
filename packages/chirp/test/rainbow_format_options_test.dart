@@ -23,7 +23,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -50,7 +50,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -78,7 +78,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -106,7 +106,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -137,7 +137,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -162,7 +162,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -189,7 +189,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -219,7 +219,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -253,7 +253,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // No timestamp prefix, just level and message

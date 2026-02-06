@@ -6,7 +6,6 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_stub
     if (dart.library.io) 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.dart'
     as platform;
 
-export 'package:chirp/src/writers/rotating_file_writer/json_file_formatter.dart';
 export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dart';
 
 /// Writes log records to files with optional rotation.
@@ -52,7 +51,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// // Write structured JSON logs
 /// final writer = RotatingFileWriter(
 ///   baseFilePath: '/var/log/app.jsonl',
-///   formatter: JsonFileFormatter(),
+///   formatter: const JsonLogFormatter(),
 ///   rotationConfig: FileRotationConfig.daily(maxFiles: 7),
 /// );
 /// ```
@@ -61,7 +60,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 ///
 /// Choose the file extension based on the formatter:
 /// - `.log` for [SimpleFileFormatter] (plain text)
-/// - `.jsonl` or `.ndjson` for [JsonFileFormatter] (JSON Lines format)
+/// - `.jsonl` or `.ndjson` for [JsonLogFormatter] (JSON Lines format)
 ///
 /// ## File Naming
 ///
@@ -112,7 +111,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 abstract class RotatingFileWriter extends ChirpWriter {
   factory RotatingFileWriter({
     required String baseFilePath,
-    FileMessageFormatter? formatter,
+    ChirpFormatter? formatter,
     FileRotationConfig? rotationConfig,
     Encoding encoding = utf8,
     FileWriterErrorHandler? onError,
@@ -142,7 +141,7 @@ abstract class RotatingFileWriter extends ChirpWriter {
   String get baseFilePath;
 
   /// Formatter for converting log records to text.
-  FileMessageFormatter get formatter;
+  ChirpFormatter get formatter;
 
   /// Rotation configuration, or `null` for no rotation.
   FileRotationConfig? get rotationConfig;
@@ -507,22 +506,6 @@ class FileMessageBuffer {
   String toString() => _buffer.toString();
 }
 
-/// Formatter for converting [LogRecord] to plain text for file output.
-///
-/// Unlike [ConsoleMessageFormatter], this produces plain text without
-/// ANSI color codes, suitable for log files.
-abstract class FileMessageFormatter {
-  /// Whether this formatter requires caller info (file, line, class, method).
-  ///
-  /// If `true`, the logger will capture `StackTrace.current` for each log call.
-  /// If `false`, the expensive stack trace capture can be skipped.
-  ///
-  /// Default is `false`. Override in subclasses that display caller info.
-  bool get requiresCallerInfo => false;
-
-  /// Formats a [LogRecord] into the [buffer] for file output.
-  ///
-  /// The buffer should contain a complete log line (without trailing newline -
-  /// the writer adds that).
-  void format(LogRecord record, FileMessageBuffer buffer);
-}
+/// Backwards-compatible type alias.
+@Deprecated('Use ChirpFormatter instead')
+typedef FileMessageFormatter = ChirpFormatter;

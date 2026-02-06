@@ -23,7 +23,7 @@ void main() async {
   if (isProduction) {
     // production
     Chirp.root = ChirpLogger().addConsoleWriter(
-      formatter: JsonMessageFormatter(),
+      formatter: JsonLogFormatter(),
     );
 
     assert(() {

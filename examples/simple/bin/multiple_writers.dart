@@ -10,7 +10,7 @@ void main() {
       .addConsoleWriter(formatter: RainbowMessageFormatter())
       // JSON for log files or aggregators
       .addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: JsonLogFormatter(),
         output: (msg) => print('[FILE] $msg'),
       );
 

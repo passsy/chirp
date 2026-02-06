@@ -54,7 +54,7 @@ class LogRecord {
   /// to `true`:
   /// - [ChirpInterceptor.requiresCallerInfo]
   /// - [ChirpWriter.requiresCallerInfo]
-  /// - [ConsoleMessageFormatter.requiresCallerInfo]
+  /// - [ChirpFormatter.requiresCallerInfo]
   final StackTrace? caller;
 
   /// Number of stack frames to skip when resolving caller info

@@ -31,7 +31,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, startsWith('10:30:45.123'));
@@ -49,7 +49,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, startsWith('10:30:47.891'));
@@ -66,7 +66,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, startsWith('10:30:47.891 [10:30:45.123]'));
@@ -82,7 +82,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, startsWith('10:30:45.123'));
@@ -99,7 +99,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, startsWith('10:30:47.891 [10:30:45.123]'));
@@ -115,7 +115,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, isNot(contains('10:30')));
@@ -134,7 +134,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, startsWith('10:30:45.123'));
@@ -151,7 +151,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, startsWith('10:30:47.891'));
@@ -168,7 +168,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, startsWith('10:30:47.891 [10:30:45.123]'));
@@ -184,7 +184,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, startsWith('10:30:45.123'));
@@ -201,7 +201,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, startsWith('10:30:47.891 [10:30:45.123]'));
@@ -217,7 +217,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, isNot(contains('10:30')));
@@ -242,7 +242,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('10:30:45.123'));
@@ -265,7 +265,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('10:30:47.891'));
@@ -288,7 +288,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('10:30:47.891'));
@@ -311,7 +311,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('10:30:45.123'));
@@ -334,7 +334,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('10:30:47.891'));
@@ -359,7 +359,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('10:30:45.623'));
@@ -382,7 +382,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, isNot(contains('10:30')));
@@ -405,7 +405,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('10:30:45.123'));
@@ -429,19 +429,19 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, isNot(contains('10:30')));
     });
   });
 
-  group('JsonMessageFormatter timeDisplay', () {
+  group('JsonLogFormatter timeDisplay', () {
     final clockTimeUtc = DateTime.utc(2024, 1, 15, 10, 30, 45, 123);
     final wallClockTimeUtc = DateTime.utc(2024, 1, 15, 10, 30, 47, 891);
 
     test('clock - includes only timestamp from clock', () {
-      final formatter = JsonMessageFormatter(
+      const formatter = JsonLogFormatter(
         timeDisplay: TimeDisplay.clock,
       );
       final record = testRecord(
@@ -450,7 +450,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded['timestamp'], '2024-01-15T10:30:45.123Z');
@@ -458,7 +458,7 @@ void main() {
     });
 
     test('wallClock - includes only timestamp from wall-clock', () {
-      final formatter = JsonMessageFormatter(
+      const formatter = JsonLogFormatter(
         timeDisplay: TimeDisplay.wallClock,
       );
       final record = testRecord(
@@ -467,7 +467,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded['timestamp'], '2024-01-15T10:30:47.891Z');
@@ -475,7 +475,7 @@ void main() {
     });
 
     test('both - includes timestamp (wall-clock) and clockTime', () {
-      final formatter = JsonMessageFormatter(
+      const formatter = JsonLogFormatter(
         timeDisplay: TimeDisplay.both,
       );
       final record = testRecord(
@@ -484,7 +484,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded['timestamp'], '2024-01-15T10:30:47.891Z');
@@ -492,7 +492,7 @@ void main() {
     });
 
     test('auto - includes timestamp (wall-clock) and clockTime', () {
-      final formatter = JsonMessageFormatter(
+      const formatter = JsonLogFormatter(
         timeDisplay: TimeDisplay.auto,
       );
       final record = testRecord(
@@ -501,7 +501,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       // JSON formatters treat 'auto' same as 'both'
@@ -510,7 +510,7 @@ void main() {
     });
 
     test('off - includes no timestamp fields', () {
-      final formatter = JsonMessageFormatter(
+      const formatter = JsonLogFormatter(
         timeDisplay: TimeDisplay.off,
       );
       final record = testRecord(
@@ -519,7 +519,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded.containsKey('timestamp'), isFalse);
@@ -541,7 +541,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded['timestamp'], '2024-01-15T10:30:45.123Z');
@@ -558,7 +558,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded['timestamp'], '2024-01-15T10:30:47.891Z');
@@ -575,7 +575,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded['timestamp'], '2024-01-15T10:30:47.891Z');
@@ -592,7 +592,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       // JSON formatters treat 'auto' same as 'both'
@@ -610,7 +610,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded.containsKey('timestamp'), isFalse);
@@ -632,7 +632,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded['timestamp'], '2024-01-15T10:30:45.123Z');
@@ -649,7 +649,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded['timestamp'], '2024-01-15T10:30:47.891Z');
@@ -666,7 +666,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded['timestamp'], '2024-01-15T10:30:47.891Z');
@@ -683,7 +683,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       // JSON formatters treat 'auto' same as 'both'
@@ -701,7 +701,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       expect(decoded.containsKey('timestamp'), isFalse);
@@ -718,7 +718,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Should show wall-clock with clock time in brackets (auto mode, times differ)
@@ -734,7 +734,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Should show wall-clock with clock time in brackets (auto mode, times differ)
@@ -757,7 +757,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Should show wall-clock with clock in brackets (auto mode, times differ)
@@ -765,8 +765,8 @@ void main() {
       expect(result, contains('[10:30:45.123]'));
     });
 
-    test('JsonMessageFormatter defaults to TimeDisplay.auto', () {
-      final formatter = JsonMessageFormatter();
+    test('JsonLogFormatter defaults to TimeDisplay.auto', () {
+      const formatter = JsonLogFormatter();
       final clockTimeUtc = DateTime.utc(2024, 1, 15, 10, 30, 45, 123);
       final wallClockTimeUtc = DateTime.utc(2024, 1, 15, 10, 30, 47, 891);
       final record = testRecord(
@@ -775,7 +775,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       // Auto mode shows both timestamps
@@ -793,7 +793,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       // Auto mode shows both timestamps
@@ -811,7 +811,7 @@ void main() {
       );
 
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
       // Auto mode shows both timestamps

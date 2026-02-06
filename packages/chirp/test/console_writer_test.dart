@@ -243,6 +243,45 @@ void main() {
     });
   });
 
+  group('ConsoleMessageBuffer.writeln', () {
+    test('appends newline after value', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
+      buffer.writeln('hello');
+      expect(buffer.toString(), 'hello\n');
+    });
+
+    test('writes only newline when called without arguments', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities:
+            const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+      );
+      buffer.writeln();
+      expect(buffer.toString(), '\n');
+    });
+
+    test('re-applies style after newline', () {
+      final buffer = ConsoleMessageBuffer(
+        capabilities: const TerminalCapabilities(
+            colorSupport: TerminalColorSupport.ansi256),
+      );
+      buffer.pushStyle(foreground: Ansi256.red1_196);
+      buffer.writeln('line1');
+      buffer.write('line2');
+      buffer.popStyle();
+
+      final text = buffer.toString();
+      // Style code should appear after the newline (before line2)
+      expect(text, contains('line1\n'));
+      expect(text, contains('line2'));
+      // The style re-apply after newline means there's an escape code between \n and line2
+      final afterNewline = text.split('line1\n')[1];
+      expect(afterNewline, startsWith('\x1B['));
+    });
+  });
+
   group('splitIntoChunks', () {
     group('basic behavior', () {
       test('returns single chunk for short text', () {
@@ -797,13 +836,13 @@ void main() {
 }
 
 /// Test formatter that always outputs the given text.
-class _TestFormatter extends ConsoleMessageFormatter {
+class _TestFormatter extends ChirpFormatter {
   final String text;
 
   _TestFormatter(this.text);
 
   @override
-  void format(LogRecord record, ConsoleMessageBuffer buffer) {
+  void format(LogRecord record, MessageBuffer buffer) {
     buffer.write(text);
   }
 }

@@ -19,7 +19,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, '10:30:45.123 [info] [payment] - User logged in');
@@ -39,7 +39,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, '10:30:45.123 [info] main:42 myMethod MyClass - Test');
@@ -56,7 +56,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       final hash = identityHashCode(instance).toRadixString(16).padLeft(8, '0');
@@ -74,7 +74,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -95,7 +95,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -121,7 +121,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -142,7 +142,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, isNot(contains('[root]')));
@@ -158,7 +158,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, isNot(contains('[payment]')));
@@ -176,7 +176,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, isNot(contains('main.dart:42')));
@@ -193,7 +193,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, isNot(contains('_TestClass@')));
@@ -209,7 +209,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, isNot(contains('key=value')));
@@ -225,7 +225,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Should not have a newline for data when data is empty
@@ -240,7 +240,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains(' - Test'));
@@ -258,7 +258,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('differentMethod'));
@@ -278,7 +278,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('doSomething'));
@@ -300,7 +300,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, '10:30:45.123 [info] - TRANSFORMED');
@@ -318,7 +318,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('CallerClass'));
@@ -336,7 +336,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       final hash = identityHashCode(instance).toRadixString(16).padLeft(8, '0');
@@ -357,7 +357,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       final hash = identityHashCode(instance).toRadixString(16).padLeft(8, '0');

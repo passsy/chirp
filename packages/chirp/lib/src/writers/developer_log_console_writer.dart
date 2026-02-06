@@ -47,7 +47,7 @@ import 'package:chirp/chirp.dart';
 /// - https://pub.dev/documentation/logging/latest/logging/Level-class.html
 class DeveloperLogConsoleWriter extends ChirpWriter {
   /// The formatter that writes log records to a buffer.
-  final ConsoleMessageFormatter formatter;
+  final ChirpFormatter formatter;
 
   /// Creates a writer that outputs to `dart:developer` log.
   ///
@@ -55,7 +55,7 @@ class DeveloperLogConsoleWriter extends ChirpWriter {
   /// log output. Falls back to [RainbowMessageFormatter] if no [formatter]
   /// is provided.
   DeveloperLogConsoleWriter({
-    ConsoleMessageFormatter? formatter,
+    ChirpFormatter? formatter,
   }) : formatter = formatter ?? RainbowMessageFormatter();
 
   @override
@@ -69,7 +69,7 @@ class DeveloperLogConsoleWriter extends ChirpWriter {
       capabilities:
           const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
     );
-    formatter.format(record, buffer);
+    formatter.format(record, MessageBuffer(buffer));
     final text = buffer.toString();
 
     developer.log(

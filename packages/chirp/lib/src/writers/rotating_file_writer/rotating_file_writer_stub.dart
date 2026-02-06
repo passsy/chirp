@@ -1,10 +1,11 @@
 import 'dart:convert';
 
+import 'package:chirp/src/core/chirp_formatter.dart';
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer.dart';
 
 RotatingFileWriter createRotatingFileWriter({
   required String baseFilePath,
-  FileMessageFormatter? formatter,
+  ChirpFormatter? formatter,
   FileRotationConfig? rotationConfig,
   Encoding encoding = utf8,
   FileWriterErrorHandler? onError,

@@ -8,7 +8,7 @@ import 'package:clock/clock.dart';
 
 RotatingFileWriter createRotatingFileWriter({
   required String baseFilePath,
-  FileMessageFormatter? formatter,
+  ChirpFormatter? formatter,
   FileRotationConfig? rotationConfig,
   Encoding encoding = utf8,
   FileWriterErrorHandler? onError,
@@ -53,7 +53,7 @@ class RotatingFileWriterIo extends RotatingFileWriter {
 
   /// Formatter for converting log records to text.
   @override
-  final FileMessageFormatter formatter;
+  final ChirpFormatter formatter;
 
   /// Rotation configuration, or `null` for no rotation.
   @override
@@ -128,7 +128,7 @@ class RotatingFileWriterIo extends RotatingFileWriter {
   /// - [flushInterval]: Buffer flush interval for buffered mode (default: 100ms)
   RotatingFileWriterIo({
     required this.baseFilePath,
-    FileMessageFormatter? formatter,
+    ChirpFormatter? formatter,
     this.rotationConfig,
     this.encoding = utf8,
     this.onError,
@@ -294,7 +294,7 @@ class RotatingFileWriterIo extends RotatingFileWriter {
 
   String _formatRecord(LogRecord record) {
     final buffer = FileMessageBuffer();
-    formatter.format(record, buffer);
+    formatter.format(record, MessageBuffer(buffer));
     return buffer.toString();
   }
 

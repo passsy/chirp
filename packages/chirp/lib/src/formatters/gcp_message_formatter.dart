@@ -46,7 +46,7 @@ import 'package:chirp/chirp.dart';
 /// - https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry
 /// - https://cloud.google.com/logging/docs/agent/logging/configuration#special-fields
 /// - https://cloud.google.com/error-reporting/docs/formatting-error-messages
-class GcpMessageFormatter extends ConsoleMessageFormatter {
+class GcpMessageFormatter extends ChirpFormatter {
   /// GCP project ID for trace correlation.
   ///
   /// Required for trace links to work in Cloud Logging. When set, trace IDs
@@ -97,7 +97,7 @@ class GcpMessageFormatter extends ConsoleMessageFormatter {
   bool get requiresCallerInfo => includeSourceLocation;
 
   @override
-  void format(LogRecord record, ConsoleMessageBuffer buffer) {
+  void format(LogRecord record, MessageBuffer buffer) {
     final data = record.data;
     final map = <String, dynamic>{};
 

@@ -66,7 +66,7 @@ import 'package:chirp/chirp.dart';
 
 void main() {
   Chirp.root = ChirpLogger()
-    .addConsoleWriter(formatter: JsonMessageFormatter());
+    .addConsoleWriter(formatter: JsonLogFormatter());
 
   final handler = (Request request) {
     final logger = Chirp.root.child(context: {'requestId': request.headers['x-request-id']});
@@ -286,7 +286,7 @@ Chirp.root = ChirpLogger()
   .addConsoleWriter(formatter: CompactChirpMessageFormatter())
   // JSON logs to file for production
   .addConsoleWriter(
-    formatter: JsonMessageFormatter(),
+    formatter: JsonLogFormatter(),
     output: (msg) => writeToFile('app.log', msg),
   );
 ```
@@ -315,7 +315,7 @@ Chirp.root = ChirpLogger()
 // Size-based: rotate at 100 MB, keep 10 files, compress old logs
 final writer = RotatingFileWriter(
   baseFilePath: '/var/log/app.jsonl',
-  formatter: const JsonFileFormatter(),
+  formatter: const JsonLogFormatter(),
   rotationConfig: FileRotationConfig.size(
     maxSize: 100 * 1024 * 1024,
     maxFiles: 10,
@@ -332,7 +332,7 @@ Chirp.root = ChirpLogger()
 // Time-based: rotate daily, keep 30 days
 final writer = RotatingFileWriter(
   baseFilePath: '/var/log/app.jsonl',
-  formatter: const JsonFileFormatter(),
+  formatter: const JsonLogFormatter(),
   rotationConfig: FileRotationConfig.daily(
     maxAge: Duration(days: 30),
     compress: true,
@@ -349,7 +349,7 @@ Call `await writer.close()` on shutdown to flush buffers. See [`examples/simple/
 08:30:45.123 UserService@a1b2 User logged in
 ```
 
-**JsonMessageFormatter** - Machine-readable JSON format
+**JsonLogFormatter** - Machine-readable JSON format
 ```json
 {"timestamp":"2025-11-11T08:30:45.123","level":"info","class":"UserService","hash":"a1b2","message":"User logged in"}
 ```
@@ -561,12 +561,12 @@ See [`examples/simple/bin/library.dart`](https://github.com/passsy/chirp/blob/ma
 
 ### Custom Formatters
 
-Create your own formatter by extending `ConsoleMessageFormatter`:
+Create your own formatter by extending `ChirpFormatter`:
 
 ```dart
-class MyCustomFormatter extends ConsoleMessageFormatter {
+class MyCustomFormatter extends ChirpFormatter {
   @override
-  void format(LogRecord record, ConsoleMessageBuffer buffer) {
+  void format(LogRecord record, MessageBuffer buffer) {
     buffer.write('[${record.level.name.toUpperCase()}] ${record.message}');
   }
 }
@@ -598,18 +598,18 @@ Chirp.root = ChirpLogger()
   ..addWriter(FileWriter(File('app.log')));
 ```
 
-#### Writer with Formatter (Span-Based)
+#### Writer with Formatter
 
-For rich formatting with colors and structure, use a `ConsoleMessageFormatter`:
+For rich formatting with colors and structure, use a `ChirpFormatter`:
 
 ```dart
 class NetworkWriter extends ChirpWriter {
-  final ConsoleMessageFormatter formatter;
+  final ChirpFormatter formatter;
   final HttpClient client;
 
   NetworkWriter({
     required this.client,
-    this.formatter = const JsonMessageFormatter(),
+    this.formatter = const JsonLogFormatter(),
   });
 
   @override
@@ -622,7 +622,7 @@ class NetworkWriter extends ChirpWriter {
         colorSupport: TerminalColorSupport.none,
       ),
     );
-    formatter.format(record, buffer);
+    formatter.format(record, MessageBuffer(buffer));
 
     // Send to logging service
     client.post(Uri.parse('https://logs.example.com'), body: buffer.toString());
@@ -648,14 +648,14 @@ For backend projects (Shelf, Dart Frog, etc.), Chirp provides structured JSON fo
 
 ### Basic Setup
 
-Use `JsonMessageFormatter` for platform-agnostic JSON logs:
+Use `JsonLogFormatter` for platform-agnostic JSON logs:
 
 ```dart
 import 'package:chirp/chirp.dart';
 
 void main() {
   Chirp.root = ChirpLogger()
-    .addConsoleWriter(formatter: JsonMessageFormatter());
+    .addConsoleWriter(formatter: JsonLogFormatter());
 
   // Start your server...
 }
@@ -670,7 +670,7 @@ For cloud deployments, use platform-specific formatters that integrate with your
 
 | Formatter | Platform | Log Levels | Special Features |
 |-----------|----------|------------|------------------|
-| `JsonMessageFormatter` | Any | Chirp levels (lowercase) | Platform-agnostic |
+| `JsonLogFormatter` | Any | Chirp levels (lowercase) | Platform-agnostic |
 | `GcpMessageFormatter` | Google Cloud | GCP LogSeverity | sourceLocation, labels, Error Reporting |
 | `AwsMessageFormatter` | AWS CloudWatch | TRACE/DEBUG/INFO/WARN/ERROR/FATAL | CloudWatch log level filtering |
 

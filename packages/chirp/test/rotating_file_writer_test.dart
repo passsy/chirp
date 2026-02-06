@@ -158,16 +158,16 @@ void main() {
     });
   });
 
-  group('JsonFileFormatter', () {
-    test('requiresCallerInfo defaults to false', () {
-      const formatter = JsonFileFormatter();
+  group('JsonLogFormatter', () {
+    test('requiresCallerInfo is always true', () {
+      const formatter = JsonLogFormatter();
 
-      expect(formatter.requiresCallerInfo, isFalse);
+      expect(formatter.requiresCallerInfo, isTrue);
     });
 
     test('formats as valid JSON with required fields', () {
-      const formatter = JsonFileFormatter();
-      final ts = DateTime(2024, 1, 15, 10, 30, 45);
+      const formatter = JsonLogFormatter();
+      final ts = DateTime.utc(2024, 1, 15, 10, 30, 45);
       final record = testRecord(
         message: 'Test message',
         timestamp: ts,
@@ -176,17 +176,15 @@ void main() {
       final result = formatRecord(formatter, record);
       final json = jsonDecode(result) as Map<String, Object?>;
 
-      expect(json['timestamp'], '2024-01-15T10:30:45.000');
+      expect(json['timestamp'], '2024-01-15T10:30:45.000Z');
       expect(json['level'], 'info');
       expect(json['message'], 'Test message');
       expect(json.containsKey('logger'), isFalse,
           reason: 'logger should be omitted when null');
-      expect(json.containsKey('data'), isFalse,
-          reason: 'data should be omitted when empty');
     });
 
     test('includes all optional fields when present', () {
-      const formatter = JsonFileFormatter();
+      const formatter = JsonLogFormatter();
       final record = testRecord(
         message: 'Test',
         level: ChirpLogLevel.error,
@@ -200,13 +198,13 @@ void main() {
       final json = jsonDecode(result) as Map<String, Object?>;
 
       expect(json['logger'], 'MyLogger');
-      expect(json['data'], {'key': 'value'});
+      expect(json['key'], 'value');
       expect(json['error'], contains('Test error'));
       expect(json['stackTrace'], isNotEmpty);
     });
 
     test('escapes special characters in strings to produce valid JSON', () {
-      const formatter = JsonFileFormatter();
+      const formatter = JsonLogFormatter();
       const originalMessage = 'Line1\nLine2\tTabbed\r"Quoted"\\Escaped';
       final record = testRecord(message: originalMessage);
 
@@ -219,7 +217,7 @@ void main() {
     });
 
     test('handles nested data structures', () {
-      const formatter = JsonFileFormatter();
+      const formatter = JsonLogFormatter();
       final record = testRecord(
         message: 'Test',
         data: {
@@ -231,14 +229,12 @@ void main() {
       final result = formatRecord(formatter, record);
       final json = jsonDecode(result) as Map<String, Object?>;
 
-      expect(json['data'], {
-        'user': {'id': 123, 'name': 'John'},
-        'tags': ['a', 'b', 'c'],
-      });
+      expect(json['user'], {'id': 123, 'name': 'John'});
+      expect(json['tags'], ['a', 'b', 'c']);
     });
 
     test('handles null message', () {
-      const formatter = JsonFileFormatter();
+      const formatter = JsonLogFormatter();
       final record = testRecord(message: null);
 
       final result = formatRecord(formatter, record);
@@ -310,7 +306,7 @@ void main() {
       final logPath = '${tempDir.path}/app.jsonl';
       final writer = RotatingFileWriter(
         baseFilePath: logPath,
-        formatter: const JsonFileFormatter(),
+        formatter: const JsonLogFormatter(),
       );
       addTearDown(() => writer.close());
 
@@ -321,7 +317,7 @@ void main() {
       final content = File(logPath).readAsStringSync();
       final json = jsonDecode(content.trim()) as Map<String, Object?>;
       expect(json['message'], 'JSON test',
-          reason: 'JsonFileFormatter should produce valid JSON');
+          reason: 'JsonLogFormatter should produce valid JSON');
     });
 
     test('integrates with ChirpLogger for real logging workflow', () async {
@@ -1627,24 +1623,24 @@ Directory createTempDir() {
   return tempDir;
 }
 
-String formatRecord(FileMessageFormatter formatter, LogRecord record) {
+String formatRecord(ChirpFormatter formatter, LogRecord record) {
   final buffer = FileMessageBuffer();
-  formatter.format(record, buffer);
+  formatter.format(record, MessageBuffer(buffer));
   return buffer.toString();
 }
 
 /// A formatter that always throws, used to test error handling.
-class _ThrowingFormatter implements FileMessageFormatter {
+class _ThrowingFormatter extends ChirpFormatter {
   @override
   bool get requiresCallerInfo => false;
 
   @override
-  void format(LogRecord record, FileMessageBuffer buffer) {
+  void format(LogRecord record, MessageBuffer buffer) {
     throw StateError('Simulated formatter error');
   }
 }
 
-class _CapturingFormatter implements FileMessageFormatter {
+class _CapturingFormatter extends ChirpFormatter {
   final List<LogRecord> records;
   final bool _requiresCallerInfo;
 
@@ -1657,20 +1653,20 @@ class _CapturingFormatter implements FileMessageFormatter {
   bool get requiresCallerInfo => _requiresCallerInfo;
 
   @override
-  void format(LogRecord record, FileMessageBuffer buffer) {
+  void format(LogRecord record, MessageBuffer buffer) {
     records.add(record);
     buffer.write(record.message?.toString() ?? '');
   }
 }
 
-class _CallerLocationFormatter implements FileMessageFormatter {
+class _CallerLocationFormatter extends ChirpFormatter {
   const _CallerLocationFormatter();
 
   @override
   bool get requiresCallerInfo => true;
 
   @override
-  void format(LogRecord record, FileMessageBuffer buffer) {
+  void format(LogRecord record, MessageBuffer buffer) {
     final callerInfo = record.callerInfo;
     if (callerInfo == null) {
       buffer.write('no-caller');

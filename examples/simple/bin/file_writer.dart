@@ -26,7 +26,7 @@ void main() async {
   // JSON format writer
   final jsonWriter = RotatingFileWriter(
     baseFilePath: jsonPath,
-    formatter: const JsonFileFormatter(),
+    formatter: const JsonLogFormatter(),
     rotationConfig: FileRotationConfig.size(
       maxSize: 500, // 500 bytes - tiny for demo
       maxFiles: 3,

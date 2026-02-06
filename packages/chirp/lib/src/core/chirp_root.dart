@@ -1,3 +1,4 @@
+import 'package:chirp/src/core/chirp_formatter.dart';
 import 'package:chirp/src/core/chirp_interceptor.dart';
 import 'package:chirp/src/core/chirp_logger.dart';
 import 'package:chirp/src/core/chirp_writer.dart';
@@ -28,7 +29,7 @@ import 'package:chirp/src/writers/console_writer.dart';
 /// ```dart
 /// // In your app initialization or test setUp:
 /// Chirp.root = ChirpLogger()
-///   .addConsoleWriter(formatter: JsonMessageFormatter())
+///   .addConsoleWriter(formatter: JsonLogFormatter())
 ///   .setMinLogLevel(ChirpLogLevel.warning);
 /// ```
 ///
@@ -297,7 +298,7 @@ extension ChirpLoggerConsoleWriterExt on ChirpLogger {
   ///
   /// // JSON format for structured logging
   /// final jsonLogger = ChirpLogger(name: 'JSON')
-  ///   .addConsoleWriter(formatter: JsonMessageFormatter());
+  ///   .addConsoleWriter(formatter: JsonLogFormatter());
   ///
   /// // Capture output for testing
   /// final messages = <String>[];
@@ -316,7 +317,7 @@ extension ChirpLoggerConsoleWriterExt on ChirpLogger {
   /// reference to the writer (e.g., to remove it later), create it directly:
   ///
   /// ```dart
-  /// final writer = PrintConsoleWriter(formatter: JsonMessageFormatter());
+  /// final writer = PrintConsoleWriter(formatter: JsonLogFormatter());
   /// logger.addWriter(writer);
   /// // Later: logger.removeWriter(writer);
   /// ```
@@ -326,7 +327,7 @@ extension ChirpLoggerConsoleWriterExt on ChirpLogger {
   /// - [DeveloperLogConsoleWriter] for unlimited length via `developer.log()`
   /// - [addWriter] for adding any custom [ChirpWriter]
   ChirpLogger addConsoleWriter({
-    ConsoleMessageFormatter? formatter,
+    ChirpFormatter? formatter,
     void Function(String)? output,
     TerminalCapabilities? capabilities,
     ChirpLogLevel? minLogLevel,
