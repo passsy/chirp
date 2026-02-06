@@ -45,14 +45,14 @@ void main() {
       final childMessages = <String>[];
       final parent = ChirpLogger(name: 'Parent');
       parent.addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: parentMessages.add,
       );
       final child = parent.child(context: {'requestId': 'REQ-123'});
 
       // Add writer to child (will be ignored)
       child.addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: childMessages.add,
       );
 
@@ -74,17 +74,17 @@ void main() {
 
       final root = ChirpLogger(name: 'Root');
       root.addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: parentMessages.add,
       );
       final child = root.child(context: {'level': '1'});
       child.addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: childMessages.add,
       );
       final grandchild = child.child(context: {'level': '2'});
       grandchild.addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: grandchildMessages.add,
       );
 
@@ -177,7 +177,7 @@ void main() {
       final messages = <String>[];
       final parent = ChirpLogger(name: 'Parent');
       parent.addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -226,7 +226,7 @@ void main() {
       final messages = <String>[];
       final parent = ChirpLogger(name: 'Parent');
       final writer = PrintConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 

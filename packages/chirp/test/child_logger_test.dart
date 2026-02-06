@@ -6,7 +6,7 @@ void main() {
     test("child inherits parent's writers", () {
       final messages = <String>[];
       final parent = ChirpLogger(name: 'Parent').addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -25,7 +25,7 @@ void main() {
 
       // Configure root with first writer
       Chirp.root = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages1.add,
       );
 
@@ -38,7 +38,7 @@ void main() {
 
       // Reassign Chirp.root to a new logger instance
       Chirp.root = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages2.add,
       );
 
@@ -51,7 +51,7 @@ void main() {
     test('nested children merge context through the chain', () {
       final messages = <String>[];
       final root = ChirpLogger().addContext({'app': 'myapp'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -71,7 +71,7 @@ void main() {
       final messages = <String>[];
       final parent = ChirpLogger()
           .addContext({'status': 'pending', 'app': 'myapp'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -87,7 +87,7 @@ void main() {
     test('child with name parameter', () {
       final messages = <String>[];
       final parent = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -103,7 +103,7 @@ void main() {
     test('child inherits parent name if not specified', () {
       final messages = <String>[];
       final parent = ChirpLogger(name: 'API').addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -119,7 +119,7 @@ void main() {
     test('child can override parent name', () {
       final messages = <String>[];
       final parent = ChirpLogger(name: 'API').addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -136,7 +136,7 @@ void main() {
     test('child with instance parameter', () {
       final messages = <String>[];
       final parent = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -156,7 +156,7 @@ void main() {
       final parentInstance = Object();
       // Use child() from a logger that has an instance set
       final parent = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
       final parentWithInstance = parent.child(instance: parentInstance);
@@ -177,7 +177,7 @@ void main() {
       final childInstance = Object();
 
       final parent = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
       final parentWithInstance = parent.child(instance: parentInstance);
@@ -201,7 +201,7 @@ void main() {
       final messages = <String>[];
 
       Chirp.root = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -218,7 +218,7 @@ void main() {
       final messages = <String>[];
 
       Chirp.root = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -238,7 +238,7 @@ void main() {
       final messages = <String>[];
       final parent = ChirpLogger(name: 'Parent')
           .addContext({'parentKey': 'parentValue'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -256,7 +256,7 @@ void main() {
       final messages = <String>[];
       final root =
           ChirpLogger().addContext({'level0': 'root'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -279,7 +279,7 @@ void main() {
       final messages = <String>[];
       final parent =
           ChirpLogger().addContext({'shared': 'original'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 

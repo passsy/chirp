@@ -22,7 +22,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -53,7 +53,7 @@ void main() {
 
         final formatter = AwsMessageFormatter();
         final buffer = createBuffer();
-        formatter.format(record, buffer);
+        formatter.format(record, MessageBuffer(buffer));
 
         final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
         expect(decoded['level'], entry.value,
@@ -70,7 +70,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
       final timestamp = decoded['timestamp'] as String;
@@ -88,7 +88,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -105,7 +105,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
       final expectedHash =
@@ -123,7 +123,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -142,7 +142,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -159,7 +159,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -180,7 +180,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -208,7 +208,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -230,7 +230,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final output = buffer.toString();
       expect(output.contains('\n'), isFalse);
@@ -250,7 +250,7 @@ void main() {
       final buffer = createBuffer();
 
       // Should not throw
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
       expect(decoded['custom'], 'NonSerializableObject(test-value)');
@@ -268,7 +268,7 @@ void main() {
 
         final formatter = AwsMessageFormatter();
         final buffer = createBuffer();
-        formatter.format(record, buffer);
+        formatter.format(record, MessageBuffer(buffer));
 
         final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -286,7 +286,7 @@ void main() {
 
         final formatter = AwsMessageFormatter(includeSourceLocation: true);
         final buffer = createBuffer();
-        formatter.format(record, buffer);
+        formatter.format(record, MessageBuffer(buffer));
 
         final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
         final sourceLocation =
@@ -320,7 +320,7 @@ void main() {
 
         final formatter = AwsMessageFormatter(includeSourceLocation: true);
         final buffer = createBuffer();
-        formatter.format(record, buffer);
+        formatter.format(record, MessageBuffer(buffer));
 
         final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -339,7 +339,7 @@ void main() {
 
       final formatter = AwsMessageFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
       expect(decoded['message'], isNull);
