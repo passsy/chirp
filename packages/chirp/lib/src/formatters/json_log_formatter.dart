@@ -1,8 +1,59 @@
 import 'package:chirp/chirp.dart';
 
+/// JSON format for structured logging.
+///
+/// Outputs log records as single-line JSON objects, ideal for log aggregation
+/// services and machine parsing.
+///
+/// For cloud-specific formats, see [GcpMessageFormatter] and
+/// [AwsMessageFormatter].
+///
+/// ## Output Format
+///
+/// ```json
+/// {
+///   "timestamp": "2024-01-15T10:30:45.123Z",
+///   "clockTime": "2024-01-15T10:30:45.120Z",
+///   "level": "info",
+///   "message": "Server started",
+///   "logger": "MyService",
+///   "class": "UserService",
+///   "instance": "UserService@a1b2c3d4",
+///   "sourceLocation": {"file": "my_app/lib/src/service.dart", "line": 42, "function": "UserService.fetch"},
+///   "error": "Exception: Something went wrong",
+///   "stackTrace": "#0 main (file.dart:10)",
+///   "userId": "user_123"
+/// }
+/// ```
+///
+/// ## Features
+///
+/// - ISO 8601 timestamps in UTC
+/// - Lowercase log level names matching Chirp's level names
+/// - Source location from caller stack trace
+/// - Class name and instance hash for instance tracking
+/// - Custom data fields merged at root level
+/// - Error and stack trace support
+///
+/// ## Usage
+///
+/// ```dart
+/// Chirp.root = ChirpLogger()
+///   .addConsoleWriter(formatter: const JsonLogFormatter());
+///
+/// Chirp.info('Server started', data: {'port': 8080});
+/// ```
 class JsonLogFormatter extends ChirpFormatter {
+  /// Controls which timestamp(s) to include in log entries.
+  ///
+  /// - [TimeDisplay.clock]: Only `timestamp` (from injectable clock)
+  /// - [TimeDisplay.wallClock]: Only `timestamp` (real system time)
+  /// - [TimeDisplay.both] or [TimeDisplay.auto]: Both `timestamp` and
+  ///   `clockTime`
+  /// - [TimeDisplay.off]: No timestamps
   final TimeDisplay timeDisplay;
 
+  /// Creates a JSON log formatter.
   const JsonLogFormatter({
     this.timeDisplay = TimeDisplay.auto,
   });
