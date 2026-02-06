@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:chirp/chirp.dart';
+import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.dart'
+    as io_impl;
+import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_stub.dart'
+    as stub_impl;
 import 'package:clock/clock.dart';
 import 'package:test/test.dart';
 
@@ -1596,6 +1600,22 @@ void main() {
           File(logPath).readAsStringSync().trim().split('\n').length;
       expect(finalLines, 6, reason: 'All 6 messages across 3 batches');
     });
+  });
+
+  test('createRotatingFileWriter has same signature in io and stub', () {
+    // Both conditional import files must have identical signatures.
+    // Cross-assigning verifies they are the same type. A signature mismatch
+    // in either file causes a compile error here.
+    // ignore: unused_local_variable
+    var fn = io_impl.createRotatingFileWriter;
+    fn = stub_impl.createRotatingFileWriter;
+
+    var fn2 = stub_impl.createRotatingFileWriter;
+    fn2 = io_impl.createRotatingFileWriter;
+
+    // Suppress unused variable warning
+    expect(fn, isNotNull);
+    expect(fn2, isNotNull);
   });
 
   group('FlushStrategy default', () {
