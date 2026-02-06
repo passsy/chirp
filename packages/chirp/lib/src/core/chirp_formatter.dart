@@ -78,7 +78,7 @@ class MessageBuffer {
   }
 
   /// Appends [value] followed by a newline to the log output.
-  void writeln([Object? value = '']) {
+  void writeln(Object? value) {
     final c = console;
     if (c != null) {
       c.writeln(value);

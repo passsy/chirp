@@ -253,12 +253,12 @@ void main() {
       expect(buffer.toString(), 'hello\n');
     });
 
-    test('writes only newline when called without arguments', () {
+    test('writes only newline when called with empty string', () {
       final buffer = ConsoleMessageBuffer(
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      buffer.writeln();
+      buffer.writeln('');
       expect(buffer.toString(), '\n');
     });
 

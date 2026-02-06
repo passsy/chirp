@@ -361,7 +361,7 @@ class ConsoleMessageBuffer {
   }
 
   /// Writes [value] followed by a newline to the buffer.
-  void writeln([Object? value = '']) {
+  void writeln(Object? value) {
     write(value);
     _buffer.write('\n');
     // Re-apply style after newline so the next line inherits it

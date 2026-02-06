@@ -443,7 +443,7 @@ class FileMessageBuffer {
   }
 
   /// Writes [value] and a newline to the buffer.
-  void writeln([Object? value = '']) {
+  void writeln(Object? value) {
     write(value);
     _buffer.write('\n');
     _endsWithNewline = true;
