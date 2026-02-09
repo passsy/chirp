@@ -6,9 +6,6 @@ import 'package:chirp/src/writers/rotating_file_writer/log_file_reader_stub.dart
     as impl;
 
 /// Reader API for log files created by [RotatingFileWriter].
-///
-/// This is a thin wrapper around [listLogFiles] + [readLogs], offered as a
-/// more object-oriented API.
 class RotatingFileReader {
   const RotatingFileReader({required this.baseFilePath});
 
@@ -23,32 +20,46 @@ class RotatingFileReader {
     );
   }
 
-  /// Reads all log files (oldest rotated → current).
-  Stream<String> readAll({Encoding encoding = utf8}) {
-    return readLogs(
+  /// Reads logs as a finite stream.
+  ///
+  /// Use [since] to only include files that were modified on/after that date.
+  /// Use [lastLines] to only return the last N lines across all included files.
+  Stream<String> read({
+    DateTime? since,
+    int? lastLines,
+    Encoding encoding = utf8,
+  }) {
+    return impl.readLogs(
       baseFilePath: baseFilePath,
       follow: false,
       encoding: encoding,
+      since: since,
+      lastLines: lastLines,
     );
   }
 
-  /// Follows the current log file (tail -f).
-  Stream<String> followCurrent({Encoding encoding = utf8}) {
-    return readLogs(
+  /// Tails the current log file.
+  ///
+  /// If [since] or [lastLines] are provided, it first emits a finite snapshot
+  /// (same semantics as [read]) and then continues streaming new appended lines.
+  Stream<String> tail({
+    DateTime? since,
+    int? lastLines,
+    Encoding encoding = utf8,
+  }) async* {
+    // Snapshot.
+    if (since != null || lastLines != null) {
+      yield* read(
+        since: since,
+        lastLines: lastLines,
+        encoding: encoding,
+      );
+    }
+
+    // Follow new content.
+    yield* impl.readLogs(
       baseFilePath: baseFilePath,
       follow: true,
-      encoding: encoding,
-    );
-  }
-
-  /// Reads all logs and optionally follows the current file.
-  Stream<String> read({
-    bool follow = false,
-    Encoding encoding = utf8,
-  }) {
-    return readLogs(
-      baseFilePath: baseFilePath,
-      follow: follow,
       encoding: encoding,
     );
   }
@@ -82,10 +93,14 @@ Stream<String> readLogs({
   required String baseFilePath,
   bool follow = false,
   Encoding encoding = utf8,
+  DateTime? since,
+  int? lastLines,
 }) {
   return impl.readLogs(
     baseFilePath: baseFilePath,
     follow: follow,
     encoding: encoding,
+    since: since,
+    lastLines: lastLines,
   );
 }

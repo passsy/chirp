@@ -46,19 +46,55 @@ Stream<String> readLogs({
   required String baseFilePath,
   bool follow = false,
   Encoding encoding = utf8,
+  DateTime? since,
+  int? lastLines,
 }) async* {
-  final files = await listLogFiles(baseFilePath: baseFilePath);
-  if (files.isEmpty) {
-    if (!follow) return;
-    // If following, keep polling until the file appears.
-  }
+  final allFiles = await listLogFiles(baseFilePath: baseFilePath);
 
-  if (files.isNotEmpty) {
+  // Filter by mtime if requested.
+  final files = since == null
+      ? allFiles
+      : allFiles.where((p) {
+          final f = File(p);
+          if (!f.existsSync()) return false;
+          return !f.statSync().modified.isBefore(since);
+        }).toList(growable: false);
+
+  // When lastLines is requested, we need to materialize to compute the tail.
+  if (lastLines != null) {
+    final lines = <String>[];
+
     for (final path in files) {
       if (path.endsWith('.gz')) {
         final bytes = await File(path).readAsBytes();
         final decompressed = gzip.decode(bytes);
-        yield encoding.decode(decompressed);
+        final text = encoding.decode(decompressed);
+        lines.addAll(const LineSplitter().convert(text));
+      } else {
+        lines.addAll(
+          await File(path)
+              .openRead()
+              .transform(encoding.decoder)
+              .transform(const LineSplitter())
+              .toList(),
+        );
+      }
+    }
+
+    final start = (lines.length - lastLines).clamp(0, lines.length);
+    for (final line in lines.sublist(start)) {
+      yield line;
+    }
+
+    if (!follow) return;
+  } else {
+    // Stream all content in order.
+    for (final path in files) {
+      if (path.endsWith('.gz')) {
+        final bytes = await File(path).readAsBytes();
+        final decompressed = gzip.decode(bytes);
+        final text = encoding.decode(decompressed);
+        yield* Stream<String>.fromIterable(const LineSplitter().convert(text));
       } else {
         yield* File(path)
             .openRead()
@@ -66,6 +102,8 @@ Stream<String> readLogs({
             .transform(const LineSplitter());
       }
     }
+
+    if (!follow) return;
   }
 
   if (!follow) return;

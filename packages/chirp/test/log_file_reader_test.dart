@@ -50,7 +50,7 @@ void main() {
       expect(lines, ['old1', 'old2', 'new1']);
     });
 
-    test('readLogs(follow:true) emits appended lines', () async {
+    test('RotatingFileReader.tail emits appended lines', () async {
       final dir = Directory.systemTemp.createTempSync('chirp-log-reader-');
       addTearDown(() => dir.deleteSync(recursive: true));
 
@@ -58,17 +58,17 @@ void main() {
       base.writeAsStringSync('first\n');
 
       final received = <String>[];
-      final sub =
-          readLogs(baseFilePath: base.path, follow: true).listen(received.add);
+      final reader = RotatingFileReader(baseFilePath: base.path);
+      final sub = reader.tail(lastLines: 10).listen(received.add);
       addTearDown(() => sub.cancel());
 
-      // Wait for initial read.
+      // Give the watcher a moment to attach.
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // Append new content.
       base.writeAsStringSync('second\n', mode: FileMode.append);
 
-      // Wait for polling interval.
+      // Wait for the filesystem event + read.
       await Future<void>.delayed(const Duration(milliseconds: 400));
 
       expect(received, containsAllInOrder(['first', 'second']));
