@@ -87,4 +87,4 @@ export 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer.dart
         SimpleFileFormatter,
         defaultFileWriterErrorHandler;
 export 'package:chirp/src/writers/rotating_file_writer/log_file_reader.dart'
-    show listLogFiles, readLogs;
+    show RotatingFileReader, listLogFiles, readLogs;

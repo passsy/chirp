@@ -23,8 +23,14 @@ void main() {
       rotated2.setLastModifiedSync(DateTime(2024, 1, 2, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 3, 10));
 
+      // Sanity: function API still works.
       final files = await listLogFiles(baseFilePath: base.path);
       expect(files, [rotated1.path, rotated2.path, base.path]);
+
+      // Object-oriented API.
+      final reader = RotatingFileReader(baseFilePath: base.path);
+      final files2 = await reader.listFiles();
+      expect(files2, [rotated1.path, rotated2.path, base.path]);
     });
 
     test('readLogs reads all files in order', () async {

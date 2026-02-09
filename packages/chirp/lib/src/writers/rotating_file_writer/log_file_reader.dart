@@ -5,6 +5,55 @@ import 'package:chirp/src/writers/rotating_file_writer/log_file_reader_stub.dart
     if (dart.library.io) 'package:chirp/src/writers/rotating_file_writer/log_file_reader_io.dart'
     as impl;
 
+/// Reader API for log files created by [RotatingFileWriter].
+///
+/// This is a thin wrapper around [listLogFiles] + [readLogs], offered as a
+/// more object-oriented API.
+class RotatingFileReader {
+  const RotatingFileReader({required this.baseFilePath});
+
+  /// Base path of the current log file, e.g. `/var/log/app.log`.
+  final String baseFilePath;
+
+  /// Lists log files (rotated + optionally current) sorted oldest → newest.
+  Future<List<String>> listFiles({bool includeCurrent = true}) {
+    return listLogFiles(
+      baseFilePath: baseFilePath,
+      includeCurrent: includeCurrent,
+    );
+  }
+
+  /// Reads all log files (oldest rotated → current).
+  Stream<String> readAll({Encoding encoding = utf8}) {
+    return readLogs(
+      baseFilePath: baseFilePath,
+      follow: false,
+      encoding: encoding,
+    );
+  }
+
+  /// Follows the current log file (tail -f).
+  Stream<String> followCurrent({Encoding encoding = utf8}) {
+    return readLogs(
+      baseFilePath: baseFilePath,
+      follow: true,
+      encoding: encoding,
+    );
+  }
+
+  /// Reads all logs and optionally follows the current file.
+  Stream<String> read({
+    bool follow = false,
+    Encoding encoding = utf8,
+  }) {
+    return readLogs(
+      baseFilePath: baseFilePath,
+      follow: follow,
+      encoding: encoding,
+    );
+  }
+}
+
 /// Lists log files for a [RotatingFileWriter] base path.
 ///
 /// Returns absolute file paths sorted from oldest to newest.
