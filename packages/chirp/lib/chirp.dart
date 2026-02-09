@@ -75,6 +75,8 @@ export 'package:chirp/src/writers/delegated_formatter.dart'
     show DelegatedMessageFormatter;
 export 'package:chirp/src/writers/developer_log_console_writer.dart'
     show DeveloperLogConsoleWriter;
+export 'package:chirp/src/writers/rotating_file_writer/log_file_reader.dart'
+    show RotatingFileReader, listLogFiles, readLogs;
 export 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer.dart'
     show
         FileMessageBuffer,
@@ -86,5 +88,3 @@ export 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer.dart
         RotatingFileWriter,
         SimpleFileFormatter,
         defaultFileWriterErrorHandler;
-export 'package:chirp/src/writers/rotating_file_writer/log_file_reader.dart'
-    show RotatingFileReader, listLogFiles, readLogs;

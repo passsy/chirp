@@ -15,7 +15,6 @@ Stream<String> readLogs({
   required String baseFilePath,
   bool follow = false,
   Encoding encoding = utf8,
-  DateTime? since,
   int? lastLines,
 }) {
   throw UnsupportedError(

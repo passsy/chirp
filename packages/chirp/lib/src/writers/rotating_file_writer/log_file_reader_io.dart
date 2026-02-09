@@ -46,19 +46,9 @@ Stream<String> readLogs({
   required String baseFilePath,
   bool follow = false,
   Encoding encoding = utf8,
-  DateTime? since,
   int? lastLines,
 }) async* {
-  final allFiles = await listLogFiles(baseFilePath: baseFilePath);
-
-  // Filter by mtime if requested.
-  final files = since == null
-      ? allFiles
-      : allFiles.where((p) {
-          final f = File(p);
-          if (!f.existsSync()) return false;
-          return !f.statSync().modified.isBefore(since);
-        }).toList(growable: false);
+  final files = await listLogFiles(baseFilePath: baseFilePath);
 
   // When lastLines is requested, we need to materialize to compute the tail.
   if (lastLines != null) {
@@ -158,10 +148,7 @@ Stream<String> readLogs({
   await poll();
 
   Future<void> startWatching() async {
-    sub = dir
-        .watch(events: FileSystemEvent.all)
-        .where((e) => e.path.endsWith(fileName))
-        .listen((_) {
+    sub = dir.watch().where((e) => e.path.endsWith(fileName)).listen((_) {
       // Fire and forget.
       unawaited(poll());
     });

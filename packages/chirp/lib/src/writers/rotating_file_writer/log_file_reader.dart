@@ -22,45 +22,31 @@ class RotatingFileReader {
 
   /// Reads logs as a finite stream.
   ///
-  /// Use [since] to only include files that were modified on/after that date.
   /// Use [lastLines] to only return the last N lines across all included files.
   Stream<String> read({
-    DateTime? since,
     int? lastLines,
     Encoding encoding = utf8,
   }) {
     return impl.readLogs(
       baseFilePath: baseFilePath,
-      follow: false,
       encoding: encoding,
-      since: since,
       lastLines: lastLines,
     );
   }
 
-  /// Tails the current log file.
+  /// Tails logs (optionally with an initial snapshot).
   ///
-  /// If [since] or [lastLines] are provided, it first emits a finite snapshot
-  /// (same semantics as [read]) and then continues streaming new appended lines.
+  /// If [lastLines] is provided, it first emits the last N lines (same semantics
+  /// as [read]) and then continues streaming newly appended lines.
   Stream<String> tail({
-    DateTime? since,
     int? lastLines,
     Encoding encoding = utf8,
-  }) async* {
-    // Snapshot.
-    if (since != null || lastLines != null) {
-      yield* read(
-        since: since,
-        lastLines: lastLines,
-        encoding: encoding,
-      );
-    }
-
-    // Follow new content.
-    yield* impl.readLogs(
+  }) {
+    return impl.readLogs(
       baseFilePath: baseFilePath,
       follow: true,
       encoding: encoding,
+      lastLines: lastLines,
     );
   }
 }
@@ -93,14 +79,12 @@ Stream<String> readLogs({
   required String baseFilePath,
   bool follow = false,
   Encoding encoding = utf8,
-  DateTime? since,
   int? lastLines,
 }) {
   return impl.readLogs(
     baseFilePath: baseFilePath,
     follow: follow,
     encoding: encoding,
-    since: since,
     lastLines: lastLines,
   );
 }
