@@ -71,42 +71,79 @@ Stream<String> readLogs({
   if (!follow) return;
 
   // Follow current file (baseFilePath) for new lines.
+  //
+  // Implementation note: This intentionally does NOT use polling by default.
+  // Instead it reacts to file-system events and only reads when the file
+  // changes (or appears).
   final file = File(baseFilePath);
+  final dir = file.parent;
+  final fileName = file.uri.pathSegments.last;
+
   var offset = file.existsSync() ? file.lengthSync() : 0;
 
   final controller = StreamController<String>();
-  Timer? timer;
+  StreamSubscription<FileSystemEvent>? sub;
+
   String partial = '';
+  var polling = false;
 
   Future<void> poll() async {
-    if (!file.existsSync()) return;
+    if (polling) return;
+    polling = true;
+    try {
+      if (!file.existsSync()) return;
 
-    final length = file.lengthSync();
-    if (length < offset) {
-      // File got rotated/truncated.
-      offset = 0;
-    }
-    if (length == offset) return;
-
-    final stream = file.openRead(offset, length).transform(encoding.decoder);
-    await for (final chunk in stream) {
-      final text = partial + chunk;
-      final lines = text.split('\n');
-      partial = lines.removeLast();
-      for (final line in lines) {
-        controller.add(line);
+      final length = file.lengthSync();
+      if (length < offset) {
+        // File got rotated/truncated.
+        offset = 0;
       }
-    }
+      if (length == offset) return;
 
-    offset = length;
+      final stream = file.openRead(offset, length).transform(encoding.decoder);
+      await for (final chunk in stream) {
+        final text = partial + chunk;
+        final lines = text.split('\n');
+        partial = lines.removeLast();
+        for (final line in lines) {
+          controller.add(line);
+        }
+      }
+
+      offset = length;
+    } finally {
+      polling = false;
+    }
   }
 
-  timer = Timer.periodic(const Duration(milliseconds: 250), (_) {
-    poll();
-  });
+  // Initial read if there is already content.
+  await poll();
+
+  Future<void> startWatching() async {
+    sub = dir
+        .watch(events: FileSystemEvent.all)
+        .where((e) => e.path.endsWith(fileName))
+        .listen((_) {
+      // Fire and forget.
+      unawaited(poll());
+    });
+  }
+
+  try {
+    await startWatching();
+  } catch (_) {
+    // Fallback for platforms/filesystems that don't support watch reliably.
+    // Still keep this cheap: poll only every 1s.
+    final timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      unawaited(poll());
+    });
+    controller.onCancel = () {
+      timer.cancel();
+    };
+  }
 
   controller.onCancel = () {
-    timer?.cancel();
+    sub?.cancel();
   };
 
   yield* controller.stream;
