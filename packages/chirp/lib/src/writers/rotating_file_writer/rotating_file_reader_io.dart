@@ -2,15 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:chirp/src/writers/rotating_file_writer/log_file_reader.dart';
+import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader.dart';
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.dart'
     show isRotatedLogFile;
-
-RotatingFileReader createRotatingFileReader({
-  required String baseFilePath,
-}) {
-  return RotatingFileReaderIo(baseFilePath: baseFilePath);
-}
 
 /// `dart:io`-based implementation of [RotatingFileReader].
 ///
@@ -33,28 +27,19 @@ class RotatingFileReaderIo implements RotatingFileReader {
     final dotIndex = name.lastIndexOf('.');
     final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
 
-    final entries = <({String path, DateTime modified})>[];
-
-    for (final entity in dir.listSync().whereType<File>()) {
-      final fileName = entity.uri.pathSegments.last;
-
-      if (fileName == name) {
-        if (includeCurrent) {
-          entries
-              .add((path: entity.path, modified: entity.statSync().modified));
-        }
-        continue;
-      }
-
-      if (!isRotatedLogFile(fileName, baseName: baseName)) {
-        continue;
-      }
-
-      entries.add((path: entity.path, modified: entity.statSync().modified));
-    }
-
-    // Oldest -> newest
-    entries.sort((a, b) => a.modified.compareTo(b.modified));
+    final entries = dir
+        .listSync()
+        .whereType<File>()
+        .where((it) {
+          final fileName = it.uri.pathSegments.last;
+          if (fileName == name) {
+            return includeCurrent;
+          }
+          return isRotatedLogFile(fileName, baseName: baseName);
+        })
+        .map((it) => (path: it.path, modified: it.statSync().modified))
+        .toList()
+      ..sort((a, b) => a.modified.compareTo(b.modified));
 
     return entries.map((e) => e.path).toList(growable: false);
   }
@@ -187,4 +172,10 @@ class RotatingFileReaderIo implements RotatingFileReader {
 
     yield* controller.stream;
   }
+}
+
+RotatingFileReader createRotatingFileReader({
+  required String baseFilePath,
+}) {
+  return RotatingFileReaderIo(baseFilePath: baseFilePath);
 }

@@ -1,4 +1,4 @@
-import 'package:chirp/src/writers/rotating_file_writer/log_file_reader.dart';
+import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader.dart';
 
 RotatingFileReader createRotatingFileReader({
   required String baseFilePath,

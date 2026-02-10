@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:chirp/src/writers/rotating_file_writer/log_file_reader_stub.dart'
-    if (dart.library.io) 'package:chirp/src/writers/rotating_file_writer/log_file_reader_io.dart'
+import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub.dart'
+    if (dart.library.io) 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_io.dart'
     as platform;
 
 /// Reader API for log files created by [RotatingFileWriter].
@@ -10,15 +10,19 @@ abstract class RotatingFileReader {
     return platform.createRotatingFileReader(baseFilePath: baseFilePath);
   }
 
-  /// Base path of the current log file, e.g. `/var/log/app.log`.
+  /// For example: `/var/log/app.log`.
   String get baseFilePath;
 
-  /// Lists log files (rotated + optionally current) sorted oldest → newest.
+  /// Returns absolute paths of log files sorted oldest → newest.
+  ///
+  /// Set [includeCurrent] to `false` to exclude the active log file
+  /// that is still being written to.
   Future<List<String>> listFiles({bool includeCurrent = true});
 
-  /// Reads logs as a finite stream.
+  /// Reads all log lines from rotated and current files, oldest to newest.
   ///
-  /// Use [lastLines] to only return the last N lines across all included files.
+  /// Returns a finite stream that completes once all files are read.
+  /// Set [lastLines] to only return the last N lines across all files.
   Stream<String> read({
     int? lastLines,
     Encoding encoding = utf8,
