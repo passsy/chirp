@@ -154,8 +154,9 @@ abstract class RotatingFileWriter extends ChirpWriter {
     FileWriterErrorHandler? onError,
     FlushStrategy? flushStrategy,
     Duration flushInterval = const Duration(seconds: 1),
+    ChirpLogLevel? minLevel,
   }) {
-    return platform.createRotatingFileWriter(
+    final writer = platform.createRotatingFileWriter(
       baseFilePathProvider: baseFilePathProvider,
       formatter: formatter,
       rotationConfig: rotationConfig,
@@ -164,6 +165,10 @@ abstract class RotatingFileWriter extends ChirpWriter {
       flushStrategy: flushStrategy,
       flushInterval: flushInterval,
     );
+    if (minLevel != null) {
+      writer.setMinLogLevel(minLevel);
+    }
+    return writer;
   }
 
   /// Base path for log files.

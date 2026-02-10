@@ -581,6 +581,54 @@ void main() {
       expect(content, contains('WARNING - should appear'));
       expect(content, contains('ERROR - should appear'));
     });
+
+    test('minLevel constructor parameter filters messages', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        minLevel: ChirpLogLevel.warning,
+      );
+      addTearDown(() => writer.close());
+
+      final logger = ChirpLogger(name: 'Test').addWriter(writer);
+
+      logger.info('INFO - should be filtered');
+      logger.debug('DEBUG - should be filtered');
+      logger.warning('WARNING - should appear');
+      logger.error('ERROR - should appear');
+
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, isNot(contains('should be filtered')),
+          reason: 'Messages below warning level should not be written');
+      expect(content, contains('WARNING - should appear'));
+      expect(content, contains('ERROR - should appear'));
+    });
+
+    test('minLevel sets minLogLevel property', () {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        minLevel: ChirpLogLevel.error,
+      );
+      addTearDown(() => writer.close());
+
+      expect(writer.minLogLevel, ChirpLogLevel.error,
+          reason: 'minLevel should set the minLogLevel property');
+    });
+
+    test('minLevel null does not set minLogLevel', () {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
+      addTearDown(() => writer.close());
+
+      expect(writer.minLogLevel, isNull,
+          reason: 'minLogLevel should be null by default');
+    });
   });
 
   group('Size-based rotation', () {

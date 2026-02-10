@@ -53,10 +53,15 @@ class DeveloperLogConsoleWriter extends ChirpWriter {
   ///
   /// Use this for development with a debugger attached to see unlimited-length
   /// log output. Falls back to [RainbowMessageFormatter] if no [formatter]
-  /// is provided.
+  /// is provided. Use [minLevel] to filter out logs below a certain level.
   DeveloperLogConsoleWriter({
     ChirpFormatter? formatter,
-  }) : formatter = formatter ?? RainbowMessageFormatter();
+    ChirpLogLevel? minLevel,
+  }) : formatter = formatter ?? RainbowMessageFormatter() {
+    if (minLevel != null) {
+      setMinLogLevel(minLevel);
+    }
+  }
 
   @override
   bool get requiresCallerInfo => formatter.requiresCallerInfo;

@@ -115,15 +115,21 @@ class PrintConsoleWriter extends ChirpWriter {
   ///
   /// Falls back to [RainbowMessageFormatter] if no [formatter] is provided.
   /// Use [output] to redirect logs for testing or alternative destinations.
+  /// Use [minLevel] to filter out logs below a certain level.
   PrintConsoleWriter({
     ChirpFormatter? formatter,
     int? maxChunkLength,
     TerminalCapabilities? capabilities,
     void Function(String)? output,
+    ChirpLogLevel? minLevel,
   })  : formatter = formatter ?? RainbowMessageFormatter(),
         maxChunkLength = maxChunkLength ?? platformPrintMaxChunkLength,
         capabilities = capabilities ?? TerminalCapabilities.autoDetect(),
-        output = output ?? print;
+        output = output ?? print {
+    if (minLevel != null) {
+      setMinLogLevel(minLevel);
+    }
+  }
 
   @override
   bool get requiresCallerInfo => formatter.requiresCallerInfo;
