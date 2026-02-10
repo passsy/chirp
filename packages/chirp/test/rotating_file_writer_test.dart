@@ -292,6 +292,76 @@ void main() {
       expect(content, contains('Buffered before path'));
     });
 
+    test('lazy baseFilePathProvider writes errors without manual flush',
+        () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/lazy-error/app.log';
+
+      final completer = Completer<String>();
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => completer.future,
+      );
+      addTearDown(() => writer.close());
+
+      // Write an error before the path is resolved - should be buffered.
+      writer.write(
+        testRecord(message: 'Error before path', level: ChirpLogLevel.error),
+      );
+
+      // File should not exist yet.
+      expect(File(logPath).existsSync(), isFalse);
+
+      // Resolve the path - pending records drain automatically.
+      completer.complete(logPath);
+
+      // Give microtasks a chance to run.
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      // Error was written without calling flush().
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('Error before path'));
+    });
+
+    test('lazy baseFilePathProvider drains buffer after flushInterval',
+        () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/lazy-buffered/app.log';
+
+      final completer = Completer<String>();
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => completer.future,
+        flushStrategy: FlushStrategy.buffered,
+        flushInterval: const Duration(seconds: 2),
+      );
+      addTearDown(() => writer.close());
+
+      // Write an info record before the path is resolved.
+      writer.write(testRecord(message: 'Buffered info'));
+
+      // Resolve the path.
+      completer.complete(logPath);
+
+      // Wait for path resolution, but not long enough for flushInterval.
+      await Future<void>.delayed(const Duration(seconds: 1));
+
+      // File exists (directories were created) but the record hasn't been
+      // flushed yet because flushInterval hasn't elapsed.
+      expect(
+        File(logPath).existsSync() ? File(logPath).readAsStringSync() : '',
+        isEmpty,
+        reason: 'Buffer should not have been flushed after 1s '
+            '(flushInterval is 2s)',
+      );
+
+      // Now wait for the flushInterval to fire.
+      await Future<void>.delayed(const Duration(seconds: 2));
+
+      // The record should have been written by the flush timer, no manual
+      // flush() call needed.
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('Buffered info'));
+    });
+
     test('creates parent directories recursively if they do not exist',
         () async {
       final tempDir = createTempDir();

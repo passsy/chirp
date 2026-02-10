@@ -23,6 +23,20 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// );
 /// ```
 ///
+/// ## Async Path with path_provider
+///
+/// Use [baseFilePathProvider] with an async callback to resolve the path
+/// lazily. Records written before the path resolves are buffered.
+///
+/// ```dart
+/// final writer = RotatingFileWriter(
+///   baseFilePathProvider: () async {
+///     final dir = await getApplicationSupportDirectory();
+///     return '${dir.path}/logs/app.log';
+///   },
+/// );
+/// ```
+///
 /// ## Size-Based Rotation
 ///
 /// ```dart
@@ -112,17 +126,12 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 abstract class RotatingFileWriter extends ChirpWriter {
   /// Creates a rotating file writer.
   ///
-  /// Use [baseFilePathProvider] to provide the file path lazily. The provider
-  /// may return the path synchronously (`String`) or asynchronously
+  /// Use [baseFilePathProvider] to provide the file path. The provider may
+  /// return the path synchronously (`String`) or asynchronously
   /// (`Future<String>`). Any records written before the path is available are
   /// buffered and written once the path resolves.
-  ///
-  /// The deprecated [baseFilePath] parameter is still accepted for backwards
-  /// compatibility. Exactly one of [baseFilePath] or [baseFilePathProvider]
-  /// must be provided.
   factory RotatingFileWriter({
-    @Deprecated('Use baseFilePathProvider instead') String? baseFilePath,
-    FutureOr<String> Function()? baseFilePathProvider,
+    required FutureOr<String> Function() baseFilePathProvider,
     ChirpFormatter? formatter,
     FileRotationConfig? rotationConfig,
     Encoding encoding = utf8,
@@ -130,17 +139,8 @@ abstract class RotatingFileWriter extends ChirpWriter {
     FlushStrategy? flushStrategy,
     Duration flushInterval = const Duration(seconds: 1),
   }) {
-    final provider = baseFilePathProvider ??
-        (baseFilePath == null ? null : (() => baseFilePath));
-
-    if (provider == null) {
-      throw ArgumentError(
-        'Either baseFilePathProvider or baseFilePath must be provided.',
-      );
-    }
-
     return platform.createRotatingFileWriter(
-      baseFilePathProvider: provider,
+      baseFilePathProvider: baseFilePathProvider,
       formatter: formatter,
       rotationConfig: rotationConfig,
       encoding: encoding,

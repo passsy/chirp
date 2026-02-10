@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub.dart'
@@ -5,9 +6,23 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub
     as platform;
 
 /// Reader API for log files created by [RotatingFileWriter].
+///
+/// ```dart
+/// final reader = RotatingFileReader(
+///   baseFilePathProvider: () async {
+///     final dir = await getApplicationSupportDirectory();
+///     return '${dir.path}/logs/app.log';
+///   },
+/// );
+/// final lines = await reader.read(lastLines: 100).toList();
+/// ```
 abstract class RotatingFileReader {
-  factory RotatingFileReader({required String baseFilePath}) {
-    return platform.createRotatingFileReader(baseFilePath: baseFilePath);
+  factory RotatingFileReader({
+    required FutureOr<String> Function() baseFilePathProvider,
+  }) {
+    return platform.createRotatingFileReader(
+      baseFilePathProvider: baseFilePathProvider,
+    );
   }
 
   /// For example: `/var/log/app.log`.
