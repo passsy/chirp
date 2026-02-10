@@ -7,6 +7,11 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub
 
 /// Reader API for log files created by [RotatingFileWriter].
 ///
+/// The [baseFilePathProvider] must return the same path used by the writer.
+///
+/// For **persistent logs** (iOS: `Library/Application Support/`,
+/// Android: `Context.getFilesDir()`):
+///
 /// ```dart
 /// final reader = RotatingFileReader(
 ///   baseFilePathProvider: () async {
@@ -15,6 +20,18 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub
 ///   },
 /// );
 /// final lines = await reader.read(lastLines: 100).toList();
+/// ```
+///
+/// For **temporary logs** (iOS: `Library/Caches/`,
+/// Android: `Context.getCacheDir()`):
+///
+/// ```dart
+/// final reader = RotatingFileReader(
+///   baseFilePathProvider: () async {
+///     final dir = await getApplicationCacheDirectory();
+///     return '${dir.path}/logs/app.log';
+///   },
+/// );
 /// ```
 abstract class RotatingFileReader {
   factory RotatingFileReader({

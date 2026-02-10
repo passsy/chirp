@@ -28,10 +28,26 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// Use [baseFilePathProvider] with an async callback to resolve the path
 /// lazily. Records written before the path resolves are buffered.
 ///
+/// For **persistent logs** that survive app updates and are included in
+/// backups (iOS: `Library/Application Support/`,
+/// Android: `Context.getFilesDir()`):
+///
 /// ```dart
 /// final writer = RotatingFileWriter(
 ///   baseFilePathProvider: () async {
 ///     final dir = await getApplicationSupportDirectory();
+///     return '${dir.path}/logs/app.log';
+///   },
+/// );
+/// ```
+///
+/// For **temporary logs** that the OS may purge under storage pressure
+/// (iOS: `Library/Caches/`, Android: `Context.getCacheDir()`):
+///
+/// ```dart
+/// final writer = RotatingFileWriter(
+///   baseFilePathProvider: () async {
+///     final dir = await getApplicationCacheDirectory();
 ///     return '${dir.path}/logs/app.log';
 ///   },
 /// );
