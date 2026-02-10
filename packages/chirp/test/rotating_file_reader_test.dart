@@ -29,7 +29,7 @@ void main() {
       rotated2.setLastModifiedSync(DateTime(2024, 1, 2, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 3, 10));
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final files = await reader.listFiles();
       expect(files, [rotated1.path, rotated2.path, base.path]);
     });
@@ -46,14 +46,14 @@ void main() {
       rotated.setLastModifiedSync(DateTime(2024, 1, 1, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final files = await reader.listFiles(includeCurrent: false);
       expect(files, [rotated.path]);
     });
 
     test('returns empty list when directory does not exist', () async {
       final reader = RotatingFileReader(
-        baseFilePath: '/tmp/chirp-nonexistent-dir/app.log',
+        baseFilePathProvider: () => '/tmp/chirp-nonexistent-dir/app.log',
       );
       final files = await reader.listFiles();
       expect(files, isEmpty);
@@ -66,7 +66,7 @@ void main() {
       File('${dir.path}/unrelated.txt').writeAsStringSync('nope\n');
 
       final base = File('${dir.path}/app.log');
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final files = await reader.listFiles();
       expect(files, isEmpty);
     });
@@ -83,7 +83,7 @@ void main() {
       gzFile.setLastModifiedSync(DateTime(2024, 1, 1, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final files = await reader.listFiles();
       expect(files, [gzFile.path, base.path]);
     });
@@ -98,7 +98,7 @@ void main() {
       File('${dir.path}/app.log.bak').writeAsStringSync('backup\n');
       File('${dir.path}/application.log').writeAsStringSync('other\n');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final files = await reader.listFiles();
       expect(files, [base.path]);
     });
@@ -117,7 +117,7 @@ void main() {
       rotated.setLastModifiedSync(DateTime(2024, 1, 1, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read().toList();
       expect(lines, ['old1', 'old2', 'new1']);
     });
@@ -126,14 +126,14 @@ void main() {
       final dir = createTempDir();
       final base = File('${dir.path}/app.log');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read().toList();
       expect(lines, isEmpty);
     });
 
     test('returns empty stream when directory does not exist', () async {
       final reader = RotatingFileReader(
-        baseFilePath: '/tmp/chirp-nonexistent-dir/app.log',
+        baseFilePathProvider: () => '/tmp/chirp-nonexistent-dir/app.log',
       );
       final lines = await reader.read().toList();
       expect(lines, isEmpty);
@@ -144,7 +144,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('line1\nline2\n');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read().toList();
       expect(lines, ['line1', 'line2']);
     });
@@ -154,7 +154,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read().toList();
       expect(lines, isEmpty);
     });
@@ -164,7 +164,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('no-trailing-newline');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read().toList();
       expect(lines, ['no-trailing-newline']);
     });
@@ -174,7 +174,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('first\n\n\nlast\n');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read().toList();
       expect(lines, ['first', '', '', 'last']);
     });
@@ -191,7 +191,7 @@ void main() {
       gzFile.setLastModifiedSync(DateTime(2024, 1, 1, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read().toList();
       expect(lines, ['old1', 'old2', 'current']);
     });
@@ -212,7 +212,7 @@ void main() {
       rotatedPlain.setLastModifiedSync(DateTime(2024, 1, 2, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 3, 10));
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read().toList();
       expect(lines, ['compressed', 'plain', 'current']);
     });
@@ -238,7 +238,7 @@ void main() {
       r4.setLastModifiedSync(DateTime(2024, 1, 4, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 5, 10));
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read().toList();
       expect(lines, ['a', 'b', 'c', 'd', 'e']);
     });
@@ -257,7 +257,7 @@ void main() {
       rotated.setLastModifiedSync(DateTime(2024, 1, 1, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read(lastLines: 3).toList();
       expect(lines, ['a3', 'c1', 'c2']);
     });
@@ -268,7 +268,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('one\ntwo\n');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read(lastLines: 100).toList();
       expect(lines, ['one', 'two']);
     });
@@ -279,7 +279,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('one\ntwo\nthree\n');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read(lastLines: 3).toList();
       expect(lines, ['one', 'two', 'three']);
     });
@@ -290,7 +290,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('first\nsecond\nthird\n');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read(lastLines: 1).toList();
       expect(lines, ['third']);
     });
@@ -301,7 +301,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('first\nsecond\n');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read(lastLines: 0).toList();
       expect(lines, isEmpty);
     });
@@ -310,7 +310,7 @@ void main() {
       final dir = createTempDir();
       final base = File('${dir.path}/app.log');
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read(lastLines: 5).toList();
       expect(lines, isEmpty);
     });
@@ -327,7 +327,7 @@ void main() {
       gzFile.setLastModifiedSync(DateTime(2024, 1, 1, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read(lastLines: 4).toList();
       expect(lines, ['old2', 'old3', 'new1', 'new2']);
     });
@@ -348,7 +348,7 @@ void main() {
       emptyRotated.setLastModifiedSync(DateTime(2024, 1, 2, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 3, 10));
 
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final lines = await reader.read(lastLines: 2).toList();
       expect(lines, ['old', 'current']);
     });
@@ -362,7 +362,7 @@ void main() {
       base.writeAsStringSync('first\n');
 
       final received = <String>[];
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final sub = reader.tail(lastLines: 10).listen(received.add);
       addTearDown(() => sub.cancel());
 
@@ -391,7 +391,7 @@ void main() {
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
       final received = <String>[];
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final sub = reader.tail(lastLines: 2).listen(received.add);
       addTearDown(() => sub.cancel());
 
@@ -409,7 +409,7 @@ void main() {
       final base = File('${dir.path}/app.log');
 
       final received = <String>[];
-      final reader = RotatingFileReader(baseFilePath: base.path);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final sub = reader.tail().listen(received.add);
       addTearDown(() => sub.cancel());
 

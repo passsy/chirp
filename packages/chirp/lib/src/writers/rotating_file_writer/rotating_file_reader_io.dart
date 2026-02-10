@@ -11,14 +11,37 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.d
 /// Reads and tails log files produced by [RotatingFileWriter] on platforms
 /// where file I/O is available.
 class RotatingFileReaderIo implements RotatingFileReader {
-  @override
-  final String baseFilePath;
+  final FutureOr<String> Function() _baseFilePathProvider;
+  String? _resolvedBaseFilePath;
 
-  RotatingFileReaderIo({required this.baseFilePath});
+  @override
+  String get baseFilePath {
+    final path = _resolvedBaseFilePath;
+    if (path == null) {
+      throw StateError(
+        'RotatingFileReader.baseFilePath is not available yet. '
+        'If you provided an async baseFilePathProvider, '
+        'the path is resolved asynchronously.',
+      );
+    }
+    return path;
+  }
+
+  RotatingFileReaderIo({
+    required FutureOr<String> Function() baseFilePathProvider,
+  }) : _baseFilePathProvider = baseFilePathProvider;
+
+  Future<String> _resolveBaseFilePath() async {
+    if (_resolvedBaseFilePath != null) return _resolvedBaseFilePath!;
+    final path = await _baseFilePathProvider();
+    _resolvedBaseFilePath = path;
+    return path;
+  }
 
   @override
   Future<List<String>> listFiles({bool includeCurrent = true}) async {
-    final current = File(baseFilePath);
+    final resolvedPath = await _resolveBaseFilePath();
+    final current = File(resolvedPath);
     final dir = current.parent;
     final name = current.uri.pathSegments.last;
 
@@ -107,7 +130,8 @@ class RotatingFileReaderIo implements RotatingFileReader {
     // Implementation note: This intentionally does NOT use polling by default.
     // Instead it reacts to file-system events and only reads when the file
     // changes (or appears).
-    final file = File(baseFilePath);
+    final resolvedPath = await _resolveBaseFilePath();
+    final file = File(resolvedPath);
     final dir = file.parent;
     final fileName = file.uri.pathSegments.last;
 
@@ -175,7 +199,7 @@ class RotatingFileReaderIo implements RotatingFileReader {
 }
 
 RotatingFileReader createRotatingFileReader({
-  required String baseFilePath,
+  required FutureOr<String> Function() baseFilePathProvider,
 }) {
-  return RotatingFileReaderIo(baseFilePath: baseFilePath);
+  return RotatingFileReaderIo(baseFilePathProvider: baseFilePathProvider);
 }

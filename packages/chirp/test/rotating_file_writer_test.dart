@@ -8,8 +8,10 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.d
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_stub.dart'
     as stub_impl;
 import 'package:clock/clock.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:test/test.dart';
 
+import 'fake_async_with_drain.dart';
 import 'test_log_record.dart';
 
 void main() {
@@ -253,7 +255,7 @@ void main() {
     test('writes formatted log record to file', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       writer.write(testRecord(message: 'Test message'));
@@ -267,11 +269,143 @@ void main() {
           reason: 'Log file should contain formatted level');
     });
 
+    test('reader returns a RotatingFileReader for the same files', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'Hello from writer'));
+      await writer.flush();
+
+      final lines = await writer.reader.read().toList();
+      expect(lines, contains(contains('Hello from writer')));
+    });
+
+    test('reader works with async baseFilePathProvider', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final completer = Completer<String>();
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => completer.future,
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'Async path message'));
+      completer.complete(logPath);
+      await writer.flush();
+
+      final lines = await writer.reader.read().toList();
+      expect(lines, contains(contains('Async path message')));
+    });
+
+    test('lazy baseFilePathProvider buffers until path is resolved', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/lazy/app.log';
+
+        final completer = Completer<String>();
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => completer.future,
+        );
+
+        // Write before we resolve the path - should be buffered.
+        writer.write(testRecord(message: 'Buffered before path'));
+
+        // Resolve the path later.
+        completer.complete(logPath);
+        async.flushMicrotasks();
+
+        writer.flush();
+        async.flushMicrotasks();
+
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Buffered before path'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('lazy baseFilePathProvider writes errors without manual flush', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/lazy-error/app.log';
+
+        final completer = Completer<String>();
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => completer.future,
+        );
+
+        // Write an error before the path is resolved - should be buffered.
+        writer.write(
+          testRecord(message: 'Error before path', level: ChirpLogLevel.error),
+        );
+
+        // File should not exist yet.
+        expect(File(logPath).existsSync(), isFalse);
+
+        // Resolve the path - pending records drain automatically.
+        completer.complete(logPath);
+        async.flushMicrotasks();
+
+        // Error was written without calling flush().
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Error before path'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('lazy baseFilePathProvider drains buffer after flushInterval', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/lazy-buffered/app.log';
+
+        final completer = Completer<String>();
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => completer.future,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(seconds: 10),
+        );
+
+        // Write an info record before the path is resolved.
+        writer.write(testRecord(message: 'Buffered info'));
+
+        // Resolve the path.
+        completer.complete(logPath);
+        async.flushMicrotasks();
+
+        // Advance time, but not past the flushInterval.
+        async.elapse(const Duration(seconds: 9));
+
+        // The record hasn't been flushed yet because flushInterval hasn't
+        // elapsed.
+        expect(
+          File(logPath).existsSync() ? File(logPath).readAsStringSync() : '',
+          isEmpty,
+          reason: 'Buffer should not have been flushed after 9s '
+              '(flushInterval is 10s)',
+        );
+
+        // Advance past the flushInterval.
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
+
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Buffered info'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
+    });
+
     test('creates parent directories recursively if they do not exist',
         () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/logs/subdir/deep/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       writer.write(testRecord(message: 'Test'));
@@ -289,12 +423,12 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
 
       // Write first message with one writer instance
-      final writer1 = RotatingFileWriter(baseFilePath: logPath);
+      final writer1 = RotatingFileWriter(baseFilePathProvider: () => logPath);
       writer1.write(testRecord(message: 'First message'));
       await writer1.close();
 
       // Write second message with new writer instance
-      final writer2 = RotatingFileWriter(baseFilePath: logPath);
+      final writer2 = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer2.close());
       writer2.write(testRecord(message: 'Second message'));
       await writer2.flush();
@@ -310,7 +444,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.jsonl';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: const JsonLogFormatter(),
       );
       addTearDown(() => writer.close());
@@ -328,7 +462,7 @@ void main() {
     test('integrates with ChirpLogger for real logging workflow', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       final logger = ChirpLogger(name: 'TestLogger').addWriter(writer);
@@ -360,7 +494,7 @@ void main() {
       final records = <LogRecord>[];
       final formatter = _CapturingFormatter(records);
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: formatter,
       );
       addTearDown(() => writer.close());
@@ -386,7 +520,7 @@ void main() {
         requiresCallerInfo: true,
       );
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: formatter,
       );
       addTearDown(() => writer.close());
@@ -410,7 +544,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: const _CallerLocationFormatter(),
       );
       addTearDown(() => writer.close());
@@ -428,7 +562,7 @@ void main() {
     test('respects minLogLevel filtering inherited from ChirpWriter', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath)
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath)
         ..setMinLogLevel(ChirpLogLevel.warning);
       addTearDown(() => writer.close());
 
@@ -454,7 +588,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 100, // Very small for testing
           maxFiles: 10,
@@ -492,7 +626,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 50,
           maxFiles: 3,
@@ -547,7 +681,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 10, // Smaller than any log entry
           maxFiles: 10,
@@ -586,7 +720,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 1024 * 1024,
           maxFiles: 2,
@@ -622,7 +756,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.hourly(),
       );
       addTearDown(() => writer.close());
@@ -660,7 +794,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.daily(),
       );
       addTearDown(() => writer.close());
@@ -699,7 +833,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.daily(),
       );
       addTearDown(() => writer.close());
@@ -728,7 +862,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig(
           rotationInterval: FileRotationInterval.weekly,
         ),
@@ -765,7 +899,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig(
           rotationInterval: FileRotationInterval.monthly,
         ),
@@ -804,7 +938,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.daily(compress: true),
       );
       addTearDown(() => writer.close());
@@ -855,7 +989,7 @@ void main() {
         final logPath = '${tempDir.path}/app.log';
         // Use size-based config to avoid time-based rotation complications
         final writer = RotatingFileWriter(
-          baseFilePath: logPath,
+          baseFilePathProvider: () => logPath,
           rotationConfig: FileRotationConfig.size(
             maxSize: 1024 * 1024, // Large enough to not trigger
           ),
@@ -901,7 +1035,7 @@ void main() {
 
       // Create writer and write first message (creates file at real time)
       final writer1 = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 50,
           maxAge: const Duration(days: 7),
@@ -930,7 +1064,7 @@ void main() {
       final futureTime = DateTime.now().add(const Duration(days: 10));
       await withClock(Clock.fixed(futureTime), () async {
         final writer2 = RotatingFileWriter(
-          baseFilePath: logPath,
+          baseFilePathProvider: () => logPath,
           rotationConfig: FileRotationConfig.size(
             maxSize: 50,
             maxAge: const Duration(days: 7),
@@ -965,7 +1099,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         encoding: latin1,
       );
       addTearDown(() => writer.close());
@@ -984,7 +1118,7 @@ void main() {
     test('writes with default utf8 encoding', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       // Write UTF-8 specific characters
@@ -1004,7 +1138,7 @@ void main() {
     test('writes log line with empty message without error', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       writer.write(testRecord(message: ''));
@@ -1022,7 +1156,7 @@ void main() {
     test('writes null message as "null" string', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       writer.write(testRecord(message: null));
@@ -1037,7 +1171,7 @@ void main() {
     test('writes very long messages completely', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       final longMessage = 'x' * 10000;
@@ -1053,7 +1187,7 @@ void main() {
     test('preserves special characters in messages', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       const message = 'Tabs:\there Quotes:"here" Backslash:\\here';
@@ -1069,7 +1203,7 @@ void main() {
     test('preserves unicode characters (emoji, CJK, Cyrillic)', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       const emoji = '\u{1F600}';
@@ -1090,7 +1224,7 @@ void main() {
     test('calling close() multiple times does not throw', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
 
       writer.write(testRecord(message: 'Test message'));
 
@@ -1117,7 +1251,7 @@ void main() {
       LogRecord? capturedRecord;
 
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: _ThrowingFormatter(),
         onError: (error, stackTrace, record) {
           capturedError = error;
@@ -1143,7 +1277,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
 
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: _ThrowingFormatter(),
         onError: (_, __, ___) {}, // Silence errors
       );
@@ -1161,7 +1295,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
 
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: _ThrowingFormatter(),
         // onError is null - prints to stderr by default
       );
@@ -1196,7 +1330,7 @@ void main() {
       final failedRecords = <LogRecord?>[];
 
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: _ThrowingFormatter(),
         onError: (error, stackTrace, record) {
           failedRecords.add(record);
@@ -1221,7 +1355,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(
             seconds: 10), // Long interval so it doesn't auto-flush
@@ -1249,7 +1383,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(seconds: 10), // Long interval
       );
@@ -1276,7 +1410,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(seconds: 10), // Long interval
       );
@@ -1306,7 +1440,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(seconds: 10),
       );
@@ -1325,7 +1459,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(milliseconds: 10),
         rotationConfig: FileRotationConfig.daily(),
@@ -1353,124 +1487,140 @@ void main() {
   });
 
   group('FlushStrategy.buffered timer behavior', () {
-    test('first write starts timer, flushes after flushInterval', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePath: logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 50),
-      );
-      addTearDown(() => writer.close());
+    test('first write starts timer, flushes after flushInterval', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(milliseconds: 50),
+        );
 
-      // Write - starts timer
-      writer.write(testRecord(message: 'Message 1'));
+        // Write - starts timer
+        writer.write(testRecord(message: 'Message 1'));
 
-      // Immediately after write, file should not exist (buffered)
-      expect(File(logPath).existsSync(), isFalse,
-          reason: 'File should not exist immediately after write');
+        // Immediately after write, file should not exist (buffered)
+        expect(File(logPath).existsSync(), isFalse,
+            reason: 'File should not exist immediately after write');
 
-      // Wait for timer to fire
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Wait for timer to fire
+        async.elapse(const Duration(milliseconds: 50));
+        async.flushMicrotasks();
 
-      // Now file should exist
-      expect(File(logPath).existsSync(), isTrue,
-          reason: 'File should exist after flushInterval');
+        // Now file should exist
+        expect(File(logPath).existsSync(), isTrue,
+            reason: 'File should exist after flushInterval');
 
-      final content = File(logPath).readAsStringSync();
-      expect(content, contains('Message 1'));
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Message 1'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
-    test('multiple writes before timer fires are batched together', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePath: logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(() => writer.close());
+    test('multiple writes before timer fires are batched together', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(milliseconds: 100),
+        );
 
-      // Write multiple messages quickly (before timer fires)
-      writer.write(testRecord(message: 'Message 1'));
-      writer.write(testRecord(message: 'Message 2'));
-      writer.write(testRecord(message: 'Message 3'));
+        // Write multiple messages quickly (before timer fires)
+        writer.write(testRecord(message: 'Message 1'));
+        writer.write(testRecord(message: 'Message 2'));
+        writer.write(testRecord(message: 'Message 3'));
 
-      // Immediately, nothing written yet
-      expect(File(logPath).existsSync(), isFalse);
+        // Immediately, nothing written yet
+        expect(File(logPath).existsSync(), isFalse);
 
-      // Wait for timer
-      await Future<void>.delayed(const Duration(milliseconds: 150));
+        // Wait for timer
+        async.elapse(const Duration(milliseconds: 100));
+        async.flushMicrotasks();
 
-      // All 3 messages should be written in one batch
-      final content = File(logPath).readAsStringSync();
-      expect(content, contains('Message 1'));
-      expect(content, contains('Message 2'));
-      expect(content, contains('Message 3'));
+        // All 3 messages should be written in one batch
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Message 1'));
+        expect(content, contains('Message 2'));
+        expect(content, contains('Message 3'));
 
-      final lines = content.trim().split('\n');
-      expect(lines.length, 3, reason: 'All 3 messages batched in one flush');
+        final lines = content.trim().split('\n');
+        expect(lines.length, 3, reason: 'All 3 messages batched in one flush');
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
     test('timer resets after flush, next write starts new timer', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePath: logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 50),
-      );
-      addTearDown(() => writer.close());
+      await fakeAsyncWithDrain((async) async {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+        );
 
-      // First batch
-      writer.write(testRecord(message: 'Batch 1'));
+        // First batch
+        writer.write(testRecord(message: 'Batch 1'));
+        async.elapse(const Duration(seconds: 1));
+        await drainEvent();
 
-      // Wait for first flush
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Batch 1'));
+        expect(content, isNot(contains('Batch 2')));
 
-      var content = File(logPath).readAsStringSync();
-      expect(content.trim().split('\n').length, 1);
+        // Second batch - starts new timer
+        writer.write(testRecord(message: 'Batch 2'));
 
-      // Second batch - starts new timer
-      writer.write(testRecord(message: 'Batch 2'));
+        // Immediately, batch 2 not flushed yet
+        expect(File(logPath).readAsStringSync(), isNot(contains('Batch 2')),
+            reason: 'Batch 2 not yet flushed');
 
-      // Immediately, batch 2 not flushed yet
-      content = File(logPath).readAsStringSync();
-      expect(content.trim().split('\n').length, 1,
-          reason: 'Batch 2 not yet flushed');
+        async.elapse(const Duration(seconds: 1));
+        await drainEvent();
 
-      // Wait for second timer
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        final content2 = File(logPath).readAsStringSync();
+        expect(content2, contains('Batch 1'));
+        expect(content2, contains('Batch 2'));
 
-      content = File(logPath).readAsStringSync();
-      expect(content.trim().split('\n').length, 2,
-          reason: 'Batch 2 should be flushed now');
-      expect(content, contains('Batch 2'));
+        writer.close();
+        await drainEvent();
+      });
     });
 
-    test('no timer fires when no writes happen', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePath: logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 50),
-      );
-      addTearDown(() => writer.close());
+    test('no timer fires when no writes happen', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(milliseconds: 50),
+        );
 
-      // Wait without writing anything
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Wait without writing anything
+        async.elapse(const Duration(milliseconds: 100));
+        async.flushMicrotasks();
 
-      // No file should be created
-      expect(File(logPath).existsSync(), isFalse,
-          reason: 'No file should be created when no writes happen');
+        // No file should be created
+        expect(File(logPath).existsSync(), isFalse,
+            reason: 'No file should be created when no writes happen');
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
     test('error cancels pending timer and flushes buffer immediately', () {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(seconds: 10), // Long interval
       );
@@ -1496,37 +1646,46 @@ void main() {
     });
 
     test('writes after error start a new timer', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePath: logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 50),
-      );
-      addTearDown(() => writer.close());
+      await fakeAsyncWithDrain((async) async {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+        );
 
-      // Write error (flushes immediately)
-      writer.write(testRecord(message: 'Error', level: ChirpLogLevel.error));
+        // Write error (flushes immediately)
+        writer.write(testRecord(message: 'Error', level: ChirpLogLevel.error));
 
-      expect(File(logPath).readAsStringSync().trim().split('\n').length, 1);
+        var content = File(logPath).readAsStringSync();
+        expect(content, contains('Error'));
+        expect(content, isNot(contains('Info after error')));
 
-      // Write info after error - starts new timer
-      writer.write(testRecord(message: 'Info after error'));
+        // Write info after error - starts new timer
+        writer.write(testRecord(message: 'Info after error'));
 
-      // Info not flushed yet
-      expect(File(logPath).readAsStringSync().trim().split('\n').length, 1);
+        // Info not flushed yet
+        expect(File(logPath).readAsStringSync(),
+            isNot(contains('Info after error')));
 
-      // Wait for new timer
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Wait for new timer
+        async.elapse(const Duration(seconds: 1));
+        await drainEvent();
 
-      expect(File(logPath).readAsStringSync().trim().split('\n').length, 2);
+        content = File(logPath).readAsStringSync();
+        expect(content, contains('Error'));
+        expect(content, contains('Info after error'));
+
+        writer.close();
+        await drainEvent();
+      });
     });
 
     test('close() flushes pending buffer even if timer not fired', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(seconds: 10), // Long interval
       );
@@ -1547,73 +1706,84 @@ void main() {
     });
 
     test('flush() flushes pending buffer and cancels timer', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePath: logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(() => writer.close());
+      await fakeAsyncWithDrain((async) async {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(seconds: 5),
+        );
 
-      // Write (timer starts)
-      writer.write(testRecord(message: 'Message 1'));
+        // Write (timer starts)
+        writer.write(testRecord(message: 'Message 1'));
 
-      // Flush manually before timer fires
-      await writer.flush();
+        // Flush manually before timer fires
+        writer.flush();
+        await drainEvent();
 
-      expect(File(logPath).readAsStringSync(), contains('Message 1'));
-      final lineCount =
-          File(logPath).readAsStringSync().trim().split('\n').length;
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Message 1'));
 
-      // Wait past original timer time
-      await Future<void>.delayed(const Duration(milliseconds: 150));
+        // Wait past original timer time
+        async.elapse(const Duration(seconds: 10));
+        await drainEvent();
 
-      // No duplicate write from timer (it was cancelled)
-      final newLineCount =
-          File(logPath).readAsStringSync().trim().split('\n').length;
-      expect(newLineCount, lineCount,
-          reason: 'Timer should be cancelled, no duplicate write');
+        // No duplicate write from timer (it was cancelled)
+        expect(File(logPath).readAsStringSync(), content,
+            reason: 'Timer should be cancelled, no duplicate write');
+
+        writer.close();
+        await drainEvent();
+      });
     });
 
     test('sustained logging: each flush resets timer for next batch', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePath: logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 30),
-      );
-      addTearDown(() => writer.close());
+      await fakeAsyncWithDrain((async) async {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+        );
 
-      // Write message, wait for flush, repeat
-      writer.write(testRecord(message: 'Batch 1 - Msg 1'));
-      writer.write(testRecord(message: 'Batch 1 - Msg 2'));
+        // Batch 1
+        writer.write(testRecord(message: 'Batch 1 - Msg 1'));
+        writer.write(testRecord(message: 'Batch 1 - Msg 2'));
+        async.elapse(const Duration(seconds: 1));
+        await drainEvent();
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+        var content = File(logPath).readAsStringSync();
+        expect(content, contains('Batch 1 - Msg 1'));
+        expect(content, contains('Batch 1 - Msg 2'));
 
-      // First batch flushed
-      expect(File(logPath).readAsStringSync().trim().split('\n').length, 2);
+        // Batch 2
+        writer.write(testRecord(message: 'Batch 2 - Msg 1'));
+        async.elapse(const Duration(seconds: 1));
+        await drainEvent();
 
-      // Second batch
-      writer.write(testRecord(message: 'Batch 2 - Msg 1'));
+        content = File(logPath).readAsStringSync();
+        expect(content, contains('Batch 2 - Msg 1'));
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+        // Batch 3
+        writer.write(testRecord(message: 'Batch 3 - Msg 1'));
+        writer.write(testRecord(message: 'Batch 3 - Msg 2'));
+        writer.write(testRecord(message: 'Batch 3 - Msg 3'));
+        async.elapse(const Duration(seconds: 1));
+        await drainEvent();
 
-      // Second batch flushed
-      expect(File(logPath).readAsStringSync().trim().split('\n').length, 3);
+        // All batches flushed
+        content = File(logPath).readAsStringSync();
+        expect(content, contains('Batch 1 - Msg 1'));
+        expect(content, contains('Batch 1 - Msg 2'));
+        expect(content, contains('Batch 2 - Msg 1'));
+        expect(content, contains('Batch 3 - Msg 1'));
+        expect(content, contains('Batch 3 - Msg 2'));
+        expect(content, contains('Batch 3 - Msg 3'));
 
-      // Third batch
-      writer.write(testRecord(message: 'Batch 3 - Msg 1'));
-      writer.write(testRecord(message: 'Batch 3 - Msg 2'));
-      writer.write(testRecord(message: 'Batch 3 - Msg 3'));
-
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-
-      // Third batch flushed
-      final finalLines =
-          File(logPath).readAsStringSync().trim().split('\n').length;
-      expect(finalLines, 6, reason: 'All 6 messages across 3 batches');
+        writer.close();
+        await drainEvent();
+      });
     });
   });
 
@@ -1637,7 +1807,7 @@ void main() {
     test('defaults to synchronous in debug mode (asserts enabled)', () {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       // In test (debug) mode, default should be synchronous

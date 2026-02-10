@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:chirp/chirp.dart';
 import 'package:clock/clock.dart';
 
 RotatingFileWriter createRotatingFileWriter({
-  required String baseFilePath,
+  required FutureOr<String> Function() baseFilePathProvider,
   ChirpFormatter? formatter,
   FileRotationConfig? rotationConfig,
   Encoding encoding = utf8,
@@ -16,7 +17,7 @@ RotatingFileWriter createRotatingFileWriter({
   Duration flushInterval = const Duration(seconds: 1),
 }) {
   return RotatingFileWriterIo(
-    baseFilePath: baseFilePath,
+    baseFilePathProvider: baseFilePathProvider,
     formatter: formatter,
     rotationConfig: rotationConfig,
     encoding: encoding,
@@ -44,12 +45,32 @@ FlushStrategy _defaultFlushStrategy() {
 /// Supports both size-based and time-based rotation, with configurable
 /// retention policies (max files, max age).
 class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
+  String? _baseFilePath;
+  final FutureOr<String> Function() _baseFilePathProvider;
+  Future<String>? _baseFilePathFuture;
+
+  /// Records written before the base path is resolved.
+  final List<LogRecord> _pendingRecords = [];
+
   /// Base path for log files.
   ///
   /// This is the path to the current log file. Rotated files are created
   /// in the same directory with timestamps appended to the name.
+  ///
+  /// Throws [StateError] if the path has not been resolved yet (when using
+  /// an async [baseFilePathProvider]).
   @override
-  final String baseFilePath;
+  String get baseFilePath {
+    final path = _baseFilePath;
+    if (path == null) {
+      throw StateError(
+        'RotatingFileWriter.baseFilePath is not available yet. '
+        'If you provided an async baseFilePathProvider, '
+        'the path is resolved asynchronously.',
+      );
+    }
+    return path;
+  }
 
   /// Formatter for converting log records to text.
   @override
@@ -95,6 +116,11 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   @override
   bool get requiresCallerInfo => formatter.requiresCallerInfo;
 
+  @override
+  late final RotatingFileReader reader = RotatingFileReader(
+    baseFilePathProvider: _baseFilePathProvider,
+  );
+
   /// Current file handle for synchronous writes.
   RandomAccessFile? _file;
 
@@ -130,15 +156,64 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   /// - [flushStrategy]: How I/O is performed (default: [_defaultFlushStrategy])
   /// - [flushInterval]: Buffer flush interval for buffered mode (default: 100ms)
   RotatingFileWriterIo({
-    required this.baseFilePath,
+    required FutureOr<String> Function() baseFilePathProvider,
     ChirpFormatter? formatter,
     this.rotationConfig,
     this.encoding = utf8,
     this.onError,
     FlushStrategy? flushStrategy,
     this.flushInterval = const Duration(seconds: 1),
-  })  : flushStrategy = flushStrategy ?? _defaultFlushStrategy(),
+  })  : _baseFilePath = null,
+        _baseFilePathProvider = baseFilePathProvider,
+        flushStrategy = flushStrategy ?? _defaultFlushStrategy(),
         formatter = formatter ?? const SimpleFileFormatter();
+
+  /// Tries to resolve the base file path.
+  ///
+  /// Returns `true` if the path is available synchronously after this call.
+  /// Returns `false` if resolution is still pending (async) or failed.
+  bool _tryResolveBaseFilePathSync() {
+    if (_baseFilePath != null) return true;
+    if (_baseFilePathFuture != null) return false;
+
+    try {
+      final result = _baseFilePathProvider();
+
+      if (result is Future<String>) {
+        _baseFilePathFuture = result.then((path) {
+          _baseFilePath = path;
+          _drainPendingRecords();
+          return path;
+        }, onError: (Object error, StackTrace stackTrace) {
+          _handleError(error, stackTrace, null);
+          throw error;
+        });
+        return false;
+      }
+
+      _baseFilePath = result;
+      _baseFilePathFuture = Future<String>.value(result);
+      _drainPendingRecords();
+      return true;
+    } catch (e, stackTrace) {
+      _handleError(e, stackTrace, null);
+      return false;
+    }
+  }
+
+  void _resolveBaseFilePath() {
+    _tryResolveBaseFilePathSync();
+  }
+
+  void _drainPendingRecords() {
+    if (_pendingRecords.isEmpty) return;
+
+    final records = List<LogRecord>.from(_pendingRecords);
+    _pendingRecords.clear();
+    for (final record in records) {
+      write(record);
+    }
+  }
 
   /// Opens the log file for writing.
   ///
@@ -146,7 +221,10 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   void _ensureOpen() {
     if (_file != null) return;
 
-    final file = File(baseFilePath);
+    // Path might still be resolving when using an async baseFilePathProvider.
+    if (_baseFilePath == null) return;
+
+    final file = File(_baseFilePath!);
 
     // Create parent directories if they don't exist
     final parent = file.parent;
@@ -167,6 +245,16 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
 
   @override
   void write(LogRecord record) {
+    if (_baseFilePath == null) {
+      // If the provider is synchronous, resolve immediately and proceed with
+      // the normal write behavior.
+      if (!_tryResolveBaseFilePathSync()) {
+        _pendingRecords.add(record);
+        _resolveBaseFilePath();
+        return;
+      }
+    }
+
     switch (flushStrategy) {
       case FlushStrategy.synchronous:
         _writeSync(record);
@@ -261,11 +349,16 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   }
 
   /// Async implementation of buffer flushing.
+  ///
+  /// Formats all buffered records into a single byte buffer and writes the
+  /// batch in one synchronous call, minimising the number of syscalls.
   Future<void> _flushBufferAsync(List<LogRecord> records) async {
     try {
       _ensureOpen();
 
-      for (final record in records) {
+      final batch = BytesBuilder(copy: false);
+
+      for (final record in records.toList()) {
         // Initialize last rotation check on first write
         _lastRotationCheck ??= record.timestamp;
 
@@ -277,11 +370,11 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
         // Format and write the record
         final line = _formatRecord(record);
         final bytes = encoding.encode('$line\n');
-
-        // Use async write
-        await _file!.writeFrom(bytes);
+        batch.add(bytes);
         _currentFileSize = _currentFileSize + bytes.length;
       }
+
+      await _file!.writeFrom(batch.takeBytes());
     } catch (e, stackTrace) {
       // Report error for the batch (no specific record)
       _handleError(e, stackTrace, null);
@@ -503,6 +596,14 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   /// Call this to ensure all logged data is persisted.
   @override
   Future<void> flush() async {
+    _resolveBaseFilePath();
+    if (_baseFilePathFuture != null) {
+      await _baseFilePathFuture;
+    }
+
+    // If the path still isn't resolved, there's nothing to flush.
+    if (_baseFilePath == null) return;
+
     switch (flushStrategy) {
       case FlushStrategy.synchronous:
         _file?.flushSync();
@@ -520,7 +621,6 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
           _buffer = [];
           await _flushBufferAsync(recordsToFlush);
         }
-        // Use async flush since we use async writes in buffered mode
         await _file?.flush();
     }
   }
@@ -530,6 +630,14 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   /// Always call this when done logging to ensure data is flushed.
   @override
   Future<void> close() async {
+    _resolveBaseFilePath();
+    if (_baseFilePathFuture != null) {
+      await _baseFilePathFuture;
+    }
+
+    // If the path still isn't resolved, just drop buffered records.
+    if (_baseFilePath == null) return;
+
     switch (flushStrategy) {
       case FlushStrategy.synchronous:
         _file?.flushSync();
@@ -549,7 +657,6 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
           _buffer = [];
           await _flushBufferAsync(recordsToFlush);
         }
-        // Use async flush/close since we use async writes in buffered mode
         await _file?.flush();
         await _file?.close();
         _file = null;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:chirp/chirp.dart';
@@ -18,7 +19,37 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// ```dart
 /// // Simple file writer without rotation
 /// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.log',
+///   baseFilePathProvider: () => '/var/log/app.log',
+/// );
+/// ```
+///
+/// ## Async Path with path_provider
+///
+/// Use [baseFilePathProvider] with an async callback to resolve the path
+/// lazily. Records written before the path resolves are buffered.
+///
+/// For **persistent logs** that survive app updates and are included in
+/// backups (iOS: `Library/Application Support/`,
+/// Android: `Context.getFilesDir()`):
+///
+/// ```dart
+/// final writer = RotatingFileWriter(
+///   baseFilePathProvider: () async {
+///     final dir = await getApplicationSupportDirectory();
+///     return '${dir.path}/logs/app.log';
+///   },
+/// );
+/// ```
+///
+/// For **temporary logs** that the OS may purge under storage pressure
+/// (iOS: `Library/Caches/`, Android: `Context.getCacheDir()`):
+///
+/// ```dart
+/// final writer = RotatingFileWriter(
+///   baseFilePathProvider: () async {
+///     final dir = await getApplicationCacheDirectory();
+///     return '${dir.path}/logs/app.log';
+///   },
 /// );
 /// ```
 ///
@@ -27,7 +58,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// ```dart
 /// // Rotate when file reaches 10 MB, keep 5 files
 /// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.log',
+///   baseFilePathProvider: () => '/var/log/app.log',
 ///   rotationConfig: FileRotationConfig.size(
 ///     maxSize: 10 * 1024 * 1024,
 ///     maxFiles: 5,
@@ -40,7 +71,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// ```dart
 /// // Rotate daily, keep 7 days of logs
 /// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.log',
+///   baseFilePathProvider: () => '/var/log/app.log',
 ///   rotationConfig: FileRotationConfig.daily(maxFiles: 7),
 /// );
 /// ```
@@ -50,7 +81,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// ```dart
 /// // Write structured JSON logs
 /// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.jsonl',
+///   baseFilePathProvider: () => '/var/log/app.jsonl',
 ///   formatter: const JsonLogFormatter(),
 ///   rotationConfig: FileRotationConfig.daily(maxFiles: 7),
 /// );
@@ -94,7 +125,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// ```dart
 /// // Buffered: accumulates records and flushes periodically
 /// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.log',
+///   baseFilePathProvider: () => '/var/log/app.log',
 ///   flushStrategy: FlushStrategy.buffered,
 ///   flushInterval: Duration(milliseconds: 100),
 /// );
@@ -109,8 +140,14 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// vs `rotating_file_writer_stub.dart`) to support compilation to WASM where
 /// `dart:io` is not available.
 abstract class RotatingFileWriter extends ChirpWriter {
+  /// Creates a rotating file writer.
+  ///
+  /// Use [baseFilePathProvider] to provide the file path. The provider may
+  /// return the path synchronously (`String`) or asynchronously
+  /// (`Future<String>`). Any records written before the path is available are
+  /// buffered and written once the path resolves.
   factory RotatingFileWriter({
-    required String baseFilePath,
+    required FutureOr<String> Function() baseFilePathProvider,
     ChirpFormatter? formatter,
     FileRotationConfig? rotationConfig,
     Encoding encoding = utf8,
@@ -119,7 +156,7 @@ abstract class RotatingFileWriter extends ChirpWriter {
     Duration flushInterval = const Duration(seconds: 1),
   }) {
     return platform.createRotatingFileWriter(
-      baseFilePath: baseFilePath,
+      baseFilePathProvider: baseFilePathProvider,
       formatter: formatter,
       rotationConfig: rotationConfig,
       encoding: encoding,
@@ -184,6 +221,12 @@ abstract class RotatingFileWriter extends ChirpWriter {
   ///
   /// Useful for log rotation triggered by external events (e.g., SIGHUP).
   Future<void> forceRotate();
+
+  /// Returns a [RotatingFileReader] for the same log files.
+  ///
+  /// Uses the same [baseFilePathProvider] so the reader finds all rotated
+  /// files written by this writer.
+  RotatingFileReader get reader;
 }
 
 /// Callback for handling errors during file write operations.

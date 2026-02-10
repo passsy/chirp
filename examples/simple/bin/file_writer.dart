@@ -15,7 +15,7 @@ void main() async {
 
   // Simple text format writer
   final simpleWriter = RotatingFileWriter(
-    baseFilePath: simplePath,
+    baseFilePathProvider: () => simplePath,
     formatter: const SimpleFileFormatter(),
     rotationConfig: FileRotationConfig.size(
       maxSize: 500, // 500 bytes - tiny for demo
@@ -25,7 +25,7 @@ void main() async {
 
   // JSON format writer
   final jsonWriter = RotatingFileWriter(
-    baseFilePath: jsonPath,
+    baseFilePathProvider: () => jsonPath,
     formatter: const JsonLogFormatter(),
     rotationConfig: FileRotationConfig.size(
       maxSize: 500, // 500 bytes - tiny for demo
