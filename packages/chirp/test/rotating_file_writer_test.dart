@@ -268,59 +268,93 @@ void main() {
           reason: 'Log file should contain formatted level');
     });
 
-    test('lazy baseFilePathProvider buffers until path is resolved', () async {
+    test('reader returns a RotatingFileReader for the same files', () async {
       final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/lazy/app.log';
-
-      final completer = Completer<String>();
-      final writer = RotatingFileWriter(
-        baseFilePathProvider: () => completer.future,
-      );
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
-      // Write before we resolve the path - should be buffered.
-      writer.write(testRecord(message: 'Buffered before path'));
-
-      // Resolve the path later.
-      completer.complete(logPath);
-
-      // Give the microtask a chance to apply the path and drain the buffer.
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-
+      writer.write(testRecord(message: 'Hello from writer'));
       await writer.flush();
 
-      final content = File(logPath).readAsStringSync();
-      expect(content, contains('Buffered before path'));
+      final lines = await writer.reader.read().toList();
+      expect(lines, contains(contains('Hello from writer')));
     });
 
-    test('lazy baseFilePathProvider writes errors without manual flush',
-        () async {
+    test('reader works with async baseFilePathProvider', () async {
       final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/lazy-error/app.log';
-
+      final logPath = '${tempDir.path}/app.log';
       final completer = Completer<String>();
       final writer = RotatingFileWriter(
         baseFilePathProvider: () => completer.future,
       );
       addTearDown(() => writer.close());
 
-      // Write an error before the path is resolved - should be buffered.
-      writer.write(
-        testRecord(message: 'Error before path', level: ChirpLogLevel.error),
-      );
-
-      // File should not exist yet.
-      expect(File(logPath).existsSync(), isFalse);
-
-      // Resolve the path - pending records drain automatically.
+      writer.write(testRecord(message: 'Async path message'));
       completer.complete(logPath);
+      await writer.flush();
 
-      // Give microtasks a chance to run.
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      final lines = await writer.reader.read().toList();
+      expect(lines, contains(contains('Async path message')));
+    });
 
-      // Error was written without calling flush().
-      final content = File(logPath).readAsStringSync();
-      expect(content, contains('Error before path'));
+    test('lazy baseFilePathProvider buffers until path is resolved', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/lazy/app.log';
+
+        final completer = Completer<String>();
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => completer.future,
+        );
+
+        // Write before we resolve the path - should be buffered.
+        writer.write(testRecord(message: 'Buffered before path'));
+
+        // Resolve the path later.
+        completer.complete(logPath);
+        async.flushMicrotasks();
+
+        writer.flush();
+        async.flushMicrotasks();
+
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Buffered before path'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('lazy baseFilePathProvider writes errors without manual flush', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/lazy-error/app.log';
+
+        final completer = Completer<String>();
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => completer.future,
+        );
+
+        // Write an error before the path is resolved - should be buffered.
+        writer.write(
+          testRecord(message: 'Error before path', level: ChirpLogLevel.error),
+        );
+
+        // File should not exist yet.
+        expect(File(logPath).existsSync(), isFalse);
+
+        // Resolve the path - pending records drain automatically.
+        completer.complete(logPath);
+        async.flushMicrotasks();
+
+        // Error was written without calling flush().
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Error before path'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
     test('lazy baseFilePathProvider drains buffer after flushInterval', () {
@@ -1452,117 +1486,138 @@ void main() {
   });
 
   group('FlushStrategy.buffered timer behavior', () {
-    test('first write starts timer, flushes after flushInterval', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePathProvider: () => logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 50),
-      );
-      addTearDown(() => writer.close());
+    test('first write starts timer, flushes after flushInterval', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(milliseconds: 50),
+        );
 
-      // Write - starts timer
-      writer.write(testRecord(message: 'Message 1'));
+        // Write - starts timer
+        writer.write(testRecord(message: 'Message 1'));
 
-      // Immediately after write, file should not exist (buffered)
-      expect(File(logPath).existsSync(), isFalse,
-          reason: 'File should not exist immediately after write');
+        // Immediately after write, file should not exist (buffered)
+        expect(File(logPath).existsSync(), isFalse,
+            reason: 'File should not exist immediately after write');
 
-      // Wait for timer to fire
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Wait for timer to fire
+        async.elapse(const Duration(milliseconds: 50));
+        async.flushMicrotasks();
 
-      // Now file should exist
-      expect(File(logPath).existsSync(), isTrue,
-          reason: 'File should exist after flushInterval');
+        // Now file should exist
+        expect(File(logPath).existsSync(), isTrue,
+            reason: 'File should exist after flushInterval');
 
-      final content = File(logPath).readAsStringSync();
-      expect(content, contains('Message 1'));
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Message 1'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
-    test('multiple writes before timer fires are batched together', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePathProvider: () => logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(() => writer.close());
+    test('multiple writes before timer fires are batched together', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(milliseconds: 100),
+        );
 
-      // Write multiple messages quickly (before timer fires)
-      writer.write(testRecord(message: 'Message 1'));
-      writer.write(testRecord(message: 'Message 2'));
-      writer.write(testRecord(message: 'Message 3'));
+        // Write multiple messages quickly (before timer fires)
+        writer.write(testRecord(message: 'Message 1'));
+        writer.write(testRecord(message: 'Message 2'));
+        writer.write(testRecord(message: 'Message 3'));
 
-      // Immediately, nothing written yet
-      expect(File(logPath).existsSync(), isFalse);
+        // Immediately, nothing written yet
+        expect(File(logPath).existsSync(), isFalse);
 
-      // Wait for timer
-      await Future<void>.delayed(const Duration(milliseconds: 150));
+        // Wait for timer
+        async.elapse(const Duration(milliseconds: 100));
+        async.flushMicrotasks();
 
-      // All 3 messages should be written in one batch
-      final content = File(logPath).readAsStringSync();
-      expect(content, contains('Message 1'));
-      expect(content, contains('Message 2'));
-      expect(content, contains('Message 3'));
+        // All 3 messages should be written in one batch
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Message 1'));
+        expect(content, contains('Message 2'));
+        expect(content, contains('Message 3'));
 
-      final lines = content.trim().split('\n');
-      expect(lines.length, 3, reason: 'All 3 messages batched in one flush');
+        final lines = content.trim().split('\n');
+        expect(lines.length, 3, reason: 'All 3 messages batched in one flush');
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
-    test('timer resets after flush, next write starts new timer', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePathProvider: () => logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 50),
-      );
-      addTearDown(() => writer.close());
+    test('timer resets after flush, next write starts new timer', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(milliseconds: 50),
+        );
 
-      // First batch
-      writer.write(testRecord(message: 'Batch 1'));
+        // First batch
+        writer.write(testRecord(message: 'Batch 1'));
 
-      // Wait for first flush
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Wait for first flush
+        async.elapse(const Duration(milliseconds: 50));
+        async.flushMicrotasks();
 
-      var content = File(logPath).readAsStringSync();
-      expect(content.trim().split('\n').length, 1);
+        var content = File(logPath).readAsStringSync();
+        expect(content.trim().split('\n').length, 1);
 
-      // Second batch - starts new timer
-      writer.write(testRecord(message: 'Batch 2'));
+        // Second batch - starts new timer
+        writer.write(testRecord(message: 'Batch 2'));
 
-      // Immediately, batch 2 not flushed yet
-      content = File(logPath).readAsStringSync();
-      expect(content.trim().split('\n').length, 1,
-          reason: 'Batch 2 not yet flushed');
+        // Immediately, batch 2 not flushed yet
+        content = File(logPath).readAsStringSync();
+        expect(content.trim().split('\n').length, 1,
+            reason: 'Batch 2 not yet flushed');
 
-      // Wait for second timer
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Wait for second timer
+        async.elapse(const Duration(milliseconds: 50));
+        async.flushMicrotasks();
 
-      content = File(logPath).readAsStringSync();
-      expect(content.trim().split('\n').length, 2,
-          reason: 'Batch 2 should be flushed now');
-      expect(content, contains('Batch 2'));
+        content = File(logPath).readAsStringSync();
+        expect(content.trim().split('\n').length, 2,
+            reason: 'Batch 2 should be flushed now');
+        expect(content, contains('Batch 2'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
-    test('no timer fires when no writes happen', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePathProvider: () => logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 50),
-      );
-      addTearDown(() => writer.close());
+    test('no timer fires when no writes happen', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(milliseconds: 50),
+        );
 
-      // Wait without writing anything
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Wait without writing anything
+        async.elapse(const Duration(milliseconds: 100));
+        async.flushMicrotasks();
 
-      // No file should be created
-      expect(File(logPath).existsSync(), isFalse,
-          reason: 'No file should be created when no writes happen');
+        // No file should be created
+        expect(File(logPath).existsSync(), isFalse,
+            reason: 'No file should be created when no writes happen');
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
     test('error cancels pending timer and flushes buffer immediately', () {
@@ -1594,31 +1649,36 @@ void main() {
       expect(lines[2], contains('Error'));
     });
 
-    test('writes after error start a new timer', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePathProvider: () => logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 50),
-      );
-      addTearDown(() => writer.close());
+    test('writes after error start a new timer', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(milliseconds: 50),
+        );
 
-      // Write error (flushes immediately)
-      writer.write(testRecord(message: 'Error', level: ChirpLogLevel.error));
+        // Write error (flushes immediately)
+        writer.write(testRecord(message: 'Error', level: ChirpLogLevel.error));
 
-      expect(File(logPath).readAsStringSync().trim().split('\n').length, 1);
+        expect(File(logPath).readAsStringSync().trim().split('\n').length, 1);
 
-      // Write info after error - starts new timer
-      writer.write(testRecord(message: 'Info after error'));
+        // Write info after error - starts new timer
+        writer.write(testRecord(message: 'Info after error'));
 
-      // Info not flushed yet
-      expect(File(logPath).readAsStringSync().trim().split('\n').length, 1);
+        // Info not flushed yet
+        expect(File(logPath).readAsStringSync().trim().split('\n').length, 1);
 
-      // Wait for new timer
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+        // Wait for new timer
+        async.elapse(const Duration(milliseconds: 50));
+        async.flushMicrotasks();
 
-      expect(File(logPath).readAsStringSync().trim().split('\n').length, 2);
+        expect(File(logPath).readAsStringSync().trim().split('\n').length, 2);
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
     test('close() flushes pending buffer even if timer not fired', () async {
@@ -1645,74 +1705,86 @@ void main() {
       expect(content, contains('Message 2'));
     });
 
-    test('flush() flushes pending buffer and cancels timer', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePathProvider: () => logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 100),
-      );
-      addTearDown(() => writer.close());
+    test('flush() flushes pending buffer and cancels timer', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(milliseconds: 100),
+        );
 
-      // Write (timer starts)
-      writer.write(testRecord(message: 'Message 1'));
+        // Write (timer starts)
+        writer.write(testRecord(message: 'Message 1'));
 
-      // Flush manually before timer fires
-      await writer.flush();
+        // Flush manually before timer fires
+        writer.flush();
+        async.flushMicrotasks();
 
-      expect(File(logPath).readAsStringSync(), contains('Message 1'));
-      final lineCount =
-          File(logPath).readAsStringSync().trim().split('\n').length;
+        expect(File(logPath).readAsStringSync(), contains('Message 1'));
+        final lineCount =
+            File(logPath).readAsStringSync().trim().split('\n').length;
 
-      // Wait past original timer time
-      await Future<void>.delayed(const Duration(milliseconds: 150));
+        // Wait past original timer time
+        async.elapse(const Duration(milliseconds: 150));
+        async.flushMicrotasks();
 
-      // No duplicate write from timer (it was cancelled)
-      final newLineCount =
-          File(logPath).readAsStringSync().trim().split('\n').length;
-      expect(newLineCount, lineCount,
-          reason: 'Timer should be cancelled, no duplicate write');
+        // No duplicate write from timer (it was cancelled)
+        final newLineCount =
+            File(logPath).readAsStringSync().trim().split('\n').length;
+        expect(newLineCount, lineCount,
+            reason: 'Timer should be cancelled, no duplicate write');
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
-    test('sustained logging: each flush resets timer for next batch', () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(
-        baseFilePathProvider: () => logPath,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(milliseconds: 30),
-      );
-      addTearDown(() => writer.close());
+    test('sustained logging: each flush resets timer for next batch', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(milliseconds: 30),
+        );
 
-      // Write message, wait for flush, repeat
-      writer.write(testRecord(message: 'Batch 1 - Msg 1'));
-      writer.write(testRecord(message: 'Batch 1 - Msg 2'));
+        // Write message, wait for flush, repeat
+        writer.write(testRecord(message: 'Batch 1 - Msg 1'));
+        writer.write(testRecord(message: 'Batch 1 - Msg 2'));
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+        async.elapse(const Duration(milliseconds: 30));
+        async.flushMicrotasks();
 
-      // First batch flushed
-      expect(File(logPath).readAsStringSync().trim().split('\n').length, 2);
+        // First batch flushed
+        expect(File(logPath).readAsStringSync().trim().split('\n').length, 2);
+        // Second batch
+        writer.write(testRecord(message: 'Batch 2 - Msg 1'));
 
-      // Second batch
-      writer.write(testRecord(message: 'Batch 2 - Msg 1'));
+        async.elapse(const Duration(milliseconds: 30));
+        async.flushMicrotasks();
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+        // Second batch flushed
+        expect(File(logPath).readAsStringSync().trim().split('\n').length, 3);
 
-      // Second batch flushed
-      expect(File(logPath).readAsStringSync().trim().split('\n').length, 3);
+        // Third batch
+        writer.write(testRecord(message: 'Batch 3 - Msg 1'));
+        writer.write(testRecord(message: 'Batch 3 - Msg 2'));
+        writer.write(testRecord(message: 'Batch 3 - Msg 3'));
 
-      // Third batch
-      writer.write(testRecord(message: 'Batch 3 - Msg 1'));
-      writer.write(testRecord(message: 'Batch 3 - Msg 2'));
-      writer.write(testRecord(message: 'Batch 3 - Msg 3'));
+        async.elapse(const Duration(milliseconds: 30));
+        async.flushMicrotasks();
 
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+        // Third batch flushed
+        final finalLines =
+            File(logPath).readAsStringSync().trim().split('\n').length;
+        expect(finalLines, 6, reason: 'All 6 messages across 3 batches');
 
-      // Third batch flushed
-      final finalLines =
-          File(logPath).readAsStringSync().trim().split('\n').length;
-      expect(finalLines, 6, reason: 'All 6 messages across 3 batches');
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
   });
 

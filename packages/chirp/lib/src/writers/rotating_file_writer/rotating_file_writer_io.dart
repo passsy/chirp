@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:chirp/chirp.dart';
 import 'package:clock/clock.dart';
@@ -348,11 +349,16 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   }
 
   /// Async implementation of buffer flushing.
+  ///
+  /// Formats all buffered records into a single byte buffer and writes the
+  /// batch in one synchronous call, minimising the number of syscalls.
   Future<void> _flushBufferAsync(List<LogRecord> records) async {
     try {
       _ensureOpen();
 
-      for (final record in records) {
+      final batch = BytesBuilder(copy: false);
+
+      for (final record in records.toList()) {
         // Initialize last rotation check on first write
         _lastRotationCheck ??= record.timestamp;
 
@@ -364,11 +370,11 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
         // Format and write the record
         final line = _formatRecord(record);
         final bytes = encoding.encode('$line\n');
-
-        // Use async write
-        await _file!.writeFrom(bytes);
+        batch.add(bytes);
         _currentFileSize = _currentFileSize + bytes.length;
       }
+
+      _file!.writeFromSync(batch.takeBytes());
     } catch (e, stackTrace) {
       // Report error for the batch (no specific record)
       _handleError(e, stackTrace, null);
@@ -615,8 +621,8 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
           _buffer = [];
           await _flushBufferAsync(recordsToFlush);
         }
-        // Use async flush since we use async writes in buffered mode
-        await _file?.flush();
+        // Sync flush is sufficient since _flushBufferAsync uses writeFromSync
+        _file?.flushSync();
     }
   }
 
@@ -652,9 +658,9 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
           _buffer = [];
           await _flushBufferAsync(recordsToFlush);
         }
-        // Use async flush/close since we use async writes in buffered mode
-        await _file?.flush();
-        await _file?.close();
+        // Sync flush/close is sufficient since _flushBufferAsync uses writeFromSync
+        _file?.flushSync();
+        _file?.closeSync();
         _file = null;
     }
 
