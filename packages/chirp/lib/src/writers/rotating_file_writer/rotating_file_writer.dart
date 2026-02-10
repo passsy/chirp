@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:chirp/chirp.dart';
@@ -18,7 +19,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// ```dart
 /// // Simple file writer without rotation
 /// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.log',
+///   baseFilePathProvider: () => '/var/log/app.log',
 /// );
 /// ```
 ///
@@ -27,7 +28,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// ```dart
 /// // Rotate when file reaches 10 MB, keep 5 files
 /// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.log',
+///   baseFilePathProvider: () => '/var/log/app.log',
 ///   rotationConfig: FileRotationConfig.size(
 ///     maxSize: 10 * 1024 * 1024,
 ///     maxFiles: 5,
@@ -40,7 +41,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// ```dart
 /// // Rotate daily, keep 7 days of logs
 /// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.log',
+///   baseFilePathProvider: () => '/var/log/app.log',
 ///   rotationConfig: FileRotationConfig.daily(maxFiles: 7),
 /// );
 /// ```
@@ -50,7 +51,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// ```dart
 /// // Write structured JSON logs
 /// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.jsonl',
+///   baseFilePathProvider: () => '/var/log/app.jsonl',
 ///   formatter: const JsonLogFormatter(),
 ///   rotationConfig: FileRotationConfig.daily(maxFiles: 7),
 /// );
@@ -94,7 +95,7 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// ```dart
 /// // Buffered: accumulates records and flushes periodically
 /// final writer = RotatingFileWriter(
-///   baseFilePath: '/var/log/app.log',
+///   baseFilePathProvider: () => '/var/log/app.log',
 ///   flushStrategy: FlushStrategy.buffered,
 ///   flushInterval: Duration(milliseconds: 100),
 /// );
@@ -109,8 +110,19 @@ export 'package:chirp/src/writers/rotating_file_writer/simple_file_formatter.dar
 /// vs `rotating_file_writer_stub.dart`) to support compilation to WASM where
 /// `dart:io` is not available.
 abstract class RotatingFileWriter extends ChirpWriter {
+  /// Creates a rotating file writer.
+  ///
+  /// Use [baseFilePathProvider] to provide the file path lazily. The provider
+  /// may return the path synchronously (`String`) or asynchronously
+  /// (`Future<String>`). Any records written before the path is available are
+  /// buffered and written once the path resolves.
+  ///
+  /// The deprecated [baseFilePath] parameter is still accepted for backwards
+  /// compatibility. Exactly one of [baseFilePath] or [baseFilePathProvider]
+  /// must be provided.
   factory RotatingFileWriter({
-    required String baseFilePath,
+    @Deprecated('Use baseFilePathProvider instead') String? baseFilePath,
+    FutureOr<String> Function()? baseFilePathProvider,
     ChirpFormatter? formatter,
     FileRotationConfig? rotationConfig,
     Encoding encoding = utf8,
@@ -118,8 +130,17 @@ abstract class RotatingFileWriter extends ChirpWriter {
     FlushStrategy? flushStrategy,
     Duration flushInterval = const Duration(seconds: 1),
   }) {
+    final provider = baseFilePathProvider ??
+        (baseFilePath == null ? null : (() => baseFilePath));
+
+    if (provider == null) {
+      throw ArgumentError(
+        'Either baseFilePathProvider or baseFilePath must be provided.',
+      );
+    }
+
     return platform.createRotatingFileWriter(
-      baseFilePath: baseFilePath,
+      baseFilePathProvider: provider,
       formatter: formatter,
       rotationConfig: rotationConfig,
       encoding: encoding,

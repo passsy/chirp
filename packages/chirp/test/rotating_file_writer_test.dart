@@ -253,7 +253,7 @@ void main() {
     test('writes formatted log record to file', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       writer.write(testRecord(message: 'Test message'));
@@ -267,11 +267,36 @@ void main() {
           reason: 'Log file should contain formatted level');
     });
 
+    test('lazy baseFilePathProvider buffers until path is resolved', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/lazy/app.log';
+
+      final completer = Completer<String>();
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => completer.future,
+      );
+      addTearDown(() => writer.close());
+
+      // Write before we resolve the path - should be buffered.
+      writer.write(testRecord(message: 'Buffered before path'));
+
+      // Resolve the path later.
+      completer.complete(logPath);
+
+      // Give the microtask a chance to apply the path and drain the buffer.
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('Buffered before path'));
+    });
+
     test('creates parent directories recursively if they do not exist',
         () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/logs/subdir/deep/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       writer.write(testRecord(message: 'Test'));
@@ -289,12 +314,12 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
 
       // Write first message with one writer instance
-      final writer1 = RotatingFileWriter(baseFilePath: logPath);
+      final writer1 = RotatingFileWriter(baseFilePathProvider: () => logPath);
       writer1.write(testRecord(message: 'First message'));
       await writer1.close();
 
       // Write second message with new writer instance
-      final writer2 = RotatingFileWriter(baseFilePath: logPath);
+      final writer2 = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer2.close());
       writer2.write(testRecord(message: 'Second message'));
       await writer2.flush();
@@ -310,7 +335,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.jsonl';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: const JsonLogFormatter(),
       );
       addTearDown(() => writer.close());
@@ -328,7 +353,7 @@ void main() {
     test('integrates with ChirpLogger for real logging workflow', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       final logger = ChirpLogger(name: 'TestLogger').addWriter(writer);
@@ -360,7 +385,7 @@ void main() {
       final records = <LogRecord>[];
       final formatter = _CapturingFormatter(records);
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: formatter,
       );
       addTearDown(() => writer.close());
@@ -386,7 +411,7 @@ void main() {
         requiresCallerInfo: true,
       );
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: formatter,
       );
       addTearDown(() => writer.close());
@@ -410,7 +435,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: const _CallerLocationFormatter(),
       );
       addTearDown(() => writer.close());
@@ -428,7 +453,7 @@ void main() {
     test('respects minLogLevel filtering inherited from ChirpWriter', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath)
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath)
         ..setMinLogLevel(ChirpLogLevel.warning);
       addTearDown(() => writer.close());
 
@@ -454,7 +479,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 100, // Very small for testing
           maxFiles: 10,
@@ -492,7 +517,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 50,
           maxFiles: 3,
@@ -547,7 +572,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 10, // Smaller than any log entry
           maxFiles: 10,
@@ -586,7 +611,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 1024 * 1024,
           maxFiles: 2,
@@ -622,7 +647,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.hourly(),
       );
       addTearDown(() => writer.close());
@@ -660,7 +685,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.daily(),
       );
       addTearDown(() => writer.close());
@@ -699,7 +724,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.daily(),
       );
       addTearDown(() => writer.close());
@@ -728,7 +753,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig(
           rotationInterval: FileRotationInterval.weekly,
         ),
@@ -765,7 +790,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig(
           rotationInterval: FileRotationInterval.monthly,
         ),
@@ -804,7 +829,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.daily(compress: true),
       );
       addTearDown(() => writer.close());
@@ -855,7 +880,7 @@ void main() {
         final logPath = '${tempDir.path}/app.log';
         // Use size-based config to avoid time-based rotation complications
         final writer = RotatingFileWriter(
-          baseFilePath: logPath,
+          baseFilePathProvider: () => logPath,
           rotationConfig: FileRotationConfig.size(
             maxSize: 1024 * 1024, // Large enough to not trigger
           ),
@@ -901,7 +926,7 @@ void main() {
 
       // Create writer and write first message (creates file at real time)
       final writer1 = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         rotationConfig: FileRotationConfig.size(
           maxSize: 50,
           maxAge: const Duration(days: 7),
@@ -930,7 +955,7 @@ void main() {
       final futureTime = DateTime.now().add(const Duration(days: 10));
       await withClock(Clock.fixed(futureTime), () async {
         final writer2 = RotatingFileWriter(
-          baseFilePath: logPath,
+          baseFilePathProvider: () => logPath,
           rotationConfig: FileRotationConfig.size(
             maxSize: 50,
             maxAge: const Duration(days: 7),
@@ -965,7 +990,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         encoding: latin1,
       );
       addTearDown(() => writer.close());
@@ -984,7 +1009,7 @@ void main() {
     test('writes with default utf8 encoding', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       // Write UTF-8 specific characters
@@ -1004,7 +1029,7 @@ void main() {
     test('writes log line with empty message without error', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       writer.write(testRecord(message: ''));
@@ -1022,7 +1047,7 @@ void main() {
     test('writes null message as "null" string', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       writer.write(testRecord(message: null));
@@ -1037,7 +1062,7 @@ void main() {
     test('writes very long messages completely', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       final longMessage = 'x' * 10000;
@@ -1053,7 +1078,7 @@ void main() {
     test('preserves special characters in messages', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       const message = 'Tabs:\there Quotes:"here" Backslash:\\here';
@@ -1069,7 +1094,7 @@ void main() {
     test('preserves unicode characters (emoji, CJK, Cyrillic)', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       const emoji = '\u{1F600}';
@@ -1090,7 +1115,7 @@ void main() {
     test('calling close() multiple times does not throw', () async {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
 
       writer.write(testRecord(message: 'Test message'));
 
@@ -1117,7 +1142,7 @@ void main() {
       LogRecord? capturedRecord;
 
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: _ThrowingFormatter(),
         onError: (error, stackTrace, record) {
           capturedError = error;
@@ -1143,7 +1168,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
 
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: _ThrowingFormatter(),
         onError: (_, __, ___) {}, // Silence errors
       );
@@ -1161,7 +1186,7 @@ void main() {
       final logPath = '${tempDir.path}/app.log';
 
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: _ThrowingFormatter(),
         // onError is null - prints to stderr by default
       );
@@ -1196,7 +1221,7 @@ void main() {
       final failedRecords = <LogRecord?>[];
 
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         formatter: _ThrowingFormatter(),
         onError: (error, stackTrace, record) {
           failedRecords.add(record);
@@ -1221,7 +1246,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(
             seconds: 10), // Long interval so it doesn't auto-flush
@@ -1249,7 +1274,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(seconds: 10), // Long interval
       );
@@ -1276,7 +1301,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(seconds: 10), // Long interval
       );
@@ -1306,7 +1331,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(seconds: 10),
       );
@@ -1325,7 +1350,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(milliseconds: 10),
         rotationConfig: FileRotationConfig.daily(),
@@ -1357,7 +1382,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(milliseconds: 50),
       );
@@ -1385,7 +1410,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(milliseconds: 100),
       );
@@ -1416,7 +1441,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(milliseconds: 50),
       );
@@ -1452,7 +1477,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(milliseconds: 50),
       );
@@ -1470,7 +1495,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(seconds: 10), // Long interval
       );
@@ -1499,7 +1524,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(milliseconds: 50),
       );
@@ -1526,7 +1551,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(seconds: 10), // Long interval
       );
@@ -1550,7 +1575,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(milliseconds: 100),
       );
@@ -1580,7 +1605,7 @@ void main() {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
       final writer = RotatingFileWriter(
-        baseFilePath: logPath,
+        baseFilePathProvider: () => logPath,
         flushStrategy: FlushStrategy.buffered,
         flushInterval: const Duration(milliseconds: 30),
       );
@@ -1637,7 +1662,7 @@ void main() {
     test('defaults to synchronous in debug mode (asserts enabled)', () {
       final tempDir = createTempDir();
       final logPath = '${tempDir.path}/app.log';
-      final writer = RotatingFileWriter(baseFilePath: logPath);
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
       addTearDown(() => writer.close());
 
       // In test (debug) mode, default should be synchronous
