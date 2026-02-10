@@ -77,8 +77,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('current\n');
 
-      final gzFile =
-          File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
+      final gzFile = File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
       gzFile.writeAsBytesSync(gzip.encode(utf8.encode('old\n')));
 
       gzFile.setLastModifiedSync(DateTime(2024, 1, 1, 10));
@@ -186,8 +185,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('current\n');
 
-      final gzFile =
-          File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
+      final gzFile = File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
       gzFile.writeAsBytesSync(gzip.encode(utf8.encode('old1\nold2\n')));
 
       gzFile.setLastModifiedSync(DateTime(2024, 1, 1, 10));
@@ -204,12 +202,10 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('current\n');
 
-      final rotatedPlain =
-          File('${dir.path}/app.2024-01-02_10-00-00.log');
+      final rotatedPlain = File('${dir.path}/app.2024-01-02_10-00-00.log');
       rotatedPlain.writeAsStringSync('plain\n');
 
-      final rotatedGz =
-          File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
+      final rotatedGz = File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
       rotatedGz.writeAsBytesSync(gzip.encode(utf8.encode('compressed\n')));
 
       rotatedGz.setLastModifiedSync(DateTime(2024, 1, 1, 10));
@@ -325,8 +321,7 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('new1\nnew2\n');
 
-      final gzFile =
-          File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
+      final gzFile = File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
       gzFile.writeAsBytesSync(gzip.encode(utf8.encode('old1\nold2\nold3\n')));
 
       gzFile.setLastModifiedSync(DateTime(2024, 1, 1, 10));
@@ -343,12 +338,10 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('current\n');
 
-      final emptyRotated =
-          File('${dir.path}/app.2024-01-02_10-00-00.log');
+      final emptyRotated = File('${dir.path}/app.2024-01-02_10-00-00.log');
       emptyRotated.writeAsStringSync('');
 
-      final oldRotated =
-          File('${dir.path}/app.2024-01-01_10-00-00.log');
+      final oldRotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
       oldRotated.writeAsStringSync('old\n');
 
       oldRotated.setLastModifiedSync(DateTime(2024, 1, 1, 10));
