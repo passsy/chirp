@@ -12,6 +12,7 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.d
 /// where file I/O is available.
 class RotatingFileReaderIo implements RotatingFileReader {
   final FutureOr<String> Function() _baseFilePathProvider;
+  final Duration _pollInterval;
   String? _resolvedBaseFilePath;
 
   @override
@@ -29,7 +30,9 @@ class RotatingFileReaderIo implements RotatingFileReader {
 
   RotatingFileReaderIo({
     required FutureOr<String> Function() baseFilePathProvider,
-  }) : _baseFilePathProvider = baseFilePathProvider;
+    Duration? pollInterval,
+  })  : _baseFilePathProvider = baseFilePathProvider,
+        _pollInterval = pollInterval ?? _defaultPollInterval;
 
   Future<String> _resolveBaseFilePath() async {
     if (_resolvedBaseFilePath != null) return _resolvedBaseFilePath!;
@@ -127,15 +130,17 @@ class RotatingFileReaderIo implements RotatingFileReader {
 
     // Follow current file (baseFilePath) for new lines.
     //
-    // Implementation note: This intentionally does NOT use polling by default.
-    // Instead it reacts to file-system events and only reads when the file
-    // changes (or appears).
+    // Implementation note: This primarily reacts to file-system events and
+    // uses a lightweight periodic poll as a fallback for filesystems that
+    // don't reliably emit change events.
     final resolvedPath = await _resolveBaseFilePath();
     final file = File(resolvedPath);
     final dir = file.parent;
     final fileName = file.uri.pathSegments.last;
 
     var offset = file.existsSync() ? file.lengthSync() : 0;
+    FileStat? lastStat;
+    var unchangedIterations = 0;
 
     final controller = StreamController<String>();
     StreamSubscription<FileSystemEvent>? sub;
@@ -147,14 +152,42 @@ class RotatingFileReaderIo implements RotatingFileReader {
       if (polling) return;
       polling = true;
       try {
-        if (!file.existsSync()) return;
+        if (!file.existsSync()) {
+          offset = 0;
+          partial = '';
+          lastStat = null;
+          unchangedIterations = 0;
+          return;
+        }
 
-        final length = file.lengthSync();
+        final stat = file.statSync();
+        final length = stat.size;
+
         if (length < offset) {
           // File got rotated/truncated.
           offset = 0;
+          partial = '';
         }
-        if (length == offset) return;
+
+        final hasNewBytes = length > offset;
+        final statChanged = lastStat != null &&
+            !_statsEqual(lastStat!, stat) &&
+            length <= offset;
+
+        if (!hasNewBytes) {
+          unchangedIterations++;
+          if (statChanged && unchangedIterations >= _maxUnchangedStats) {
+            // Follow-by-name fallback: treat as replaced and re-read.
+            offset = 0;
+            partial = '';
+            unchangedIterations = 0;
+          } else {
+            lastStat = stat;
+            return;
+          }
+        } else {
+          unchangedIterations = 0;
+        }
 
         final stream =
             file.openRead(offset, length).transform(encoding.decoder);
@@ -168,6 +201,7 @@ class RotatingFileReaderIo implements RotatingFileReader {
         }
 
         offset = length;
+        lastStat = stat;
       } finally {
         polling = false;
       }
@@ -176,30 +210,57 @@ class RotatingFileReaderIo implements RotatingFileReader {
     // Initial read if there is already content.
     await poll();
 
+    final pollingTimer = Timer.periodic(_pollInterval, (_) {
+      unawaited(poll());
+    });
+
     if (FileSystemEntity.isWatchSupported) {
-      sub = dir.watch().where((e) => e.path.endsWith(fileName)).listen((_) {
+      final normalizedDirPath = _normalizeDirPath(dir.path);
+
+      bool shouldPoll(FileSystemEvent event) {
+        if (event.path.endsWith(fileName)) return true;
+        return _normalizeDirPath(event.path) == normalizedDirPath;
+      }
+
+      sub = dir.watch().where(shouldPoll).listen((_) {
         // Fire and forget.
         unawaited(poll());
       });
-      controller.onCancel = () {
-        sub?.cancel();
-      };
-    } else {
-      // Fallback for platforms/filesystems that don't support watch.
-      final timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        unawaited(poll());
-      });
-      controller.onCancel = () {
-        timer.cancel();
-      };
     }
+
+    controller.onCancel = () {
+      sub?.cancel();
+      pollingTimer.cancel();
+    };
 
     yield* controller.stream;
   }
 }
 
+String _normalizeDirPath(String path) {
+  final separator = Platform.pathSeparator;
+  if (!path.endsWith(separator)) return path;
+  return path.substring(0, path.length - separator.length);
+}
+
+bool _statsEqual(FileStat previous, FileStat current) {
+  if (previous.size != current.size) return false;
+  if (previous.modified != current.modified) return false;
+  if (previous.changed != current.changed) return false;
+  if (previous.mode != current.mode) return false;
+  if (previous.type != current.type) return false;
+  return true;
+}
+
+const int _maxUnchangedStats = 5;
+const Duration _defaultPollInterval = Duration(milliseconds: 1000);
+
 RotatingFileReader createRotatingFileReader({
   required FutureOr<String> Function() baseFilePathProvider,
+  Duration? pollInterval,
 }) {
-  return RotatingFileReaderIo(baseFilePathProvider: baseFilePathProvider);
+  return RotatingFileReaderIo(
+    baseFilePathProvider: baseFilePathProvider,
+    pollInterval: pollInterval,
+  );
 }

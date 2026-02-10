@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:chirp/chirp.dart';
+import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_io.dart'
+    as io_impl;
+import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub.dart'
+    as stub_impl;
 import 'package:test/test.dart';
 
 void main() {
@@ -11,6 +15,22 @@ void main() {
     addTearDown(() => dir.deleteSync(recursive: true));
     return dir;
   }
+
+  test('createRotatingFileReader has same signature in io and stub', () {
+    // Both conditional import files must have identical signatures.
+    // Cross-assigning verifies they are the same type. A signature mismatch
+    // in either file causes a compile error here.
+    // ignore: unused_local_variable
+    var fn = io_impl.createRotatingFileReader;
+    fn = stub_impl.createRotatingFileReader;
+
+    var fn2 = stub_impl.createRotatingFileReader;
+    fn2 = io_impl.createRotatingFileReader;
+
+    // Suppress unused variable warning
+    expect(fn, isNotNull);
+    expect(fn2, isNotNull);
+  });
 
   group('listFiles', () {
     test('returns rotated + current sorted oldest->newest', () async {
@@ -366,14 +386,11 @@ void main() {
       final sub = reader.tail(lastLines: 10).listen(received.add);
       addTearDown(() => sub.cancel());
 
-      // Give the watcher a moment to attach.
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-
       // Append new content.
-      base.writeAsStringSync('second\n', mode: FileMode.append);
+      base.writeAsStringSync('second\n', mode: FileMode.append, flush: true);
 
       // Wait for the filesystem event + read.
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       expect(received, containsAllInOrder(['first', 'second']));
     });
@@ -390,18 +407,39 @@ void main() {
       rotated.setLastModifiedSync(DateTime(2024, 1, 1, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
-      final received = <String>[];
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final sub = reader.tail(lastLines: 2).listen(received.add);
+      final tailFuture = reader.tail(lastLines: 2).take(3).toList();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      base.writeAsStringSync('appended\n', mode: FileMode.append, flush: true);
+      final received = await tailFuture;
+      expect(received, containsAllInOrder(['old2', 'current', 'appended']));
+    });
+
+    test('emits lines after truncation', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('first\nsecond\n');
+
+      const pollInterval = Duration(milliseconds: 30);
+      final received = <String>[];
+      final reader = RotatingFileReader(
+        baseFilePathProvider: () => base.path,
+        pollInterval: pollInterval,
+      );
+      final sub = reader.tail(lastLines: 0).listen(received.add);
       addTearDown(() => sub.cancel());
 
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // Truncate file to simulate rotation/truncation.
+      base.writeAsStringSync('', flush: true);
+      // Let the poller observe the truncation.
+      await Future<void>.delayed(pollInterval);
 
-      base.writeAsStringSync('appended\n', mode: FileMode.append);
-
-      await Future<void>.delayed(const Duration(milliseconds: 400));
-
-      expect(received, containsAllInOrder(['old2', 'current', 'appended']));
+      // Append new content after truncation.
+      base.writeAsStringSync('after\n', mode: FileMode.append, flush: true);
+      await Future<void>.delayed(pollInterval);
+      expect(received, contains('after'));
     });
 
     test('works when file does not exist yet', () async {
@@ -413,12 +451,10 @@ void main() {
       final sub = reader.tail().listen(received.add);
       addTearDown(() => sub.cancel());
 
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-
       // Create the file after tail started.
       base.writeAsStringSync('appeared\n');
 
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       expect(received, contains('appeared'));
     });
