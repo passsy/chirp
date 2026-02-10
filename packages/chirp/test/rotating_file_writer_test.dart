@@ -1563,7 +1563,6 @@ void main() {
         final writer = RotatingFileWriter(
           baseFilePathProvider: () => logPath,
           flushStrategy: FlushStrategy.buffered,
-          flushInterval: const Duration(seconds: 1),
         );
 
         // First batch
@@ -1653,12 +1652,10 @@ void main() {
         final writer = RotatingFileWriter(
           baseFilePathProvider: () => logPath,
           flushStrategy: FlushStrategy.buffered,
-          flushInterval: const Duration(seconds: 1),
         );
 
         // Write error (flushes immediately)
-        writer.write(
-            testRecord(message: 'Error', level: ChirpLogLevel.error));
+        writer.write(testRecord(message: 'Error', level: ChirpLogLevel.error));
 
         var content = File(logPath).readAsStringSync();
         expect(content, contains('Error'));
@@ -1748,7 +1745,6 @@ void main() {
         final writer = RotatingFileWriter(
           baseFilePathProvider: () => logPath,
           flushStrategy: FlushStrategy.buffered,
-          flushInterval: const Duration(seconds: 1),
         );
 
         // Batch 1

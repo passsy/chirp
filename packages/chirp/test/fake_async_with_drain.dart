@@ -66,7 +66,8 @@ Future<void> fakeAsyncWithDrain(
 /// async I/O guards like `_pendingFlush` are cleared between batches.
 Future<void> drainEvent() {
   final completers = _drainCompleters;
-  assert(completers != null, 'drainEvent() must be called inside fakeAsyncWithDrain');
+  assert(completers != null,
+      'drainEvent() must be called inside fakeAsyncWithDrain');
   final completer = Completer<void>();
   completers!.add(completer);
   return completer.future;
