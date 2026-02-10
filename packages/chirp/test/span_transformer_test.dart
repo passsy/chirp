@@ -149,7 +149,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Emoji replaces timestamp, followed by level and message
@@ -180,7 +180,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Timestamp wrapped with brackets
@@ -206,7 +206,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // No timestamp in output
@@ -251,7 +251,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Full bordered box around the entire message. Using full-string
@@ -947,7 +947,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, 'CUSTOM [info] Hello');
@@ -983,7 +983,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       expect(transformerOrder, ['formatter', 'per-log']);
     });
@@ -1024,7 +1024,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Both timestamp and level should be removed
@@ -1069,7 +1069,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -1101,7 +1101,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, '10:23:45.123 [info] Hello');
@@ -1127,7 +1127,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, '10:23:45.123 [info] Hello');
@@ -1158,7 +1158,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // RainbowFormatOptions should still work (showTime: false)
@@ -1190,7 +1190,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, contains('REPLACED'));

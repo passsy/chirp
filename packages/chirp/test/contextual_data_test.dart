@@ -7,7 +7,7 @@ void main() {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API').addContext(
           {'requestId': 'REQ-123', 'userId': 'user_456'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -22,7 +22,7 @@ void main() {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API')
           .addContext({'requestId': 'REQ-123'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -41,7 +41,7 @@ void main() {
     test('context.addAll adds multiple entries', () {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API').addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -62,7 +62,7 @@ void main() {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API').addContext(
           {'requestId': 'REQ-123', 'status': 'pending'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -80,7 +80,7 @@ void main() {
       final messages = <String>[];
       final baseLogger = ChirpLogger(name: 'API')
           .addContext({'app': 'myapp'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -100,7 +100,7 @@ void main() {
       final messages = <String>[];
       final baseLogger = ChirpLogger(name: 'API')
           .addContext({'app': 'myapp'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -118,7 +118,7 @@ void main() {
     test('empty context logger does not include data in log', () {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API').addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -132,7 +132,7 @@ void main() {
       final messages = <String>[];
       final logger = ChirpLogger(name: 'API').addContext(
           {'requestId': 'REQ-123', 'userId': 'user_456'}).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -155,7 +155,7 @@ void main() {
         'userId': 'user_456',
         'sessionId': 'sess_789',
       }).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -179,7 +179,7 @@ void main() {
         'userId': 'user_456',
         'sessionId': 'sess_789',
       }).addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 

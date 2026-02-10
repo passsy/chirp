@@ -25,7 +25,7 @@ void main() {
     test('Chirp with different log levels', () {
       final messages = <String>[];
       Chirp.root = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -44,7 +44,7 @@ void main() {
     test('Chirp.debug() convenience function', () {
       final messages = <String>[];
       Chirp.root = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -58,7 +58,7 @@ void main() {
     test('Chirp.info() convenience function', () {
       final messages = <String>[];
       Chirp.root = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -72,7 +72,7 @@ void main() {
     test('Chirp.warning() convenience function', () {
       final messages = <String>[];
       Chirp.root = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -86,7 +86,7 @@ void main() {
     test('Chirp.error() convenience function', () {
       final messages = <String>[];
       Chirp.root = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 
@@ -117,7 +117,7 @@ void main() {
     test('Chirp with structured data', () {
       final messages = <String>[];
       Chirp.root = ChirpLogger().addConsoleWriter(
-        formatter: JsonMessageFormatter(),
+        formatter: const JsonLogFormatter(),
         output: messages.add,
       );
 

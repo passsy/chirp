@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use_from_same_package
 /// A lightweight, flexible logging library for Dart.
 ///
 /// Chirp provides instance tracking, child loggers, structured logging,
@@ -27,6 +28,8 @@ export 'package:chirp/src/ansi/ansi16.dart' show Ansi16;
 export 'package:chirp/src/ansi/ansi256.g.dart' show Ansi256;
 export 'package:chirp/src/ansi/console_color.dart'
     show ConsoleColor, DefaultColor, IndexedColor, RgbColor;
+export 'package:chirp/src/core/chirp_formatter.dart'
+    show ChirpFormatter, MessageBuffer;
 export 'package:chirp/src/core/chirp_interceptor.dart' show ChirpInterceptor;
 export 'package:chirp/src/core/chirp_logger.dart' show ChirpLogger;
 export 'package:chirp/src/core/chirp_root.dart'
@@ -45,8 +48,8 @@ export 'package:chirp/src/formatters/compact_message_formatter.dart'
     show CompactChirpMessageFormatter;
 export 'package:chirp/src/formatters/gcp_message_formatter.dart'
     show GcpMessageFormatter;
-export 'package:chirp/src/formatters/json_message_formatter.dart'
-    show JsonMessageFormatter;
+export 'package:chirp/src/formatters/json_log_formatter.dart'
+    show JsonLogFormatter, JsonMessageFormatter;
 export 'package:chirp/src/formatters/rainbow_message_formatter.dart'
     show DataPresentation, RainbowFormatOptions, RainbowMessageFormatter;
 export 'package:chirp/src/formatters/simple_console_message_formatter.dart'
@@ -69,16 +72,19 @@ export 'package:chirp/src/writers/console_writer.dart'
         splitIntoChunks,
         stripAnsiCodes;
 export 'package:chirp/src/writers/delegated_formatter.dart'
-    show DelegatedConsoleMessageFormatter;
+    show DelegatedMessageFormatter;
 export 'package:chirp/src/writers/developer_log_console_writer.dart'
     show DeveloperLogConsoleWriter;
-export 'package:chirp/src/writers/file_writer.dart'
+export 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader.dart'
+    show RotatingFileReader;
+export 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer.dart'
     show
+        FileMessageBuffer,
         FileMessageFormatter,
         FileRotationConfig,
         FileRotationInterval,
         FileWriterErrorHandler,
-        JsonFileFormatter,
+        FlushStrategy,
         RotatingFileWriter,
         SimpleFileFormatter,
         defaultFileWriterErrorHandler;

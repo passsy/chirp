@@ -24,7 +24,7 @@ import 'package:meta/meta.dart';
 /// }
 /// ```
 @experimental
-abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
+abstract class SpanBasedFormatter extends ChirpFormatter {
   /// Transformers to apply to the span tree before rendering.
   ///
   /// Transformers are applied in order after [buildSpan] creates the initial
@@ -45,7 +45,8 @@ abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
   LogSpan buildSpan(LogRecord record);
 
   @override
-  void format(LogRecord record, ConsoleMessageBuffer buffer) {
+  void format(LogRecord record, MessageBuffer buffer) {
+    final consoleBuffer = buffer.console!;
     final span = buildSpan(record);
 
     // Apply formatter's default transformers
@@ -66,7 +67,7 @@ abstract class SpanBasedFormatter extends ConsoleMessageFormatter {
     // Transformers may wrap the original root in a new parent span.
     // Always render starting from the current root so wrappers (e.g. Bordered)
     // that become ancestors of the original span are included.
-    renderSpan(span.root, buffer);
+    renderSpan(span.root, consoleBuffer);
   }
 }
 

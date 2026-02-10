@@ -52,7 +52,7 @@ void _demonstrateTimeDisplay(TimeDisplay mode, String label) {
 
 void _demonstrateJsonTimeDisplay(TimeDisplay mode, String label) {
   Chirp.root = ChirpLogger().addConsoleWriter(
-    formatter: JsonMessageFormatter(timeDisplay: mode),
+    formatter: JsonLogFormatter(timeDisplay: mode),
   );
 
   print('TimeDisplay.$label:');

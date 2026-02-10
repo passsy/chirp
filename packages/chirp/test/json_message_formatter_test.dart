@@ -8,7 +8,7 @@ import 'package:test/test.dart';
 import 'test_log_record.dart';
 
 void main() {
-  group('JsonMessageFormatter', () {
+  group('JsonLogFormatter', () {
     ConsoleMessageBuffer createBuffer() {
       return ConsoleMessageBuffer(
         capabilities: const TerminalCapabilities(),
@@ -22,9 +22,9 @@ void main() {
         wallClock: DateTime.utc(2024, 1, 15, 10, 30, 45, 123),
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -40,9 +40,9 @@ void main() {
         wallClock: localTime,
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
       final timestamp = decoded['timestamp'] as String;
@@ -71,9 +71,9 @@ void main() {
           level: level,
         );
 
-        final formatter = JsonMessageFormatter();
+        const formatter = JsonLogFormatter();
         final buffer = createBuffer();
-        formatter.format(record, buffer);
+        formatter.format(record, MessageBuffer(buffer));
 
         final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
         expect(decoded['level'], level.name,
@@ -88,9 +88,9 @@ void main() {
         loggerName: 'MyService',
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -105,9 +105,9 @@ void main() {
         instance: instance,
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
       final expectedHash =
@@ -127,9 +127,9 @@ void main() {
         wallClock: DateTime.utc(2024, 1, 15),
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -147,9 +147,9 @@ void main() {
         instance: instance,
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
       final expectedHash =
@@ -169,9 +169,9 @@ void main() {
         error: Exception('Something went wrong'),
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -186,9 +186,9 @@ void main() {
         stackTrace: StackTrace.fromString('#0      main (file.dart:10:5)'),
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -207,9 +207,9 @@ void main() {
         },
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -235,9 +235,9 @@ void main() {
         },
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
 
@@ -257,9 +257,9 @@ void main() {
         data: {'key': 'value'},
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final output = buffer.toString();
       expect(output.contains('\n'), isFalse);
@@ -275,18 +275,18 @@ void main() {
         },
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
 
       // Should not throw
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
       expect(decoded['custom'], 'NonSerializableObject(test-value)');
     });
 
     group('sourceLocation', () {
-      test('excludes sourceLocation by default', () {
+      test('includes sourceLocation when caller is present', () {
         final record = testRecord(
           timestamp: DateTime.utc(2024, 1, 15),
           wallClock: DateTime.utc(2024, 1, 15),
@@ -295,27 +295,9 @@ void main() {
           ),
         );
 
-        final formatter = JsonMessageFormatter();
+        const formatter = JsonLogFormatter();
         final buffer = createBuffer();
-        formatter.format(record, buffer);
-
-        final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
-
-        expect(decoded.containsKey('sourceLocation'), isFalse);
-      });
-
-      test('includes sourceLocation when enabled', () {
-        final record = testRecord(
-          timestamp: DateTime.utc(2024, 1, 15),
-          wallClock: DateTime.utc(2024, 1, 15),
-          caller: StackTrace.fromString(
-            '#0      MyClass.method (package:my_app/src/server.dart:42:10)',
-          ),
-        );
-
-        final formatter = JsonMessageFormatter(includeSourceLocation: true);
-        final buffer = createBuffer();
-        formatter.format(record, buffer);
+        formatter.format(record, MessageBuffer(buffer));
 
         final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
         final sourceLocation =
@@ -326,15 +308,9 @@ void main() {
         expect(sourceLocation['function'], 'MyClass.method');
       });
 
-      test('requiresCallerInfo is true when includeSourceLocation is true', () {
-        final formatter = JsonMessageFormatter(includeSourceLocation: true);
+      test('requiresCallerInfo is always true', () {
+        const formatter = JsonLogFormatter();
         expect(formatter.requiresCallerInfo, isTrue);
-      });
-
-      test('requiresCallerInfo is false when includeSourceLocation is false',
-          () {
-        final formatter = JsonMessageFormatter(includeSourceLocation: false);
-        expect(formatter.requiresCallerInfo, isFalse);
       });
     });
 
@@ -345,9 +321,9 @@ void main() {
         wallClock: DateTime.utc(2024, 1, 15),
       );
 
-      final formatter = JsonMessageFormatter();
+      const formatter = JsonLogFormatter();
       final buffer = createBuffer();
-      formatter.format(record, buffer);
+      formatter.format(record, MessageBuffer(buffer));
 
       final decoded = jsonDecode(buffer.toString()) as Map<String, dynamic>;
       expect(decoded['message'], isNull);

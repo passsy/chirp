@@ -56,7 +56,7 @@ import 'package:chirp/chirp.dart';
 /// References:
 /// - https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs-logformat.html
 /// - https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs-log-level.html
-class AwsMessageFormatter extends ConsoleMessageFormatter {
+class AwsMessageFormatter extends ChirpFormatter {
   /// Whether to include source location in log entries.
   final bool includeSourceLocation;
 
@@ -78,7 +78,7 @@ class AwsMessageFormatter extends ConsoleMessageFormatter {
   bool get requiresCallerInfo => includeSourceLocation;
 
   @override
-  void format(LogRecord record, ConsoleMessageBuffer buffer) {
+  void format(LogRecord record, MessageBuffer buffer) {
     final map = <String, dynamic>{};
 
     // === Core fields ===

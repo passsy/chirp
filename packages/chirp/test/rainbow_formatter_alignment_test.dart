@@ -25,7 +25,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -53,7 +53,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, '10:23:45.123 [info] API Short (key: "value")');
@@ -71,7 +71,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, '10:23:45.123 [info] Line 1\nLine 2\nLine 3');
@@ -94,7 +94,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -122,7 +122,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -151,7 +151,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -175,7 +175,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -201,7 +201,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -228,7 +228,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -257,7 +257,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -281,7 +281,7 @@ void main() {
         capabilities: const TerminalCapabilities(
             colorSupport: TerminalColorSupport.ansi256),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Should contain ANSI escape codes
@@ -302,7 +302,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, '10:23:45.123 [info] Test message');
@@ -323,7 +323,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -353,7 +353,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -382,7 +382,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -408,7 +408,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -436,7 +436,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -459,7 +459,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(result, '10:23:45.123 [info] Test message');
@@ -481,7 +481,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Calculate expected short hash (last 4 hex digits)
@@ -513,7 +513,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       // Extract the hash portion after _TestClass@
@@ -542,7 +542,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(
@@ -568,7 +568,7 @@ void main() {
         capabilities:
             const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
       );
-      formatter.format(entry, buffer);
+      formatter.format(entry, MessageBuffer(buffer));
       final result = buffer.toString();
 
       expect(

@@ -93,7 +93,7 @@ import 'package:chirp/src/platform/platform_info.dart';
 /// - Works in release builds
 class PrintConsoleWriter extends ChirpWriter {
   /// The formatter that writes log records to a buffer.
-  final ConsoleMessageFormatter formatter;
+  final ChirpFormatter formatter;
 
   /// Maximum length per chunk (in characters).
   ///
@@ -117,7 +117,7 @@ class PrintConsoleWriter extends ChirpWriter {
   /// Use [output] to redirect logs for testing or alternative destinations.
   /// Use [minLevel] to filter out logs below a certain level.
   PrintConsoleWriter({
-    ConsoleMessageFormatter? formatter,
+    ChirpFormatter? formatter,
     int? maxChunkLength,
     TerminalCapabilities? capabilities,
     void Function(String)? output,
@@ -138,7 +138,7 @@ class PrintConsoleWriter extends ChirpWriter {
   void write(LogRecord record) {
     // Format
     final buffer = ConsoleMessageBuffer(capabilities: capabilities);
-    formatter.format(record, buffer);
+    formatter.format(record, MessageBuffer(buffer));
     final text = buffer.toString();
 
     // No chunking needed (default on desktop/web)
@@ -154,35 +154,9 @@ class PrintConsoleWriter extends ChirpWriter {
   }
 }
 
-/// {@template chirp.ConsoleMessageFormatter}
-/// Formats a [LogRecord] into a string for console output.
-///
-/// Implementations receive a [ConsoleMessageBuffer] to write formatted output.
-/// The buffer handles ANSI color codes when colors are enabled.
-/// {@endtemplate}
-abstract class ConsoleMessageFormatter {
-  /// {@macro chirp.ConsoleMessageFormatter}
-  const ConsoleMessageFormatter();
-
-  /// Whether this formatter requires caller info (file, line, class, method).
-  ///
-  /// If `true`, the logger will capture `StackTrace.current` for each log call.
-  /// If `false`, the expensive stack trace capture can be skipped.
-  ///
-  /// Default is `false`. Override in subclasses that display caller info.
-  bool get requiresCallerInfo => false;
-
-  /// Formats the given [record] by writing to the [buffer].
-  ///
-  /// Implementations should build a span tree from the record and render it:
-  /// ```dart
-  /// void format(LogRecord record, ConsoleMessageBuffer buffer) {
-  ///   final span = MyLogSpan(record).build();
-  ///   renderSpan(span, buffer);
-  /// }
-  /// ```
-  void format(LogRecord record, ConsoleMessageBuffer buffer);
-}
+/// Backwards-compatible type alias.
+@Deprecated('Use ChirpFormatter instead')
+typedef ConsoleMessageFormatter = ChirpFormatter;
 
 /// A buffer for building console output with terminal capability awareness.
 ///
@@ -389,6 +363,16 @@ class ConsoleMessageBuffer {
       _writeWithStyleReapply(value, _styleStack.last);
     } else {
       _buffer.write(value);
+    }
+  }
+
+  /// Writes [value] followed by a newline to the buffer.
+  void writeln(Object? value) {
+    write(value);
+    _buffer.write('\n');
+    // Re-apply style after newline so the next line inherits it
+    if (capabilities.supportsColors && _styleStack.isNotEmpty) {
+      _writeStyleCode(_styleStack.last);
     }
   }
 
