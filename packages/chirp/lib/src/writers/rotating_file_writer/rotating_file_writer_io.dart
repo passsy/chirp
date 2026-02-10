@@ -374,7 +374,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
         _currentFileSize = _currentFileSize + bytes.length;
       }
 
-      _file!.writeFromSync(batch.takeBytes());
+      await _file!.writeFrom(batch.takeBytes());
     } catch (e, stackTrace) {
       // Report error for the batch (no specific record)
       _handleError(e, stackTrace, null);
@@ -621,8 +621,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
           _buffer = [];
           await _flushBufferAsync(recordsToFlush);
         }
-        // Sync flush is sufficient since _flushBufferAsync uses writeFromSync
-        _file?.flushSync();
+        await _file?.flush();
     }
   }
 
@@ -658,9 +657,8 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
           _buffer = [];
           await _flushBufferAsync(recordsToFlush);
         }
-        // Sync flush/close is sufficient since _flushBufferAsync uses writeFromSync
-        _file?.flushSync();
-        _file?.closeSync();
+        await _file?.flush();
+        await _file?.close();
         _file = null;
     }
 
