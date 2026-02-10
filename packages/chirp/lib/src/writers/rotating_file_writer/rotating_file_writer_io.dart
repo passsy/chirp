@@ -43,7 +43,7 @@ FlushStrategy _defaultFlushStrategy() {
 ///
 /// Supports both size-based and time-based rotation, with configurable
 /// retention policies (max files, max age).
-class RotatingFileWriterIo extends RotatingFileWriter {
+class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   /// Base path for log files.
   ///
   /// This is the path to the current log file. Rotated files are created
@@ -92,6 +92,9 @@ class RotatingFileWriterIo extends RotatingFileWriter {
   @override
   final Duration flushInterval;
 
+  @override
+  bool get requiresCallerInfo => formatter.requiresCallerInfo;
+
   /// Current file handle for synchronous writes.
   RandomAccessFile? _file;
 
@@ -135,8 +138,7 @@ class RotatingFileWriterIo extends RotatingFileWriter {
     FlushStrategy? flushStrategy,
     this.flushInterval = const Duration(seconds: 1),
   })  : flushStrategy = flushStrategy ?? _defaultFlushStrategy(),
-        formatter = formatter ?? const SimpleFileFormatter(),
-        super.internal();
+        formatter = formatter ?? const SimpleFileFormatter();
 
   /// Opens the log file for writing.
   ///
