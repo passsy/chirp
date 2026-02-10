@@ -1,24 +1,10 @@
-import 'dart:async';
-import 'dart:convert';
+import 'package:chirp/src/writers/rotating_file_writer/log_file_reader.dart';
 
-Future<List<String>> listLogFiles({
+RotatingFileReader createRotatingFileReader({
   required String baseFilePath,
-  bool includeCurrent = true,
 }) {
   throw UnsupportedError(
-    'Log file reading is not supported on web. '
-    'This platform does not support dart:io.',
-  );
-}
-
-Stream<String> readLogs({
-  required String baseFilePath,
-  bool follow = false,
-  Encoding encoding = utf8,
-  int? lastLines,
-}) {
-  throw UnsupportedError(
-    'Log file reading is not supported on web. '
+    'RotatingFileReader is not supported on web. '
     'This platform does not support dart:io.',
   );
 }
