@@ -43,7 +43,7 @@ FlushStrategy _defaultFlushStrategy() {
 ///
 /// Supports both size-based and time-based rotation, with configurable
 /// retention policies (max files, max age).
-class RotatingFileWriterIo extends RotatingFileWriter {
+class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   /// Base path for log files.
   ///
   /// This is the path to the current log file. Rotated files are created
@@ -92,6 +92,9 @@ class RotatingFileWriterIo extends RotatingFileWriter {
   @override
   final Duration flushInterval;
 
+  @override
+  bool get requiresCallerInfo => formatter.requiresCallerInfo;
+
   /// Current file handle for synchronous writes.
   RandomAccessFile? _file;
 
@@ -135,8 +138,7 @@ class RotatingFileWriterIo extends RotatingFileWriter {
     FlushStrategy? flushStrategy,
     this.flushInterval = const Duration(seconds: 1),
   })  : flushStrategy = flushStrategy ?? _defaultFlushStrategy(),
-        formatter = formatter ?? const SimpleFileFormatter(),
-        super.internal();
+        formatter = formatter ?? const SimpleFileFormatter();
 
   /// Opens the log file for writing.
   ///
@@ -487,16 +489,12 @@ class RotatingFileWriterIo extends RotatingFileWriter {
 
     if (!dir.existsSync()) return [];
 
-    return dir.listSync().whereType<File>().map((file) {
+    return dir.listSync().whereType<File>().where((file) {
+      final fileName = file.uri.pathSegments.last;
+      return fileName != name && isRotatedLogFile(fileName, baseName: baseName);
+    }).map((file) {
       final stat = file.statSync();
       return (path: file.path, modified: stat.modified);
-    }).where((entry) {
-      final fileName = File(entry.path).uri.pathSegments.last;
-      // Match rotated files: baseName.TIMESTAMP.extension or baseName.TIMESTAMP.extension.gz
-      return fileName.startsWith('$baseName.') &&
-          fileName != name &&
-          (RegExp(r'\d{4}-\d{2}-\d{2}').hasMatch(fileName) ||
-              fileName.endsWith('.gz'));
     }).toList();
   }
 
@@ -596,3 +594,21 @@ void _compressFileSync(String path) {
 }
 
 typedef _FileEntry = ({String path, DateTime modified});
+
+// Matches baseName.YYYY-MM-DD_HH-MM-SS[_N].ext[.gz] after stripping
+// the "baseName." prefix.
+final _rotatedTimestampPattern =
+    RegExp(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_\d+)?');
+
+/// Returns `true` if [fileName] (without directory path) matches the
+/// rotation pattern for [baseName] (without extension).
+///
+/// ```dart
+/// isRotatedLogFile('app.2024-01-15_10-30-45.log', baseName: 'app') // true
+/// isRotatedLogFile('app.log', baseName: 'app') // false
+/// ```
+bool isRotatedLogFile(String fileName, {required String baseName}) {
+  if (!fileName.startsWith('$baseName.')) return false;
+  final rest = fileName.substring(baseName.length + 1); // skip "baseName."
+  return _rotatedTimestampPattern.hasMatch(rest);
+}

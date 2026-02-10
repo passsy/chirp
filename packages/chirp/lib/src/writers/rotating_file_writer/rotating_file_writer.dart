@@ -129,11 +129,6 @@ abstract class RotatingFileWriter extends ChirpWriter {
     );
   }
 
-  RotatingFileWriter.internal();
-
-  @override
-  bool get requiresCallerInfo => formatter.requiresCallerInfo;
-
   /// Base path for log files.
   ///
   /// This is the path to the current log file. Rotated files are created
