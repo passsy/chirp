@@ -30,9 +30,9 @@ class RotatingFileReaderIo implements RotatingFileReader {
 
   RotatingFileReaderIo({
     required FutureOr<String> Function() baseFilePathProvider,
-    Duration? pollInterval,
+    required Duration pollInterval,
   })  : _baseFilePathProvider = baseFilePathProvider,
-        _pollInterval = pollInterval ?? _defaultPollInterval;
+        _pollInterval = pollInterval;
 
   Future<String> _resolveBaseFilePath() async {
     if (_resolvedBaseFilePath != null) return _resolvedBaseFilePath!;
@@ -79,28 +79,32 @@ class RotatingFileReaderIo implements RotatingFileReader {
 
     // When lastLines is requested, we need to materialize to compute the tail.
     if (lastLines != null) {
-      final lines = <String>[];
+      if (lastLines <= 0) return;
+      if (files.isEmpty) return;
 
-      for (final path in files) {
-        if (path.endsWith('.gz')) {
-          final bytes = await File(path).readAsBytes();
-          final decompressed = gzip.decode(bytes);
-          final text = encoding.decode(decompressed);
-          lines.addAll(const LineSplitter().convert(text));
-        } else {
-          lines.addAll(
-            await File(path)
-                .openRead()
-                .transform(encoding.decoder)
-                .transform(const LineSplitter())
-                .toList(),
-          );
+      var remaining = lastLines;
+      final chunks = <List<String>>[];
+
+      for (final path in files.reversed) {
+        if (remaining <= 0) break;
+
+        final lines = await _readAllLinesFromFile(path, encoding);
+        if (lines.isEmpty) continue;
+
+        if (lines.length > remaining) {
+          chunks.add(lines.sublist(lines.length - remaining));
+          remaining = 0;
+          continue;
         }
+
+        chunks.add(lines);
+        remaining -= lines.length;
       }
 
-      final start = (lines.length - lastLines).clamp(0, lines.length);
-      for (final line in lines.sublist(start)) {
-        yield line;
+      for (final chunk in chunks.reversed) {
+        for (final line in chunk) {
+          yield line;
+        }
       }
       return;
     }
@@ -252,6 +256,24 @@ bool _statsEqual(FileStat previous, FileStat current) {
   return true;
 }
 
+Future<List<String>> _readAllLinesFromFile(
+  String path,
+  Encoding encoding,
+) async {
+  if (path.endsWith('.gz')) {
+    final bytes = await File(path).readAsBytes();
+    final decompressed = gzip.decode(bytes);
+    final text = encoding.decode(decompressed);
+    return const LineSplitter().convert(text);
+  }
+
+  return File(path)
+      .openRead()
+      .transform(encoding.decoder)
+      .transform(const LineSplitter())
+      .toList();
+}
+
 const int _maxUnchangedStats = 5;
 const Duration _defaultPollInterval = Duration(milliseconds: 1000);
 
@@ -261,6 +283,6 @@ RotatingFileReader createRotatingFileReader({
 }) {
   return RotatingFileReaderIo(
     baseFilePathProvider: baseFilePathProvider,
-    pollInterval: pollInterval,
+    pollInterval: pollInterval ?? _defaultPollInterval,
   );
 }
