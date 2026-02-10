@@ -221,6 +221,12 @@ abstract class RotatingFileWriter extends ChirpWriter {
   ///
   /// Useful for log rotation triggered by external events (e.g., SIGHUP).
   Future<void> forceRotate();
+
+  /// Returns a [RotatingFileReader] for the same log files.
+  ///
+  /// Uses the same [baseFilePathProvider] so the reader finds all rotated
+  /// files written by this writer.
+  RotatingFileReader get reader;
 }
 
 /// Callback for handling errors during file write operations.

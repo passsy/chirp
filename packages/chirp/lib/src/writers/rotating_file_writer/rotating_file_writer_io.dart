@@ -115,6 +115,11 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   @override
   bool get requiresCallerInfo => formatter.requiresCallerInfo;
 
+  @override
+  late final RotatingFileReader reader = RotatingFileReader(
+    baseFilePathProvider: _baseFilePathProvider,
+  );
+
   /// Current file handle for synchronous writes.
   RandomAccessFile? _file;
 
