@@ -8,6 +8,7 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.d
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_stub.dart'
     as stub_impl;
 import 'package:clock/clock.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:test/test.dart';
 
 import 'test_log_record.dart';
@@ -322,44 +323,47 @@ void main() {
       expect(content, contains('Error before path'));
     });
 
-    test('lazy baseFilePathProvider drains buffer after flushInterval',
-        () async {
-      final tempDir = createTempDir();
-      final logPath = '${tempDir.path}/lazy-buffered/app.log';
+    test('lazy baseFilePathProvider drains buffer after flushInterval', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/lazy-buffered/app.log';
 
-      final completer = Completer<String>();
-      final writer = RotatingFileWriter(
-        baseFilePathProvider: () => completer.future,
-        flushStrategy: FlushStrategy.buffered,
-        flushInterval: const Duration(seconds: 2),
-      );
-      addTearDown(() => writer.close());
+        final completer = Completer<String>();
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => completer.future,
+          flushStrategy: FlushStrategy.buffered,
+          flushInterval: const Duration(seconds: 10),
+        );
 
-      // Write an info record before the path is resolved.
-      writer.write(testRecord(message: 'Buffered info'));
+        // Write an info record before the path is resolved.
+        writer.write(testRecord(message: 'Buffered info'));
 
-      // Resolve the path.
-      completer.complete(logPath);
+        // Resolve the path.
+        completer.complete(logPath);
+        async.flushMicrotasks();
 
-      // Wait for path resolution, but not long enough for flushInterval.
-      await Future<void>.delayed(const Duration(seconds: 1));
+        // Advance time, but not past the flushInterval.
+        async.elapse(const Duration(seconds: 9));
 
-      // File exists (directories were created) but the record hasn't been
-      // flushed yet because flushInterval hasn't elapsed.
-      expect(
-        File(logPath).existsSync() ? File(logPath).readAsStringSync() : '',
-        isEmpty,
-        reason: 'Buffer should not have been flushed after 1s '
-            '(flushInterval is 2s)',
-      );
+        // The record hasn't been flushed yet because flushInterval hasn't
+        // elapsed.
+        expect(
+          File(logPath).existsSync() ? File(logPath).readAsStringSync() : '',
+          isEmpty,
+          reason: 'Buffer should not have been flushed after 9s '
+              '(flushInterval is 10s)',
+        );
 
-      // Now wait for the flushInterval to fire.
-      await Future<void>.delayed(const Duration(seconds: 2));
+        // Advance past the flushInterval.
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
 
-      // The record should have been written by the flush timer, no manual
-      // flush() call needed.
-      final content = File(logPath).readAsStringSync();
-      expect(content, contains('Buffered info'));
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('Buffered info'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
     });
 
     test('creates parent directories recursively if they do not exist',
