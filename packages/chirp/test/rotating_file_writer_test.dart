@@ -1829,7 +1829,7 @@ void main() {
         expect(content, contains('Batch 3 - Msg 2'));
         expect(content, contains('Batch 3 - Msg 3'));
 
-        writer.close();
+        await writer.close();
         await drainEvent();
       });
     });

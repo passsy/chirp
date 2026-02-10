@@ -36,9 +36,11 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub
 abstract class RotatingFileReader {
   factory RotatingFileReader({
     required FutureOr<String> Function() baseFilePathProvider,
+    Duration? pollInterval,
   }) {
     return platform.createRotatingFileReader(
       baseFilePathProvider: baseFilePathProvider,
+      pollInterval: pollInterval,
     );
   }
 
@@ -64,6 +66,9 @@ abstract class RotatingFileReader {
   ///
   /// If [lastLines] is provided, it first emits the last N lines (same semantics
   /// as [read]) and then continues streaming newly appended lines.
+  ///
+  /// The [pollInterval] passed to the factory controls how often the reader
+  /// checks for changes when file system events are missing or unreliable.
   Stream<String> tail({
     int? lastLines,
     Encoding encoding = utf8,

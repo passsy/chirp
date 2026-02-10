@@ -282,6 +282,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
       final bytes = encoding.encode('$line\n');
 
       _file!.writeFromSync(bytes);
+      _file!.flushSync();
       _currentFileSize = _currentFileSize + bytes.length;
     } catch (e, stackTrace) {
       _handleError(e, stackTrace, record);
@@ -375,6 +376,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
       }
 
       await _file!.writeFrom(batch.takeBytes());
+      await _file!.flush();
     } catch (e, stackTrace) {
       // Report error for the batch (no specific record)
       _handleError(e, stackTrace, null);
@@ -696,7 +698,7 @@ void _compressFileSync(String path) {
 
   final bytes = file.readAsBytesSync();
   final compressed = gzip.encode(bytes);
-  File('$path.gz').writeAsBytesSync(compressed);
+  File('$path.gz').writeAsBytesSync(compressed, flush: true);
   file.deleteSync();
 }
 
