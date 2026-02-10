@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -1166,12 +1167,26 @@ void main() {
       );
       addTearDown(() => writer.close());
 
-      // This should not throw - error goes to stderr
-      expect(
-        () => writer.write(testRecord(message: 'Test')),
-        returnsNormally,
-        reason: 'Write should not throw - error should go to stderr',
+      // Capture print output so it doesn't pollute test output.
+      final printed = <String>[];
+      runZoned(
+        () {
+          expect(
+            () => writer.write(testRecord(message: 'Test')),
+            returnsNormally,
+            reason: 'Write should not throw - error should go to stderr',
+          );
+        },
+        zoneSpecification: ZoneSpecification(
+          print: (self, parent, zone, line) {
+            printed.add(line);
+          },
+        ),
       );
+
+      expect(printed, isNotEmpty,
+          reason: 'Default error handler should print to stdout');
+      expect(printed.first, contains('Simulated formatter error'));
     });
 
     test('onError receives correct record for each failed write', () {
