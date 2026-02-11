@@ -227,6 +227,16 @@ abstract class RotatingFileWriter extends ChirpWriter {
   /// Useful for log rotation triggered by external events (e.g., SIGHUP).
   Future<void> forceRotate();
 
+  /// Deletes all log files (current and rotated) and resets the writer.
+  ///
+  /// Flushes any buffered data, closes the current file handle, then deletes
+  /// the current log file and all rotated files. The writer remains usable —
+  /// the next [write] call creates a fresh file.
+  ///
+  /// Useful for clearing logs on user request (e.g., a "Clear logs" button)
+  /// or during testing.
+  Future<void> clearLogs();
+
   /// Returns a [RotatingFileReader] for the same log files.
   ///
   /// Uses the same [baseFilePathProvider] so the reader finds all rotated

@@ -737,6 +737,49 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
       _rotate(null);
     }
   }
+
+  @override
+  Future<void> clearLogs() async {
+    // Nothing to clear if path hasn't been resolved yet.
+    if (_baseFilePath == null) return;
+
+    // Flush and close synchronously to avoid async gaps where write() could
+    // reopen the file between close and delete. write() is synchronous and
+    // cannot await an async lock, so we must avoid yielding here.
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    _flushBufferSync();
+    _file?.flushSync();
+    _file?.closeSync();
+    _file = null;
+    _currentFileSize = 0;
+
+    // Delete all files synchronously — no async gap between close and delete.
+    _deleteAllLogFiles();
+
+    // Wait for pending compressions that may still be writing .gz files in
+    // background isolates, then clean up any files they produced.
+    if (_pendingCompressions.isNotEmpty) {
+      await Future.wait(_pendingCompressions);
+      _deleteAllLogFiles();
+    }
+  }
+
+  /// Deletes the current log file and all rotated log files.
+  void _deleteAllLogFiles() {
+    final currentFile = File(_baseFilePath!);
+    if (currentFile.existsSync()) {
+      currentFile.deleteSync();
+    }
+
+    for (final entry in _getRotatedFiles()) {
+      try {
+        File(entry.path).deleteSync();
+      } catch (e, stackTrace) {
+        _handleError(e, stackTrace, null);
+      }
+    }
+  }
 }
 
 /// Runs file compression in a separate isolate.

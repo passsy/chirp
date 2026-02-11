@@ -2069,6 +2069,89 @@ void main() {
     });
   });
 
+  group('clearLogs', () {
+    test('deletes current log file', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
+
+      writer.write(testRecord(message: 'some log'));
+      await writer.flush();
+      expect(File(logPath).existsSync(), isTrue);
+
+      await writer.clearLogs();
+
+      expect(File(logPath).existsSync(), isFalse,
+          reason: 'Current log file should be deleted');
+    });
+
+    test('deletes rotated log files', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        rotationConfig: FileRotationConfig.size(maxSize: 10),
+      );
+
+      // Write enough to trigger rotation
+      for (var i = 0; i < 5; i++) {
+        writer.write(testRecord(message: 'Record number $i'));
+      }
+      await writer.flush();
+
+      // Verify rotated files exist
+      final files = Directory(tempDir.path)
+          .listSync()
+          .whereType<File>()
+          .map((f) => f.uri.pathSegments.last)
+          .toList();
+      expect(files.length, greaterThan(1),
+          reason: 'Should have rotated files before clearing');
+
+      await writer.clearLogs();
+
+      final remainingFiles =
+          Directory(tempDir.path).listSync().whereType<File>().toList();
+      expect(remainingFiles, isEmpty,
+          reason: 'All log files should be deleted');
+    });
+
+    test('writer remains usable after clearLogs', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'before clear'));
+      await writer.flush();
+
+      await writer.clearLogs();
+      expect(File(logPath).existsSync(), isFalse);
+
+      // Write again after clearing
+      writer.write(testRecord(message: 'after clear'));
+      await writer.flush();
+
+      expect(File(logPath).existsSync(), isTrue,
+          reason: 'File should be recreated on next write');
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('after clear'));
+      expect(content, isNot(contains('before clear')),
+          reason: 'Old content should not be present');
+    });
+
+    test('is a no-op when no files exist', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
+
+      // clearLogs without ever writing should not throw
+      await writer.clearLogs();
+
+      expect(File(logPath).existsSync(), isFalse);
+    });
+  });
+
   group('file deleted externally', () {
     test('recreates file when deleted between synchronous writes', () async {
       final tempDir = createTempDir();
