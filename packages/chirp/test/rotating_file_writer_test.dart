@@ -1982,7 +1982,8 @@ void main() {
       );
     });
 
-    test('async validation error is thrown on every subsequent write', () async {
+    test('async validation error is thrown on every subsequent write',
+        () async {
       final tempDir = createTempDir();
       final writer = RotatingFileWriter(
         baseFilePathProvider: () async => '${tempDir.path}/logs/',
@@ -2005,7 +2006,8 @@ void main() {
       );
     });
 
-    test('async provider failure is thrown on every subsequent write', () async {
+    test('async provider failure is thrown on every subsequent write',
+        () async {
       final writer = RotatingFileWriter(
         baseFilePathProvider: () async => throw StateError('disk not found'),
         onError: (_, __, ___) {},
@@ -2064,6 +2066,126 @@ void main() {
       writer.write(testRecord(message: 'test'));
 
       expect(capturedError, isA<ArgumentError>());
+    });
+  });
+
+  group('file deleted externally', () {
+    test('recreates file when deleted between synchronous writes', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        flushStrategy: FlushStrategy.synchronous,
+      );
+      addTearDown(() => writer.close());
+
+      // First write creates the file
+      writer.write(testRecord(message: 'before delete'));
+      await writer.flush();
+      expect(File(logPath).existsSync(), isTrue);
+      expect(File(logPath).readAsStringSync(), contains('before delete'));
+
+      // External process deletes the file
+      File(logPath).deleteSync();
+      expect(File(logPath).existsSync(), isFalse);
+
+      // Next write should recreate the file
+      writer.write(testRecord(message: 'after delete'));
+      await writer.flush();
+
+      expect(File(logPath).existsSync(), isTrue,
+          reason: 'File should be recreated after external deletion');
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('after delete'),
+          reason: 'New record should be written to recreated file');
+    });
+
+    test('recreates file when deleted between buffered writes', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+        );
+
+        // First write - use error level so it flushes immediately
+        writer.write(
+          testRecord(message: 'before delete', level: ChirpLogLevel.error),
+        );
+        expect(File(logPath).existsSync(), isTrue);
+        expect(File(logPath).readAsStringSync(), contains('before delete'));
+
+        // External process deletes the file
+        File(logPath).deleteSync();
+        expect(File(logPath).existsSync(), isFalse);
+
+        // Next error write should recreate the file
+        writer.write(
+          testRecord(message: 'after delete', level: ChirpLogLevel.error),
+        );
+
+        expect(File(logPath).existsSync(), isTrue,
+            reason: 'File should be recreated after external deletion');
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('after delete'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('recreates file and parent directories when both are deleted',
+        () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/logs/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        flushStrategy: FlushStrategy.synchronous,
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'before delete'));
+      await writer.flush();
+      expect(File(logPath).existsSync(), isTrue);
+
+      // External process deletes the entire directory
+      Directory('${tempDir.path}/logs').deleteSync(recursive: true);
+      expect(File(logPath).existsSync(), isFalse);
+      expect(Directory('${tempDir.path}/logs').existsSync(), isFalse);
+
+      // Next write should recreate directory and file
+      writer.write(testRecord(message: 'after dir delete'));
+      await writer.flush();
+
+      expect(File(logPath).existsSync(), isTrue,
+          reason: 'File and parent dir should be recreated');
+      expect(File(logPath).readAsStringSync(), contains('after dir delete'));
+    });
+
+    test('does not lose records written before deletion is detected', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        flushStrategy: FlushStrategy.synchronous,
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'record 1'));
+      await writer.flush();
+
+      // Delete the file
+      File(logPath).deleteSync();
+
+      // Write multiple records after deletion
+      writer.write(testRecord(message: 'record 2'));
+      writer.write(testRecord(message: 'record 3'));
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('record 2'));
+      expect(content, contains('record 3'));
     });
   });
 

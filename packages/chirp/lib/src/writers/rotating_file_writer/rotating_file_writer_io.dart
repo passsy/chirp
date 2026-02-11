@@ -226,7 +226,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
         path,
         'baseFilePathProvider',
         'must return a file path, not a directory. '
-        'Example: "/var/log/app.log" instead of "/var/log/"',
+            'Example: "/var/log/app.log" instead of "/var/log/"',
       );
     }
     if (Directory(path).existsSync()) {
@@ -234,7 +234,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
         path,
         'baseFilePathProvider',
         'path "$path" is an existing directory, not a file. '
-        'Provide a file path like "${path}app.log"',
+            'Provide a file path like "${path}app.log"',
       );
     }
   }
@@ -256,8 +256,24 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   /// Opens the log file for writing.
   ///
   /// Called automatically on first write. Creates parent directories if needed.
+  /// If the file was deleted externally, closes the stale handle and reopens.
   void _ensureOpen() {
-    if (_file != null) return;
+    if (_file != null) {
+      // Check if the underlying file was deleted externally.
+      // On Unix, the file descriptor remains valid after unlink but writes
+      // go to the orphaned inode — data is silently lost. Detect this and
+      // reopen so future writes land on a new file at the expected path.
+      if (File(_baseFilePath!).existsSync()) {
+        return;
+      }
+      try {
+        _file!.closeSync();
+      } catch (_) {
+        // Ignore errors closing a stale handle
+      }
+      _file = null;
+      _currentFileSize = 0;
+    }
 
     // Path might still be resolving when using an async baseFilePathProvider.
     if (_baseFilePath == null) return;
