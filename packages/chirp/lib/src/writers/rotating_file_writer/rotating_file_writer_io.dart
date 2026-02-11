@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:chirp/chirp.dart';
 import 'package:clock/clock.dart';
+import 'package:synchronized/synchronized.dart';
 
 RotatingFileWriter createRotatingFileWriter({
   required FutureOr<String> Function() baseFilePathProvider,
@@ -153,6 +154,13 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   /// Tracked so [close] can wait for all compressions to complete.
   final List<Future<void>> _pendingCompressions = [];
 
+  /// Lock to synchronize access to the log file.
+  ///
+  /// Any operation that opens, reads, writes, or deletes the log file must
+  /// go through this lock to prevent races (e.g. reading from a file that
+  /// is being deleted by [clearLogs]).
+  final Lock _fileLock = Lock();
+
   /// Creates a rotating file writer.
   ///
   /// - [baseFilePath]: Path to the log file (e.g., `/var/log/app.log`)
@@ -243,13 +251,24 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
     _tryResolveBaseFilePathSync();
   }
 
+  /// Writes all records that were buffered while the path was resolving
+  /// or the file lock was held.
+  ///
+  /// Called only after the base file path is resolved. Dispatches directly
+  /// to the write strategy without going through [write], which would
+  /// re-buffer the records if [_fileLock] is held.
   void _drainPendingRecords() {
     if (_pendingRecords.isEmpty) return;
 
     final records = List<LogRecord>.from(_pendingRecords);
     _pendingRecords.clear();
-    for (final record in records) {
-      write(record);
+    switch (flushStrategy) {
+      case FlushStrategy.synchronous:
+        _writeSync(records);
+      case FlushStrategy.buffered:
+        for (final r in records) {
+          _writeBuffered(r);
+        }
     }
   }
 
@@ -303,6 +322,14 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
       Error.throwWithStackTrace(error, stackTrace);
     }
 
+    // Buffer records while the file lock is held (e.g. during clearLogs) to
+    // avoid writing to a file that is being deleted or doing unnecessary
+    // path resolution work.
+    if (_fileLock.locked) {
+      _pendingRecords.add(record);
+      return;
+    }
+
     if (_baseFilePath == null) {
       // If the provider is synchronous, resolve immediately and proceed with
       // the normal write behavior.
@@ -313,37 +340,54 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
       }
     }
 
+    // Drain records that were buffered while the lock was held, then write
+    // the current record — all in chronological order.
+    final records = [..._pendingRecords, record];
+    _pendingRecords.clear();
+
     switch (flushStrategy) {
       case FlushStrategy.synchronous:
-        _writeSync(record);
+        _writeSync(records);
       case FlushStrategy.buffered:
-        _writeBuffered(record);
+        for (final r in records) {
+          _writeBuffered(r);
+        }
     }
   }
 
-  /// Synchronous write implementation - blocks on every write.
-  void _writeSync(LogRecord record) {
+  /// Synchronous write implementation.
+  ///
+  /// Writes all [records] to disk and flushes once at the end, avoiding
+  /// redundant `fsync` syscalls when writing multiple records.
+  void _writeSync(List<LogRecord> records) {
     try {
       _ensureOpen();
 
-      // Initialize last rotation check on first write using record's timestamp
-      // This ensures time-based rotation works correctly regardless of wall clock
-      _lastRotationCheck ??= record.timestamp;
+      for (final record in records) {
+        // Initialize last rotation check on first write using record's
+        // timestamp. This ensures time-based rotation works correctly
+        // regardless of wall clock.
+        _lastRotationCheck ??= record.timestamp;
 
-      // Check if rotation is needed before writing
-      if (rotationConfig != null) {
-        _checkRotation(record);
+        // Check if rotation is needed before writing.
+        // Rotation flushes and reopens the file internally.
+        // Skip rotation when an async flush is in progress to avoid
+        // closing _file while _flushBufferAsync is writing to it.
+        if (rotationConfig != null && _pendingFlush == null) {
+          _checkRotation(record);
+        }
+
+        // Format and write the record
+        final line = _formatRecord(record);
+        final bytes = encoding.encode('$line${formatter.recordSeparator}');
+
+        _file!.writeFromSync(bytes);
+        _currentFileSize = _currentFileSize + bytes.length;
       }
 
-      // Format and write the record
-      final line = _formatRecord(record);
-      final bytes = encoding.encode('$line${formatter.recordSeparator}');
-
-      _file!.writeFromSync(bytes);
       _file!.flushSync();
-      _currentFileSize = _currentFileSize + bytes.length;
     } catch (e, stackTrace) {
-      _handleError(e, stackTrace, record);
+      _handleError(e, stackTrace, records.lastOrNull);
     }
   }
 
@@ -357,9 +401,13 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
     // Write errors synchronously - they need to be visible immediately,
     // especially if the app is about to crash
     if (record.level.severity >= ChirpLogLevel.error.severity) {
-      // Flush buffered records first to maintain chronological order
-      _flushBufferSync();
-      _writeSync(record);
+      // Flush buffered records first to maintain chronological order, then
+      // write the error record — all in a single batch with one flush.
+      final batch = [...?_buffer, record];
+      _flushTimer?.cancel();
+      _flushTimer = null;
+      _buffer = [];
+      _writeSync(batch);
       return;
     }
 
@@ -370,25 +418,6 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
     // Timer fires after flushInterval, flushes all accumulated records.
     // Next write will start a new timer.
     _flushTimer ??= Timer(flushInterval, _flushBuffer);
-  }
-
-  /// Flushes the buffer to disk synchronously.
-  ///
-  /// Used when an error-level log needs to be written immediately,
-  /// ensuring buffered records are written first to maintain order.
-  void _flushBufferSync() {
-    // Cancel pending timer since we're flushing now
-    _flushTimer?.cancel();
-    _flushTimer = null;
-
-    if (_buffer == null || _buffer!.isEmpty) return;
-
-    final recordsToFlush = _buffer!;
-    _buffer = [];
-
-    for (final record in recordsToFlush) {
-      _writeSync(record);
-    }
   }
 
   /// Flushes the buffer to disk asynchronously.
@@ -404,26 +433,39 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
     // Run async I/O without blocking the caller
     _pendingFlush = _flushBufferAsync(recordsToFlush).whenComplete(() {
       _pendingFlush = null;
+      // Restart timer if new records arrived during the async flush.
+      // Without this, records sit in _buffer indefinitely because the
+      // one-shot timer already fired and no new timer was started.
+      if (_buffer != null && _buffer!.isNotEmpty && _flushTimer == null) {
+        _flushTimer = Timer(flushInterval, _flushBuffer);
+      }
     });
   }
 
   /// Async implementation of buffer flushing.
   ///
-  /// Formats all buffered records into a single byte buffer and writes the
-  /// batch in one synchronous call, minimising the number of syscalls.
+  /// Formats records into byte batches and writes them asynchronously.
+  /// When rotation occurs mid-batch, the accumulated pre-rotation bytes are
+  /// flushed to the current file before rotating so they don't end up in
+  /// the wrong file.
   Future<void> _flushBufferAsync(List<LogRecord> records) async {
     try {
       _ensureOpen();
 
       final batch = BytesBuilder(copy: false);
 
-      for (final record in records.toList()) {
+      for (final record in records) {
         // Initialize last rotation check on first write
         _lastRotationCheck ??= record.timestamp;
 
-        // Check if rotation is needed before writing
-        if (rotationConfig != null) {
-          _checkRotation(record);
+        // Flush the pre-rotation batch before rotating so records land in
+        // the correct file.
+        if (_needsRotation(record)) {
+          if (batch.isNotEmpty) {
+            await _file!.writeFrom(batch.takeBytes());
+            await _file!.flush();
+          }
+          _rotate(record);
         }
 
         // Format and write the record
@@ -433,8 +475,10 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
         _currentFileSize = _currentFileSize + bytes.length;
       }
 
-      await _file!.writeFrom(batch.takeBytes());
-      await _file!.flush();
+      if (batch.isNotEmpty) {
+        await _file!.writeFrom(batch.takeBytes());
+        await _file!.flush();
+      }
     } catch (e, stackTrace) {
       // Report error for the batch (no specific record)
       _handleError(e, stackTrace, null);
@@ -453,24 +497,30 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
     return buffer.toString();
   }
 
-  /// Checks if rotation is needed and performs it if so.
-  void _checkRotation(LogRecord record) {
-    final config = rotationConfig!;
+  /// Returns `true` when the current file should be rotated before writing
+  /// [record], based on size and/or time thresholds.
+  bool _needsRotation(LogRecord record) {
+    final config = rotationConfig;
+    if (config == null) return false;
+
     final timestamp = record.timestamp;
-    var shouldRotate = false;
 
     // Check size-based rotation
     if (config.maxFileSize != null && _currentFileSize >= config.maxFileSize!) {
-      shouldRotate = true;
+      return true;
     }
 
     // Check time-based rotation
     if (config.rotationInterval != null && _lastRotationCheck != null) {
-      shouldRotate = shouldRotate ||
-          _shouldRotateByTime(timestamp, config.rotationInterval!);
+      return _shouldRotateByTime(timestamp, config.rotationInterval!);
     }
 
-    if (shouldRotate) {
+    return false;
+  }
+
+  /// Checks if rotation is needed and performs it if so.
+  void _checkRotation(LogRecord record) {
+    if (_needsRotation(record)) {
       _rotate(record);
     }
   }
@@ -655,7 +705,9 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   ///
   /// Call this to ensure all logged data is persisted.
   @override
-  Future<void> flush() async {
+  Future<void> flush() => _fileLock.synchronized(_flushInternal);
+
+  Future<void> _flushInternal() async {
     _resolveBaseFilePath();
     if (_baseFilePathFuture != null) {
       await _baseFilePathFuture;
@@ -666,6 +718,8 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
 
     switch (flushStrategy) {
       case FlushStrategy.synchronous:
+        // Drain records that arrived while the lock was held.
+        _drainPendingRecords();
         _file?.flushSync();
       case FlushStrategy.buffered:
         // Cancel the periodic timer
@@ -675,7 +729,10 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
         if (_pendingFlush != null) {
           await _pendingFlush;
         }
-        // Flush remaining buffer
+        // Drain records that arrived while the lock was held. In buffered
+        // mode this adds them to _buffer via _writeBuffered.
+        _drainPendingRecords();
+        // Flush remaining buffer (includes any just-drained records)
         if (_buffer != null && _buffer!.isNotEmpty) {
           final recordsToFlush = _buffer!;
           _buffer = [];
@@ -689,7 +746,9 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   ///
   /// Always call this when done logging to ensure data is flushed.
   @override
-  Future<void> close() async {
+  Future<void> close() => _fileLock.synchronized(_closeInternal);
+
+  Future<void> _closeInternal() async {
     _resolveBaseFilePath();
     if (_baseFilePathFuture != null) {
       await _baseFilePathFuture;
@@ -700,6 +759,8 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
 
     switch (flushStrategy) {
       case FlushStrategy.synchronous:
+        // Drain records that arrived while the lock was held.
+        _drainPendingRecords();
         _file?.flushSync();
         _file?.closeSync();
         _file = null;
@@ -711,7 +772,9 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
         if (_pendingFlush != null) {
           await _pendingFlush;
         }
-        // Flush remaining buffer
+        // Drain records that arrived while the lock was held.
+        _drainPendingRecords();
+        // Flush remaining buffer (includes any just-drained records)
         if (_buffer != null && _buffer!.isNotEmpty) {
           final recordsToFlush = _buffer!;
           _buffer = [];
@@ -724,61 +787,78 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
 
     // Wait for any pending compressions to complete
     if (_pendingCompressions.isNotEmpty) {
-      await Future.wait(_pendingCompressions);
+      await Future.wait(List.of(_pendingCompressions));
     }
   }
 
   /// Forces an immediate rotation regardless of size/time thresholds.
   ///
   /// Useful for log rotation triggered by external events (e.g., SIGHUP).
+  /// Flushes all buffered records to the current file before rotating so
+  /// they end up in the correct (pre-rotation) file.
   @override
-  Future<void> forceRotate() async {
-    if (_file != null) {
-      _rotate(null);
-    }
+  Future<void> forceRotate() {
+    return _fileLock.synchronized(() async {
+      // Wait for in-flight async flush to complete so we don't close
+      // _file while _flushBufferAsync is writing to it.
+      if (_pendingFlush != null) {
+        await _pendingFlush;
+      }
+
+      // Flush all pending data to the current file before rotating.
+      _flushTimer?.cancel();
+      _flushTimer = null;
+      _drainPendingRecords();
+      if (_buffer != null && _buffer!.isNotEmpty) {
+        final recordsToFlush = _buffer!;
+        _buffer = [];
+        _writeSync(recordsToFlush);
+      }
+
+      if (_file != null) {
+        _rotate(null);
+      }
+    });
   }
 
   @override
   Future<void> clearLogs() async {
-    // Nothing to clear if path hasn't been resolved yet.
-    if (_baseFilePath == null) return;
-
-    // Flush and close synchronously to avoid async gaps where write() could
-    // reopen the file between close and delete. write() is synchronous and
-    // cannot await an async lock, so we must avoid yielding here.
-    _flushTimer?.cancel();
-    _flushTimer = null;
-    _flushBufferSync();
-    _file?.flushSync();
-    _file?.closeSync();
-    _file = null;
-    _currentFileSize = 0;
-
-    // Delete all files synchronously — no async gap between close and delete.
-    _deleteAllLogFiles();
-
-    // Wait for pending compressions that may still be writing .gz files in
-    // background isolates, then clean up any files they produced.
-    if (_pendingCompressions.isNotEmpty) {
-      await Future.wait(_pendingCompressions);
-      _deleteAllLogFiles();
-    }
-  }
-
-  /// Deletes the current log file and all rotated log files.
-  void _deleteAllLogFiles() {
-    final currentFile = File(_baseFilePath!);
-    if (currentFile.existsSync()) {
-      currentFile.deleteSync();
-    }
-
-    for (final entry in _getRotatedFiles()) {
-      try {
-        File(entry.path).deleteSync();
-      } catch (e, stackTrace) {
-        _handleError(e, stackTrace, null);
+    await _fileLock.synchronized(() async {
+      // Wait for the base path to be resolved. Users may call clearLogs() at
+      // app start before any write, when the async provider hasn't resolved.
+      _resolveBaseFilePath();
+      if (_baseFilePathFuture != null) {
+        await _baseFilePathFuture;
       }
-    }
+      if (_baseFilePath == null) return;
+
+      // Drop any records that were buffered before the clear.
+      _pendingRecords.clear();
+
+      // Flush and close the current file handle.
+      await _closeInternal();
+
+      // Wait for pending compressions that may still be writing .gz files
+      // in background isolates.
+      if (_pendingCompressions.isNotEmpty) {
+        await Future.wait(List.of(_pendingCompressions));
+      }
+
+      // Delete the current log file.
+      final currentFile = File(_baseFilePath!);
+      if (currentFile.existsSync()) {
+        currentFile.deleteSync();
+      }
+
+      // Delete all rotated log files (including .gz).
+      for (final entry in _getRotatedFiles()) {
+        try {
+          File(entry.path).deleteSync();
+        } catch (e, stackTrace) {
+          _handleError(e, stackTrace, null);
+        }
+      }
+    });
   }
 }
 
