@@ -52,6 +52,12 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   /// Records written before the base path is resolved.
   final List<LogRecord> _pendingRecords = [];
 
+  /// Error from a failed async path resolution.
+  ///
+  /// When set, every subsequent [write] call throws this error
+  /// synchronously so the caller knows the writer is broken.
+  (Object, StackTrace)? _baseFilePathError;
+
   /// Base path for log files.
   ///
   /// This is the path to the current log file. Rotated files are created
@@ -182,16 +188,27 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
 
       if (result is Future<String>) {
         _baseFilePathFuture = result.then((path) {
+          try {
+            _validateBaseFilePath(path);
+          } catch (e, stackTrace) {
+            _baseFilePathError = (e, stackTrace);
+            _handleError(e, stackTrace, null);
+            return path;
+          }
           _baseFilePath = path;
           _drainPendingRecords();
           return path;
         }, onError: (Object error, StackTrace stackTrace) {
+          _baseFilePathError = (error, stackTrace);
           _handleError(error, stackTrace, null);
-          throw error;
+          // Return normally so the future doesn't stay rejected.
+          // The stored error is thrown synchronously on every subsequent write.
+          return '';
         });
         return false;
       }
 
+      _validateBaseFilePath(result);
       _baseFilePath = result;
       _baseFilePathFuture = Future<String>.value(result);
       _drainPendingRecords();
@@ -199,6 +216,26 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
     } catch (e, stackTrace) {
       _handleError(e, stackTrace, null);
       return false;
+    }
+  }
+
+  /// Validates that [path] points to a file, not a directory.
+  void _validateBaseFilePath(String path) {
+    if (path.endsWith('/') || path.endsWith(r'\')) {
+      throw ArgumentError.value(
+        path,
+        'baseFilePathProvider',
+        'must return a file path, not a directory. '
+            'Example: "/var/log/app.log" instead of "/var/log/"',
+      );
+    }
+    if (Directory(path).existsSync()) {
+      throw ArgumentError.value(
+        path,
+        'baseFilePathProvider',
+        'path "$path" is an existing directory, not a file. '
+            'Provide a file path like "${path}app.log"',
+      );
     }
   }
 
@@ -246,6 +283,10 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
 
   @override
   void write(LogRecord record) {
+    if (_baseFilePathError case (final error, final stackTrace)) {
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+
     if (_baseFilePath == null) {
       // If the provider is synchronous, resolve immediately and proceed with
       // the normal write behavior.

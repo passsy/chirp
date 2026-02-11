@@ -1851,6 +1851,225 @@ void main() {
     expect(fn2, isNotNull);
   });
 
+  group('baseFilePathProvider validation', () {
+    test('throws when sync provider returns path ending with /', () {
+      final tempDir = createTempDir();
+      Object? capturedError;
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => '${tempDir.path}/logs/',
+        onError: (error, _, __) {
+          capturedError = error;
+        },
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'test'));
+
+      expect(capturedError, isA<ArgumentError>());
+      // No file or directory should have been created
+      expect(
+        Directory('${tempDir.path}/logs').existsSync(),
+        isFalse,
+        reason: 'No directory should be created when path is invalid',
+      );
+    });
+
+    test('error message for trailing slash mentions file path', () {
+      final tempDir = createTempDir();
+      Object? capturedError;
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => '${tempDir.path}/logs/',
+        onError: (error, _, __) {
+          capturedError = error;
+        },
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'test'));
+
+      expect(capturedError, isA<ArgumentError>());
+      expect(
+        capturedError.toString(),
+        contains('must return a file path, not a directory'),
+      );
+    });
+
+    test('throws when sync provider returns path ending with backslash', () {
+      Object? capturedError;
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => r'C:\logs\',
+        onError: (error, _, __) {
+          capturedError = error;
+        },
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'test'));
+
+      expect(capturedError, isA<ArgumentError>());
+      expect(
+        capturedError.toString(),
+        contains('must return a file path, not a directory'),
+      );
+    });
+
+    test('throws when sync provider returns path of existing directory', () {
+      final tempDir = createTempDir();
+      final dirPath = '${tempDir.path}/existingdir';
+      Directory(dirPath).createSync();
+
+      Object? capturedError;
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => dirPath,
+        onError: (error, _, __) {
+          capturedError = error;
+        },
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'test'));
+
+      expect(capturedError, isA<ArgumentError>());
+      expect(
+        capturedError.toString(),
+        contains('is an existing directory, not a file'),
+      );
+    });
+
+    test('throws when async provider returns path ending with /', () async {
+      final tempDir = createTempDir();
+      Object? capturedError;
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => Future.value('${tempDir.path}/logs/'),
+        onError: (error, _, __) {
+          capturedError = error;
+        },
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'test'));
+      // Wait for async path resolution
+      await Future<void>.delayed(Duration.zero);
+
+      expect(capturedError, isA<ArgumentError>());
+      expect(
+        capturedError.toString(),
+        contains('must return a file path, not a directory'),
+      );
+    });
+
+    test('throws when async provider returns existing directory', () async {
+      final tempDir = createTempDir();
+      final dirPath = '${tempDir.path}/existingdir';
+      Directory(dirPath).createSync();
+
+      Object? capturedError;
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => Future.value(dirPath),
+        onError: (error, _, __) {
+          capturedError = error;
+        },
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'test'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(capturedError, isA<ArgumentError>());
+      expect(
+        capturedError.toString(),
+        contains('is an existing directory, not a file'),
+      );
+    });
+
+    test('async validation error is thrown on every subsequent write',
+        () async {
+      final tempDir = createTempDir();
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => Future.value('${tempDir.path}/logs/'),
+        onError: (_, __, ___) {},
+      );
+      addTearDown(() => writer.close());
+
+      // First write buffers while async resolves
+      writer.write(testRecord(message: 'first'));
+      await Future<void>.delayed(Duration.zero);
+
+      // Every subsequent write throws the original error synchronously
+      expect(
+        () => writer.write(testRecord(message: 'second')),
+        throwsArgumentError,
+      );
+      expect(
+        () => writer.write(testRecord(message: 'third')),
+        throwsArgumentError,
+      );
+    });
+
+    test('async provider failure is thrown on every subsequent write',
+        () async {
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () =>
+            Future<String>.error(StateError('disk not found')),
+        onError: (_, __, ___) {},
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'first'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        () => writer.write(testRecord(message: 'second')),
+        throwsStateError,
+      );
+      expect(
+        () => writer.write(testRecord(message: 'third')),
+        throwsStateError,
+      );
+    });
+
+    test('accepts file path without extension', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/logfile';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'no extension'));
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('no extension'));
+    });
+
+    test('accepts path where parent directory does not exist yet', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/nonexistent/deep/app.log';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'deep path'));
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('deep path'));
+    });
+
+    test('rejects path that is just a slash', () {
+      Object? capturedError;
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => '/',
+        onError: (error, _, __) {
+          capturedError = error;
+        },
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'test'));
+
+      expect(capturedError, isA<ArgumentError>());
+    });
+  });
+
   group('FlushStrategy default', () {
     test('defaults to synchronous in debug mode (asserts enabled)', () {
       final tempDir = createTempDir();
