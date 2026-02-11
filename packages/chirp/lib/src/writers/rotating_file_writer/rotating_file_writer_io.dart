@@ -226,7 +226,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
         path,
         'baseFilePathProvider',
         'must return a file path, not a directory. '
-        'Example: "/var/log/app.log" instead of "/var/log/"',
+            'Example: "/var/log/app.log" instead of "/var/log/"',
       );
     }
     if (Directory(path).existsSync()) {
@@ -234,7 +234,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
         path,
         'baseFilePathProvider',
         'path "$path" is an existing directory, not a file. '
-        'Provide a file path like "${path}app.log"',
+            'Provide a file path like "${path}app.log"',
       );
     }
   }

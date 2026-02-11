@@ -1940,7 +1940,7 @@ void main() {
       final tempDir = createTempDir();
       Object? capturedError;
       final writer = RotatingFileWriter(
-        baseFilePathProvider: () async => '${tempDir.path}/logs/',
+        baseFilePathProvider: () => Future.value('${tempDir.path}/logs/'),
         onError: (error, _, __) {
           capturedError = error;
         },
@@ -1965,7 +1965,7 @@ void main() {
 
       Object? capturedError;
       final writer = RotatingFileWriter(
-        baseFilePathProvider: () async => dirPath,
+        baseFilePathProvider: () => Future.value(dirPath),
         onError: (error, _, __) {
           capturedError = error;
         },
@@ -1982,10 +1982,11 @@ void main() {
       );
     });
 
-    test('async validation error is thrown on every subsequent write', () async {
+    test('async validation error is thrown on every subsequent write',
+        () async {
       final tempDir = createTempDir();
       final writer = RotatingFileWriter(
-        baseFilePathProvider: () async => '${tempDir.path}/logs/',
+        baseFilePathProvider: () => Future.value('${tempDir.path}/logs/'),
         onError: (_, __, ___) {},
       );
       addTearDown(() => writer.close());
@@ -2005,9 +2006,11 @@ void main() {
       );
     });
 
-    test('async provider failure is thrown on every subsequent write', () async {
+    test('async provider failure is thrown on every subsequent write',
+        () async {
       final writer = RotatingFileWriter(
-        baseFilePathProvider: () async => throw StateError('disk not found'),
+        baseFilePathProvider: () =>
+            Future<String>.error(StateError('disk not found')),
         onError: (_, __, ___) {},
       );
       addTearDown(() => writer.close());
