@@ -119,6 +119,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   @override
   late final RotatingFileReader reader = RotatingFileReader(
     baseFilePathProvider: _baseFilePathProvider,
+    recordSeparator: formatter.recordSeparator,
   );
 
   /// Current file handle for synchronous writes.
@@ -279,7 +280,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
 
       // Format and write the record
       final line = _formatRecord(record);
-      final bytes = encoding.encode('$line\n');
+      final bytes = encoding.encode('$line${formatter.recordSeparator}');
 
       _file!.writeFromSync(bytes);
       _file!.flushSync();
@@ -370,7 +371,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
 
         // Format and write the record
         final line = _formatRecord(record);
-        final bytes = encoding.encode('$line\n');
+        final bytes = encoding.encode('$line${formatter.recordSeparator}');
         batch.add(bytes);
         _currentFileSize = _currentFileSize + bytes.length;
       }

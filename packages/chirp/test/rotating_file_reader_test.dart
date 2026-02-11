@@ -8,6 +8,8 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub
     as stub_impl;
 import 'package:test/test.dart';
 
+import 'test_log_record.dart';
+
 void main() {
   /// Creates a temp directory and registers cleanup.
   Directory createTempDir() {
@@ -264,8 +266,8 @@ void main() {
     });
   });
 
-  group('read with lastLines', () {
-    test('returns last N lines across multiple files', () async {
+  group('read with last', () {
+    test('returns last N records across multiple files', () async {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
@@ -278,81 +280,83 @@ void main() {
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final lines = await reader.read(lastLines: 3).toList();
+      final lines = await reader.read(last: 3).toList();
       expect(lines, ['a3', 'c1', 'c2']);
     });
 
-    test('returns all lines when lastLines exceeds total', () async {
+    test('returns all records when last exceeds total', () async {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('one\ntwo\n');
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final lines = await reader.read(lastLines: 100).toList();
+      final lines = await reader.read(last: 100).toList();
       expect(lines, ['one', 'two']);
     });
 
-    test('returns exactly N lines when lastLines equals total', () async {
+    test('returns exactly N records when last equals total', () async {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('one\ntwo\nthree\n');
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final lines = await reader.read(lastLines: 3).toList();
+      final lines = await reader.read(last: 3).toList();
       expect(lines, ['one', 'two', 'three']);
     });
 
-    test('returns single last line', () async {
+    test('returns single last record', () async {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('first\nsecond\nthird\n');
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final lines = await reader.read(lastLines: 1).toList();
+      final lines = await reader.read(last: 1).toList();
       expect(lines, ['third']);
     });
 
-    test('lastLines: 0 returns nothing', () async {
+    test('last: 0 returns nothing', () async {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('first\nsecond\n');
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final lines = await reader.read(lastLines: 0).toList();
+      final lines = await reader.read(last: 0).toList();
       expect(lines, isEmpty);
     });
 
-    test('lastLines with no files returns empty', () async {
+    test('last with no files returns empty', () async {
       final dir = createTempDir();
       final base = File('${dir.path}/app.log');
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final lines = await reader.read(lastLines: 5).toList();
+      final lines = await reader.read(last: 5).toList();
       expect(lines, isEmpty);
     });
 
-    test('lastLines spanning compressed and plain files', () async {
+    test('last spanning compressed and plain files', () async {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('new1\nnew2\n');
 
       final gzFile = File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
-      gzFile.writeAsBytesSync(gzip.encode(utf8.encode('old1\nold2\nold3\n')));
+      gzFile.writeAsBytesSync(
+        gzip.encode(utf8.encode('old1\nold2\nold3\n')),
+      );
 
       gzFile.setLastModifiedSync(DateTime(2024, 1, 1, 10));
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final lines = await reader.read(lastLines: 4).toList();
+      final lines = await reader.read(last: 4).toList();
       expect(lines, ['old2', 'old3', 'new1', 'new2']);
     });
 
-    test('lastLines with empty files in between', () async {
+    test('last with empty files in between', () async {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
@@ -369,7 +373,7 @@ void main() {
       base.setLastModifiedSync(DateTime(2024, 1, 3, 10));
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final lines = await reader.read(lastLines: 2).toList();
+      final lines = await reader.read(last: 2).toList();
       expect(lines, ['old', 'current']);
     });
   });
@@ -383,7 +387,7 @@ void main() {
 
       final received = <String>[];
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final sub = reader.tail(lastLines: 10).listen(received.add);
+      final sub = reader.tail(last: 10).listen(received.add);
       addTearDown(() => sub.cancel());
 
       // Append new content.
@@ -408,7 +412,7 @@ void main() {
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final tailFuture = reader.tail(lastLines: 2).take(3).toList();
+      final tailFuture = reader.tail(last: 2).take(3).toList();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
       base.writeAsStringSync('appended\n', mode: FileMode.append, flush: true);
@@ -428,7 +432,7 @@ void main() {
         baseFilePathProvider: () => base.path,
         pollInterval: pollInterval,
       );
-      final sub = reader.tail(lastLines: 0).listen(received.add);
+      final sub = reader.tail(last: 0).listen(received.add);
       addTearDown(() => sub.cancel());
 
       // Truncate file to simulate rotation/truncation.
@@ -457,6 +461,162 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
       expect(received, contains('appeared'));
+    });
+  });
+
+  group('recordSeparator', () {
+    test('write and read multi-line record round-trips as single record',
+        () async {
+      final dir = createTempDir();
+      final logPath = '${dir.path}/app.log';
+
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+      );
+      addTearDown(() => writer.close());
+
+      // Write a record that contains embedded newlines (like a stack trace).
+      final record = testRecord(
+        message: 'Something failed',
+        level: ChirpLogLevel.error,
+        error: Exception('boom'),
+        stackTrace: StackTrace.current,
+      );
+      writer.write(record);
+      await writer.flush();
+
+      // Read back through the writer's reader (uses matching separator).
+      final records = await writer.reader.read().toList();
+      expect(records, hasLength(1),
+          reason: 'Multi-line record should be read back as a single entry');
+      expect(records.first, contains('Something failed'));
+      expect(records.first, contains('boom'));
+      expect(records.first, contains('rotating_file_reader_test.dart'),
+          reason: 'Stack trace should be part of the same record');
+    });
+
+    test('tail emits complete multi-line records', () async {
+      final dir = createTempDir();
+      final logPath = '${dir.path}/app.log';
+
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+      );
+      addTearDown(() => writer.close());
+
+      // Write a multi-line record (error with stack trace).
+      writer.write(testRecord(
+        message: 'Error with trace',
+        level: ChirpLogLevel.error,
+        error: Exception('fail'),
+        stackTrace: StackTrace.current,
+      ));
+      await writer.flush();
+
+      // Take exactly 1 record from tail — completes once the record arrives.
+      final records = await writer.reader.tail().take(1).toList();
+
+      expect(records, hasLength(1),
+          reason: 'Should emit exactly one record for a multi-line entry');
+      expect(records.first, contains('Error with trace'));
+      expect(records.first, contains('fail'));
+    });
+
+    test('backward compat with recordSeparator "\\n" behaves like LineSplitter',
+        () async {
+      final dir = createTempDir();
+      final base = File('${dir.path}/app.log');
+
+      // Write files with plain newline separator (old format).
+      base.writeAsStringSync('line1\nline2\nline3\n');
+
+      final reader = RotatingFileReader(
+        baseFilePathProvider: () => base.path,
+        // ignore: avoid_redundant_argument_values
+        recordSeparator: '\n',
+      );
+      final lines = await reader.read().toList();
+      expect(lines, ['line1', 'line2', 'line3']);
+    });
+
+    test('read(last: N) returns N multi-line records, not N lines', () async {
+      final dir = createTempDir();
+      final logPath = '${dir.path}/app.log';
+
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+      );
+      addTearDown(() => writer.close());
+
+      // Write 5 multi-line records (each contains embedded newlines).
+      for (var i = 0; i < 5; i++) {
+        writer.write(testRecord(
+          message: 'Heartbeat #$i\nAll systems operational.',
+        ));
+      }
+      await writer.flush();
+
+      // Ask for the last 3 records.
+      final records = await writer.reader.read(last: 3).toList();
+      expect(records, hasLength(3),
+          reason: 'last: 3 should return 3 records, not 3 lines');
+      for (var i = 0; i < 3; i++) {
+        expect(records[i], contains('Heartbeat #${i + 2}'));
+        expect(records[i], contains('All systems operational.'),
+            reason: 'Each record should contain the full multi-line message');
+      }
+    });
+
+    test('tail(last: N) returns N multi-line records, not N lines', () async {
+      final dir = createTempDir();
+      final logPath = '${dir.path}/app.log';
+
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+      );
+      addTearDown(() => writer.close());
+
+      // Write 5 multi-line records.
+      for (var i = 0; i < 5; i++) {
+        writer.write(testRecord(
+          message: 'Heartbeat #$i\nAll systems operational.',
+        ));
+      }
+      await writer.flush();
+
+      // Tail the last 3 records, then take only those 3 (don't wait for new).
+      final records = await writer.reader.tail(last: 3).take(3).toList();
+      expect(records, hasLength(3),
+          reason: 'last: 3 should return 3 records, not 3 lines');
+      for (var i = 0; i < 3; i++) {
+        expect(records[i], contains('Heartbeat #${i + 2}'));
+        expect(records[i], contains('All systems operational.'),
+            reason: 'Each record should contain the full multi-line message');
+      }
+    });
+
+    test('JsonLogFormatter uses newline separator (no \\x1E)', () async {
+      final dir = createTempDir();
+      final logPath = '${dir.path}/app.log';
+
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        formatter: const JsonLogFormatter(),
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'Hello'));
+      writer.write(testRecord(message: 'World'));
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      // JsonLogFormatter inherits default '\n' separator, no \x1E
+      expect(content, isNot(contains('\x1E')));
+      // Each line ends with \n
+      final lines = content.split('\n')..removeWhere((s) => s.isEmpty);
+      expect(lines, hasLength(2));
+      expect(jsonDecode(lines[0]), containsPair('message', 'Hello'));
+      expect(jsonDecode(lines[1]), containsPair('message', 'World'));
     });
   });
 }

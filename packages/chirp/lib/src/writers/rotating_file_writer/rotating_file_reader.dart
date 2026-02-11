@@ -19,7 +19,7 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub
 ///     return '${dir.path}/logs/app.log';
 ///   },
 /// );
-/// final lines = await reader.read(lastLines: 100).toList();
+/// final lines = await reader.read(last: 100).toList();
 /// ```
 ///
 /// For **temporary logs** (iOS: `Library/Caches/`,
@@ -37,10 +37,12 @@ abstract class RotatingFileReader {
   factory RotatingFileReader({
     required FutureOr<String> Function() baseFilePathProvider,
     Duration? pollInterval,
+    String recordSeparator = '\n',
   }) {
     return platform.createRotatingFileReader(
       baseFilePathProvider: baseFilePathProvider,
       pollInterval: pollInterval,
+      recordSeparator: recordSeparator,
     );
   }
 
@@ -53,24 +55,24 @@ abstract class RotatingFileReader {
   /// that is still being written to.
   Future<List<String>> listFiles({bool includeCurrent = true});
 
-  /// Reads all log lines from rotated and current files, oldest to newest.
+  /// Reads all log records from rotated and current files, oldest to newest.
   ///
   /// Returns a finite stream that completes once all files are read.
-  /// Set [lastLines] to only return the last N lines across all files.
+  /// Set [last] to only return the last N records across all files.
   Stream<String> read({
-    int? lastLines,
+    int? last,
     Encoding encoding = utf8,
   });
 
   /// Tails logs (optionally with an initial snapshot).
   ///
-  /// If [lastLines] is provided, it first emits the last N lines (same semantics
-  /// as [read]) and then continues streaming newly appended lines.
+  /// If [last] is provided, it first emits the last N records (same semantics
+  /// as [read]) and then continues streaming newly appended records.
   ///
   /// The [pollInterval] passed to the factory controls how often the reader
   /// checks for changes when file system events are missing or unreliable.
   Stream<String> tail({
-    int? lastLines,
+    int? last,
     Encoding encoding = utf8,
   });
 }

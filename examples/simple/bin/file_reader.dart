@@ -10,8 +10,8 @@ import 'dart:io';
 import 'package:chirp/chirp.dart';
 
 void main() async {
-  final logDir = Directory.systemTemp.createTempSync('chirp_tail_example_');
-  final logPath = '${logDir.path}/app.log';
+  final logDir = '${Directory.systemTemp.absolute.path}/chirp_reader_example';
+  final logPath = '${logDir}/app.log';
 
   print('Log file: $logPath\n');
 
@@ -20,8 +20,8 @@ void main() async {
     baseFilePathProvider: () => logPath,
     formatter: const SimpleFileFormatter(),
     rotationConfig: FileRotationConfig.size(
-      maxSize: 500, // tiny – rotates quickly for demo
-      maxFiles: 3,
+      maxSize: 1000, // tiny – rotates quickly for demo
+      maxFiles: 5,
     ),
   );
 
@@ -29,14 +29,14 @@ void main() async {
   final logger = ChirpLogger(name: 'HeartbeatService').addWriter(writer);
 
   // Reader: tail the same file, printing every line to stdout
-  final reader = RotatingFileReader(baseFilePathProvider: () => logPath);
-  final subscription = reader.tail(lastLines: 20).listen(stdout.writeln);
+  final subscription = writer.reader.tail(last: 19).listen(stdout.writeln);
 
   // Write a log line every second
   var counter = 0;
   final timer = Timer.periodic(const Duration(milliseconds: 300), (_) {
     counter++;
-    logger.info('Heartbeat #$counter');
+    logger.info('Heartbeat #$counter\n'
+        '${counter % 3 == 0 ? 'All systems operational.' : 'Minor issue detected, investigating.'}');
   });
 
   // Run until Ctrl-C
@@ -49,5 +49,5 @@ void main() async {
   timer.cancel();
   await subscription.cancel();
   await writer.close();
-  logDir.deleteSync(recursive: true);
+  Directory(logDir).deleteSync(recursive: true);
 }
