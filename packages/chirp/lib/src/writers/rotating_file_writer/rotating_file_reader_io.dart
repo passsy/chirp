@@ -91,7 +91,8 @@ class RotatingFileReaderIo implements RotatingFileReader {
       for (final path in files.reversed) {
         if (remaining <= 0) break;
 
-        final lines = await _readAllLinesFromFile(path, encoding, _recordSeparator);
+        final lines =
+            await _readAllLinesFromFile(path, encoding, _recordSeparator);
         if (lines.isEmpty) continue;
 
         if (lines.length > remaining) {
@@ -315,24 +316,23 @@ class _RecordSplitter extends StreamTransformerBase<String, String> {
   @override
   Stream<String> bind(Stream<String> stream) {
     var partial = '';
-    return stream
-        .transform(
-          StreamTransformer<String, String>.fromHandlers(
-            handleData: (chunk, sink) {
-              final text = partial + chunk;
-              final parts = text.split(_separator);
-              partial = parts.removeLast();
-              for (final part in parts) {
-                sink.add(part);
-              }
-            },
-            handleDone: (sink) {
-              if (partial.isNotEmpty) {
-                sink.add(partial);
-              }
-              sink.close();
-            },
-          ),
-        );
+    return stream.transform(
+      StreamTransformer<String, String>.fromHandlers(
+        handleData: (chunk, sink) {
+          final text = partial + chunk;
+          final parts = text.split(_separator);
+          partial = parts.removeLast();
+          for (final part in parts) {
+            sink.add(part);
+          }
+        },
+        handleDone: (sink) {
+          if (partial.isNotEmpty) {
+            sink.add(partial);
+          }
+          sink.close();
+        },
+      ),
+    );
   }
 }

@@ -532,6 +532,7 @@ void main() {
 
       final reader = RotatingFileReader(
         baseFilePathProvider: () => base.path,
+        // ignore: avoid_redundant_argument_values
         recordSeparator: '\n',
       );
       final lines = await reader.read().toList();
@@ -551,7 +552,6 @@ void main() {
       for (var i = 0; i < 5; i++) {
         writer.write(testRecord(
           message: 'Heartbeat #$i\nAll systems operational.',
-          level: ChirpLogLevel.info,
         ));
       }
       await writer.flush();
@@ -580,7 +580,6 @@ void main() {
       for (var i = 0; i < 5; i++) {
         writer.write(testRecord(
           message: 'Heartbeat #$i\nAll systems operational.',
-          level: ChirpLogLevel.info,
         ));
       }
       await writer.flush();
