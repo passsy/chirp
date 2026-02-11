@@ -13,6 +13,7 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.d
 class RotatingFileReaderIo implements RotatingFileReader {
   final FutureOr<String> Function() _baseFilePathProvider;
   final Duration _pollInterval;
+  final String _recordSeparator;
   String? _resolvedBaseFilePath;
 
   @override
@@ -31,8 +32,10 @@ class RotatingFileReaderIo implements RotatingFileReader {
   RotatingFileReaderIo({
     required FutureOr<String> Function() baseFilePathProvider,
     required Duration pollInterval,
+    required String recordSeparator,
   })  : _baseFilePathProvider = baseFilePathProvider,
-        _pollInterval = pollInterval;
+        _pollInterval = pollInterval,
+        _recordSeparator = recordSeparator;
 
   Future<String> _resolveBaseFilePath() async {
     if (_resolvedBaseFilePath != null) return _resolvedBaseFilePath!;
@@ -72,23 +75,23 @@ class RotatingFileReaderIo implements RotatingFileReader {
 
   @override
   Stream<String> read({
-    int? lastLines,
+    int? last,
     Encoding encoding = utf8,
   }) async* {
     final files = await listFiles();
 
-    // When lastLines is requested, we need to materialize to compute the tail.
-    if (lastLines != null) {
-      if (lastLines <= 0) return;
+    // When last is requested, we need to materialize to compute the tail.
+    if (last != null) {
+      if (last <= 0) return;
       if (files.isEmpty) return;
 
-      var remaining = lastLines;
+      var remaining = last;
       final chunks = <List<String>>[];
 
       for (final path in files.reversed) {
         if (remaining <= 0) break;
 
-        final lines = await _readAllLinesFromFile(path, encoding);
+        final lines = await _readAllLinesFromFile(path, encoding, _recordSeparator);
         if (lines.isEmpty) continue;
 
         if (lines.length > remaining) {
@@ -115,22 +118,23 @@ class RotatingFileReaderIo implements RotatingFileReader {
         final bytes = await File(path).readAsBytes();
         final decompressed = gzip.decode(bytes);
         final text = encoding.decode(decompressed);
-        yield* Stream<String>.fromIterable(const LineSplitter().convert(text));
+        final records = _splitRecords(text, _recordSeparator);
+        yield* Stream<String>.fromIterable(records);
       } else {
         yield* File(path)
             .openRead()
             .transform(encoding.decoder)
-            .transform(const LineSplitter());
+            .transform(_RecordSplitter(_recordSeparator));
       }
     }
   }
 
   @override
   Stream<String> tail({
-    int? lastLines,
+    int? last,
     Encoding encoding = utf8,
   }) async* {
-    yield* read(lastLines: lastLines, encoding: encoding);
+    yield* read(last: last, encoding: encoding);
 
     // Follow current file (baseFilePath) for new lines.
     //
@@ -197,10 +201,10 @@ class RotatingFileReaderIo implements RotatingFileReader {
             file.openRead(offset, length).transform(encoding.decoder);
         await for (final chunk in stream) {
           final text = partial + chunk;
-          final lines = text.split('\n');
-          partial = lines.removeLast();
-          for (final line in lines) {
-            controller.add(line);
+          final parts = text.split(_recordSeparator);
+          partial = parts.removeLast();
+          for (final part in parts) {
+            controller.add(part);
           }
         }
 
@@ -259,19 +263,31 @@ bool _statsEqual(FileStat previous, FileStat current) {
 Future<List<String>> _readAllLinesFromFile(
   String path,
   Encoding encoding,
+  String recordSeparator,
 ) async {
   if (path.endsWith('.gz')) {
     final bytes = await File(path).readAsBytes();
     final decompressed = gzip.decode(bytes);
     final text = encoding.decode(decompressed);
-    return const LineSplitter().convert(text);
+    return _splitRecords(text, recordSeparator);
   }
 
   return File(path)
       .openRead()
       .transform(encoding.decoder)
-      .transform(const LineSplitter())
+      .transform(_RecordSplitter(recordSeparator))
       .toList();
+}
+
+/// Splits [text] on [separator], dropping a trailing empty entry.
+List<String> _splitRecords(String text, String separator) {
+  if (text.isEmpty) return [];
+  final parts = text.split(separator);
+  // If the text ends with the separator, split produces a trailing empty string
+  if (parts.isNotEmpty && parts.last.isEmpty) {
+    parts.removeLast();
+  }
+  return parts;
 }
 
 const int _maxUnchangedStats = 5;
@@ -280,9 +296,43 @@ const Duration _defaultPollInterval = Duration(milliseconds: 1000);
 RotatingFileReader createRotatingFileReader({
   required FutureOr<String> Function() baseFilePathProvider,
   Duration? pollInterval,
+  String recordSeparator = '\n',
 }) {
   return RotatingFileReaderIo(
     baseFilePathProvider: baseFilePathProvider,
     pollInterval: pollInterval ?? _defaultPollInterval,
+    recordSeparator: recordSeparator,
   );
+}
+
+/// A [StreamTransformer] that splits a stream of strings on an arbitrary
+/// [separator] string, analogous to [LineSplitter] but for custom delimiters.
+class _RecordSplitter extends StreamTransformerBase<String, String> {
+  final String _separator;
+
+  const _RecordSplitter(this._separator);
+
+  @override
+  Stream<String> bind(Stream<String> stream) {
+    var partial = '';
+    return stream
+        .transform(
+          StreamTransformer<String, String>.fromHandlers(
+            handleData: (chunk, sink) {
+              final text = partial + chunk;
+              final parts = text.split(_separator);
+              partial = parts.removeLast();
+              for (final part in parts) {
+                sink.add(part);
+              }
+            },
+            handleDone: (sink) {
+              if (partial.isNotEmpty) {
+                sink.add(partial);
+              }
+              sink.close();
+            },
+          ),
+        );
+  }
 }

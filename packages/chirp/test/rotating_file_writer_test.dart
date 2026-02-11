@@ -1636,7 +1636,7 @@ void main() {
         expect(content2, contains('Batch 1'));
         expect(content2, contains('Batch 2'));
 
-        writer.close();
+        await writer.close();
         await drainEvent();
       });
     });
@@ -1767,7 +1767,7 @@ void main() {
         writer.write(testRecord(message: 'Message 1'));
 
         // Flush manually before timer fires
-        writer.flush();
+        await writer.flush();
         await drainEvent();
 
         final content = File(logPath).readAsStringSync();
@@ -1781,7 +1781,7 @@ void main() {
         expect(File(logPath).readAsStringSync(), content,
             reason: 'Timer should be cancelled, no duplicate write');
 
-        writer.close();
+        await writer.close();
         await drainEvent();
       });
     });

@@ -48,7 +48,6 @@ Future<void> fakeAsyncWithDrain(
     }
     // Process test continuations and settle any new I/O they start.
     fake.run((_) => fake.flushMicrotasks());
-    await fake.settleIo();
   }
 
   _drainCompleters = null;
@@ -80,7 +79,7 @@ extension on FakeAsync {
   /// triggers the next operation).
   Future<void> settleIo() async {
     for (var i = 0; i < 3; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 1));
       run((_) => flushMicrotasks());
     }
   }

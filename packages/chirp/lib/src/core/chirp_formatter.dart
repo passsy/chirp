@@ -30,6 +30,23 @@ abstract class ChirpFormatter {
   /// which is expensive. Only enable if the formatter displays source locations.
   bool get requiresCallerInfo => false;
 
+  /// Separator written after each formatted record in file output.
+  ///
+  /// Defaults to `'\n'` (one record per line). Formatters that produce
+  /// multi-line output (e.g. stack traces with literal newlines) should
+  /// override this with `'\x1E\n'` so the reader can distinguish record
+  /// boundaries from newlines within a record.
+  ///
+  /// This lives on the formatter (rather than the writer) because the
+  /// formatter knows whether its output can contain embedded newlines.
+  /// Single-line formatters like [JsonLogFormatter] (which escapes `\n`)
+  /// can safely use `'\n'`, while [SimpleFileFormatter] needs `'\x1E\n'`.
+  /// Console writers ignore this property entirely.
+  ///
+  /// Follows the same pattern as Logback's `Layout`, Log4j's `PatternLayout`,
+  /// and Rust's `tracing` — the formatter/layout owns the record terminator.
+  String get recordSeparator => '\n';
+
   /// Formats [record] by writing to [buffer].
   void format(LogRecord record, MessageBuffer buffer);
 }
