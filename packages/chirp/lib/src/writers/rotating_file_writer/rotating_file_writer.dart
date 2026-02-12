@@ -186,12 +186,6 @@ abstract class RotatingFileWriter extends ChirpWriter {
   /// Encoding for writing text to files.
   Encoding get encoding;
 
-  /// Error handler for write failures.
-  ///
-  /// Called when a log record cannot be written due to I/O errors.
-  /// Defaults to [defaultFileWriterErrorHandler] which prints errors.
-  FileWriterErrorHandler? get onError;
-
   /// Mode for how file I/O is performed.
   ///
   /// - [FlushStrategy.synchronous]: Immediate synchronous writes
@@ -262,7 +256,7 @@ typedef FileWriterErrorHandler = void Function(
 
 /// Default error handler that prints errors to stdout.
 ///
-/// This is used when [RotatingFileWriter.onError] is `null`.
+/// This is used when no custom `onError` handler is provided.
 void defaultFileWriterErrorHandler(
   Object error,
   StackTrace stackTrace,
