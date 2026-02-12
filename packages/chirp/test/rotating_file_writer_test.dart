@@ -1935,6 +1935,50 @@ void main() {
         await drainEvent();
       });
     });
+
+    test('error record during async flush preserves chronological order',
+        () async {
+      await fakeAsyncWithDrain((async) async {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+        );
+
+        // Write buffered records
+        writer.write(testRecord(message: 'Buffered 1'));
+        writer.write(testRecord(message: 'Buffered 2'));
+        writer.write(testRecord(message: 'Buffered 3'));
+
+        // Fire the flush timer — starts async write of [Buffered 1, 2, 3].
+        // The async I/O is in-flight but not yet completed.
+        async.elapse(const Duration(seconds: 1));
+
+        // While the async flush is in-flight, write an error record.
+        // This must be written synchronously for crash safety.
+        writer.write(testRecord(
+          message: 'Error during flush',
+          level: ChirpLogLevel.error,
+        ));
+
+        // Let the async flush complete
+        await drainEvent();
+
+        // Close to ensure everything is flushed
+        await writer.close();
+        await drainEvent();
+
+        // All records must be on disk in chronological order
+        final content = File(logPath).readAsStringSync();
+        final lines = content.trim().split('\n');
+        expect(lines.length, 4, reason: 'All 4 records should be on disk');
+        expect(lines[0], contains('Buffered 1'));
+        expect(lines[1], contains('Buffered 2'));
+        expect(lines[2], contains('Buffered 3'));
+        expect(lines[3], contains('Error during flush'));
+      });
+    });
   });
 
   group('pending records during locked operations', () {

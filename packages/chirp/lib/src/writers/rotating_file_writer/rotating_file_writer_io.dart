@@ -395,6 +395,12 @@ class _RecordBuffer {
   /// Used to wait for pending writes before close/flush.
   Future<void>? _pendingFlush;
 
+  /// Records that must be written synchronously as soon as [_pendingFlush]
+  /// completes. Set when an error-level record arrives while an async flush
+  /// is in-flight — we can't call `writeSyncRecords` on a handle that has
+  /// a pending async operation, so we defer until it finishes.
+  List<LogRecord>? _syncFlushAfterPending;
+
   _RecordBuffer({
     required FlushStrategy flushStrategy,
     required Duration flushInterval,
@@ -529,6 +535,11 @@ class _RecordBuffer {
   /// record is encountered, all previously buffered records plus everything
   /// up to and including the error are flushed in a single sync write,
   /// minimizing the number of flushes.
+  ///
+  /// If an async flush is in-flight ([_pendingFlush] is set), the sync
+  /// batch is deferred to [_syncFlushAfterPending] because Dart's
+  /// [RandomAccessFile] does not allow sync writes while an async operation
+  /// is pending on the same handle.
   void _dispatchBuffered(List<LogRecord> records) {
     for (final record in records) {
       if (record.level.severity >= ChirpLogLevel.error.severity) {
@@ -542,11 +553,7 @@ class _RecordBuffer {
       // Non-error record: if we accumulated an error batch, flush it first.
       if (_buffer != null && _buffer!.isNotEmpty &&
           _buffer!.last.level.severity >= ChirpLogLevel.error.severity) {
-        _flushTimer?.cancel();
-        _flushTimer = null;
-        final batch = _buffer!;
-        _buffer = [];
-        _sink!.writeSyncRecords(batch);
+        _syncFlushBuffer();
       }
 
       _buffer ??= [];
@@ -556,11 +563,7 @@ class _RecordBuffer {
     // If the last record(s) were errors, flush immediately.
     if (_buffer != null && _buffer!.isNotEmpty &&
         _buffer!.last.level.severity >= ChirpLogLevel.error.severity) {
-      _flushTimer?.cancel();
-      _flushTimer = null;
-      final batch = _buffer!;
-      _buffer = [];
-      _sink!.writeSyncRecords(batch);
+      _syncFlushBuffer();
       return;
     }
 
@@ -568,6 +571,28 @@ class _RecordBuffer {
     if (_buffer != null && _buffer!.isNotEmpty) {
       _flushTimer ??= Timer(_flushInterval, _flushBuffer);
     }
+  }
+
+  /// Writes all buffered records synchronously.
+  ///
+  /// If an async flush is in-flight, defers the batch to
+  /// [_syncFlushAfterPending] which is drained as soon as the async
+  /// flush completes.
+  void _syncFlushBuffer() {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    final batch = _buffer!;
+    _buffer = [];
+
+    if (_pendingFlush != null) {
+      // Can't write sync while async I/O is pending on the same handle.
+      // Defer until the async flush completes.
+      _syncFlushAfterPending ??= [];
+      _syncFlushAfterPending!.addAll(batch);
+      return;
+    }
+
+    _sink!.writeSyncRecords(batch);
   }
 
   /// Flushes the buffer to disk asynchronously.
@@ -583,6 +608,15 @@ class _RecordBuffer {
     // Run async I/O without blocking the caller
     _pendingFlush = _sink!.writeAsyncRecords(recordsToFlush).whenComplete(() {
       _pendingFlush = null;
+
+      // Drain error records that were deferred because the async flush was
+      // in-flight. Write them synchronously now that the handle is free.
+      final deferred = _syncFlushAfterPending;
+      if (deferred != null && deferred.isNotEmpty) {
+        _syncFlushAfterPending = null;
+        _sink!.writeSyncRecords(deferred);
+      }
+
       // Restart timer if new records arrived during the async flush.
       // Without this, records sit in _buffer indefinitely because the
       // one-shot timer already fired and no new timer was started.
