@@ -1076,6 +1076,51 @@ void main() {
     });
   });
 
+  group('forceRotate in buffered mode', () {
+    test('flushes buffered records to pre-rotation file', () async {
+      await fakeAsyncWithDrain((async) async {
+        final fixedTime = DateTime(2024, 1, 15, 10);
+        await withClock(Clock.fixed(fixedTime), () async {
+          final tempDir = createTempDir();
+          final logPath = '${tempDir.path}/app.log';
+          final writer = RotatingFileWriter(
+            baseFilePathProvider: () => logPath,
+            flushStrategy: FlushStrategy.buffered,
+            flushInterval: const Duration(seconds: 10),
+            rotationConfig: FileRotationConfig.size(maxSize: 1024 * 1024),
+          );
+
+          // Write buffered records (timer won't fire for 10s)
+          writer.write(testRecord(message: 'Before rotate'));
+
+          // Force rotation — should flush buffer to the old file first
+          await writer.forceRotate();
+          await drainEvent();
+
+          // Write after rotation
+          writer.write(
+            testRecord(message: 'After rotate', level: ChirpLogLevel.error),
+          );
+
+          final files = tempDir.listSync().whereType<File>().toList();
+          expect(files.length, 2, reason: 'Should have current + rotated file');
+
+          final currentContent = File(logPath).readAsStringSync();
+          expect(currentContent, contains('After rotate'));
+          expect(currentContent, isNot(contains('Before rotate')),
+              reason: 'Pre-rotation record should not be in current file');
+
+          final rotatedFile = files.firstWhere((f) => f.path != logPath);
+          expect(rotatedFile.readAsStringSync(), contains('Before rotate'),
+              reason: 'Pre-rotation record should be in rotated file');
+
+          await writer.close();
+          await drainEvent();
+        });
+      });
+    });
+  });
+
   group('Max age retention', () {
     test('deletes rotated files older than maxAge', () async {
       final tempDir = createTempDir();
@@ -1531,6 +1576,18 @@ void main() {
       final files = tempDir.listSync().whereType<File>().toList();
       expect(files.length, 2,
           reason: 'Daily rotation should create 2 files in buffered mode');
+
+      // Verify content separation: pre-rotation record in rotated file,
+      // post-rotation record in current file.
+      final currentContent = File(logPath).readAsStringSync();
+      expect(currentContent, contains('Message on Jan 16'),
+          reason: 'Current file should have post-rotation message');
+      expect(currentContent, isNot(contains('Message on Jan 15')),
+          reason: 'Current file should not have pre-rotation message');
+
+      final rotatedFile = files.firstWhere((f) => f.path != logPath);
+      expect(rotatedFile.readAsStringSync(), contains('Message on Jan 15'),
+          reason: 'Rotated file should have pre-rotation message');
     });
   });
 
@@ -1786,6 +1843,51 @@ void main() {
       });
     });
 
+    test('records written during async flush are flushed after it completes',
+        () async {
+      await fakeAsyncWithDrain((async) async {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+        );
+
+        // Write a record - starts timer
+        writer.write(testRecord(message: 'Batch 1'));
+
+        // Timer fires, starts async flush (_pendingFlush becomes non-null)
+        async.elapse(const Duration(seconds: 1));
+
+        // While the async flush is in-flight, write another record.
+        // This goes into _buffer but no timer is running (it already fired).
+        writer.write(testRecord(message: 'During flush'));
+
+        // Let the first flush complete — whenComplete should restart the timer
+        await drainEvent();
+
+        // Batch 1 should be on disk now
+        final content1 = File(logPath).readAsStringSync();
+        expect(content1, contains('Batch 1'));
+        expect(content1, isNot(contains('During flush')),
+            reason: 'Record written during flush should still be buffered');
+
+        // Advance time for the restarted timer to fire
+        async.elapse(const Duration(seconds: 1));
+        await drainEvent();
+
+        // Now the second record should be flushed
+        final content2 = File(logPath).readAsStringSync();
+        expect(content2, contains('Batch 1'));
+        expect(content2, contains('During flush'),
+            reason: 'Record written during flush should be flushed '
+                'after the restarted timer fires');
+
+        await writer.close();
+        await drainEvent();
+      });
+    });
+
     test('sustained logging: each flush resets timer for next batch', () async {
       await fakeAsyncWithDrain((async) async {
         final tempDir = createTempDir();
@@ -1831,6 +1933,89 @@ void main() {
 
         await writer.close();
         await drainEvent();
+      });
+    });
+
+    test('error record during async flush preserves chronological order',
+        () async {
+      await fakeAsyncWithDrain((async) async {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+        );
+
+        // Write buffered records
+        writer.write(testRecord(message: 'Buffered 1'));
+        writer.write(testRecord(message: 'Buffered 2'));
+        writer.write(testRecord(message: 'Buffered 3'));
+
+        // Fire the flush timer — starts async write of [Buffered 1, 2, 3].
+        // The async I/O is in-flight but not yet completed.
+        async.elapse(const Duration(seconds: 1));
+
+        // While the async flush is in-flight, write an error record.
+        // This must be written synchronously for crash safety.
+        writer.write(testRecord(
+          message: 'Error during flush',
+          level: ChirpLogLevel.error,
+        ));
+
+        // Let the async flush complete
+        await drainEvent();
+
+        // Close to ensure everything is flushed
+        await writer.close();
+        await drainEvent();
+
+        // All records must be on disk in chronological order
+        final content = File(logPath).readAsStringSync();
+        final lines = content.trim().split('\n');
+        expect(lines.length, 4, reason: 'All 4 records should be on disk');
+        expect(lines[0], contains('Buffered 1'));
+        expect(lines[1], contains('Buffered 2'));
+        expect(lines[2], contains('Buffered 3'));
+        expect(lines[3], contains('Error during flush'));
+      });
+    });
+  });
+
+  group('pending records during locked operations', () {
+    test('close() writes records that arrived during flush()', () async {
+      await fakeAsyncWithDrain((async) async {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+        );
+
+        // Write a record and let it flush
+        writer.write(testRecord(message: 'First'));
+        async.elapse(const Duration(seconds: 1));
+        await drainEvent();
+
+        expect(File(logPath).readAsStringSync(), contains('First'));
+
+        // Start a flush — this acquires the lock
+        final flushFuture = writer.flush();
+
+        // While flush holds the lock, write() buffers to _pendingRecords
+        writer.write(testRecord(message: 'During flush'));
+
+        await flushFuture;
+        await drainEvent();
+
+        // Now close — should drain _pendingRecords before closing
+        await writer.close();
+        await drainEvent();
+
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('First'));
+        expect(content, contains('During flush'),
+            reason: 'Records written during flush() should be preserved '
+                'by close()');
       });
     });
   });
@@ -2067,6 +2252,321 @@ void main() {
       writer.write(testRecord(message: 'test'));
 
       expect(capturedError, isA<ArgumentError>());
+    });
+  });
+
+  group('clearLogs', () {
+    test('deletes current log file', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
+
+      writer.write(testRecord(message: 'some log'));
+      await writer.flush();
+      expect(File(logPath).existsSync(), isTrue);
+
+      await writer.clearLogs();
+
+      expect(File(logPath).existsSync(), isFalse,
+          reason: 'Current log file should be deleted');
+    });
+
+    test('deletes rotated log files', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        rotationConfig: FileRotationConfig.size(maxSize: 10),
+      );
+
+      // Write enough to trigger rotation
+      for (var i = 0; i < 5; i++) {
+        writer.write(testRecord(message: 'Record number $i'));
+      }
+      await writer.flush();
+
+      // Verify rotated files exist
+      final files = Directory(tempDir.path)
+          .listSync()
+          .whereType<File>()
+          .map((f) => f.uri.pathSegments.last)
+          .toList();
+      expect(files.length, greaterThan(1),
+          reason: 'Should have rotated files before clearing');
+
+      await writer.clearLogs();
+
+      final remainingFiles =
+          Directory(tempDir.path).listSync().whereType<File>().toList();
+      expect(remainingFiles, isEmpty,
+          reason: 'All log files should be deleted');
+    });
+
+    test('writer remains usable after clearLogs', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'before clear'));
+      await writer.flush();
+
+      await writer.clearLogs();
+      expect(File(logPath).existsSync(), isFalse);
+
+      // Write again after clearing
+      writer.write(testRecord(message: 'after clear'));
+      await writer.flush();
+
+      expect(File(logPath).existsSync(), isTrue,
+          reason: 'File should be recreated on next write');
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('after clear'));
+      expect(content, isNot(contains('before clear')),
+          reason: 'Old content should not be present');
+    });
+
+    test('is a no-op when no files exist', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(baseFilePathProvider: () => logPath);
+
+      // clearLogs without ever writing should not throw
+      await writer.clearLogs();
+
+      expect(File(logPath).existsSync(), isFalse);
+    });
+
+    test('waits for async baseFilePathProvider before clearing', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final completer = Completer<String>();
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => completer.future,
+      );
+
+      // Write a record (buffered, path not resolved yet)
+      writer.write(testRecord(message: 'pending record'));
+
+      // Start clearing before path resolves
+      final clearFuture = writer.clearLogs();
+
+      // Resolve the path — clearLogs should pick it up
+      completer.complete(logPath);
+
+      await clearFuture;
+
+      // File should not exist — clearLogs waited for path then deleted
+      expect(File(logPath).existsSync(), isFalse,
+          reason: 'clearLogs should wait for path resolution and delete files');
+    });
+
+    test('deletes compressed rotated files', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        rotationConfig: FileRotationConfig.daily(compress: true),
+      );
+
+      // Write on Jan 15
+      writer.write(testRecord(
+        message: 'day one',
+        timestamp: DateTime(2024, 1, 15, 10),
+      ));
+
+      // Write on Jan 16 (triggers rotation + compression)
+      writer.write(testRecord(
+        message: 'day two',
+        timestamp: DateTime(2024, 1, 16, 10),
+      ));
+      // close() waits for pending compressions to finish
+      await writer.close();
+
+      // Verify compressed file exists before clearing
+      final filesBefore = tempDir.listSync().whereType<File>().toList();
+      final gzFiles = filesBefore.where((f) => f.path.endsWith('.gz')).toList();
+      expect(gzFiles, isNotEmpty,
+          reason: 'Compressed rotated file should exist before clearing');
+
+      // Reopen writer and clear — clearLogs must delete .gz files too
+      final writer2 = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        rotationConfig: FileRotationConfig.daily(compress: true),
+      );
+      await writer2.clearLogs();
+
+      final filesAfter = tempDir.listSync().whereType<File>().toList();
+      expect(filesAfter, isEmpty,
+          reason: 'All files including .gz should be deleted');
+    });
+
+    test('drops buffered records that were not yet flushed', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        flushStrategy: FlushStrategy.buffered,
+      );
+
+      // Write and flush first record
+      writer.write(testRecord(message: 'flushed'));
+      await writer.flush();
+      expect(File(logPath).readAsStringSync(), contains('flushed'));
+
+      // Write a second record but don't flush — it stays buffered
+      writer.write(testRecord(message: 'still buffered'));
+
+      await writer.clearLogs();
+
+      // Write after clear
+      writer.write(testRecord(message: 'after clear'));
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('after clear'));
+      expect(content, isNot(contains('flushed')),
+          reason: 'Old flushed content should be gone');
+      expect(content, isNot(contains('still buffered')),
+          reason: 'Buffered record should have been dropped');
+    });
+
+    test('throws when baseFilePathProvider failed', () async {
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () =>
+            Future<String>.error(StateError('disk not found')),
+        onError: (_, __, ___) {},
+      );
+      addTearDown(() => writer.close());
+
+      // Trigger path resolution
+      writer.write(testRecord(message: 'trigger'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        () => writer.clearLogs(),
+        throwsStateError,
+      );
+    });
+  });
+
+  group('file deleted externally', () {
+    test('recreates file when deleted between synchronous writes', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        flushStrategy: FlushStrategy.synchronous,
+      );
+      addTearDown(() => writer.close());
+
+      // First write creates the file
+      writer.write(testRecord(message: 'before delete'));
+      await writer.flush();
+      expect(File(logPath).existsSync(), isTrue);
+      expect(File(logPath).readAsStringSync(), contains('before delete'));
+
+      // External process deletes the file
+      File(logPath).deleteSync();
+      expect(File(logPath).existsSync(), isFalse);
+
+      // Next write should recreate the file
+      writer.write(testRecord(message: 'after delete'));
+      await writer.flush();
+
+      expect(File(logPath).existsSync(), isTrue,
+          reason: 'File should be recreated after external deletion');
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('after delete'),
+          reason: 'New record should be written to recreated file');
+    });
+
+    test('recreates file when deleted between buffered writes', () {
+      fakeAsync((async) {
+        final tempDir = createTempDir();
+        final logPath = '${tempDir.path}/app.log';
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => logPath,
+          flushStrategy: FlushStrategy.buffered,
+        );
+
+        // First write - use error level so it flushes immediately
+        writer.write(
+          testRecord(message: 'before delete', level: ChirpLogLevel.error),
+        );
+        expect(File(logPath).existsSync(), isTrue);
+        expect(File(logPath).readAsStringSync(), contains('before delete'));
+
+        // External process deletes the file
+        File(logPath).deleteSync();
+        expect(File(logPath).existsSync(), isFalse);
+
+        // Next error write should recreate the file
+        writer.write(
+          testRecord(message: 'after delete', level: ChirpLogLevel.error),
+        );
+
+        expect(File(logPath).existsSync(), isTrue,
+            reason: 'File should be recreated after external deletion');
+        final content = File(logPath).readAsStringSync();
+        expect(content, contains('after delete'));
+
+        writer.close();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('recreates file and parent directories when both are deleted',
+        () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/logs/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        flushStrategy: FlushStrategy.synchronous,
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'before delete'));
+      await writer.flush();
+      expect(File(logPath).existsSync(), isTrue);
+
+      // External process deletes the entire directory
+      Directory('${tempDir.path}/logs').deleteSync(recursive: true);
+      expect(File(logPath).existsSync(), isFalse);
+      expect(Directory('${tempDir.path}/logs').existsSync(), isFalse);
+
+      // Next write should recreate directory and file
+      writer.write(testRecord(message: 'after dir delete'));
+      await writer.flush();
+
+      expect(File(logPath).existsSync(), isTrue,
+          reason: 'File and parent dir should be recreated');
+      expect(File(logPath).readAsStringSync(), contains('after dir delete'));
+    });
+
+    test('does not lose records written before deletion is detected', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        flushStrategy: FlushStrategy.synchronous,
+      );
+      addTearDown(() => writer.close());
+
+      writer.write(testRecord(message: 'record 1'));
+      await writer.flush();
+
+      // Delete the file
+      File(logPath).deleteSync();
+
+      // Write multiple records after deletion
+      writer.write(testRecord(message: 'record 2'));
+      writer.write(testRecord(message: 'record 3'));
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('record 2'));
+      expect(content, contains('record 3'));
     });
   });
 
