@@ -2360,6 +2360,94 @@ void main() {
       expect(File(logPath).existsSync(), isFalse,
           reason: 'clearLogs should wait for path resolution and delete files');
     });
+
+    test('deletes compressed rotated files', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        rotationConfig: FileRotationConfig.daily(compress: true),
+      );
+
+      // Write on Jan 15
+      writer.write(testRecord(
+        message: 'day one',
+        timestamp: DateTime(2024, 1, 15, 10),
+      ));
+
+      // Write on Jan 16 (triggers rotation + compression)
+      writer.write(testRecord(
+        message: 'day two',
+        timestamp: DateTime(2024, 1, 16, 10),
+      ));
+      // close() waits for pending compressions to finish
+      await writer.close();
+
+      // Verify compressed file exists before clearing
+      final filesBefore = tempDir.listSync().whereType<File>().toList();
+      final gzFiles = filesBefore.where((f) => f.path.endsWith('.gz')).toList();
+      expect(gzFiles, isNotEmpty,
+          reason: 'Compressed rotated file should exist before clearing');
+
+      // Reopen writer and clear — clearLogs must delete .gz files too
+      final writer2 = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        rotationConfig: FileRotationConfig.daily(compress: true),
+      );
+      await writer2.clearLogs();
+
+      final filesAfter = tempDir.listSync().whereType<File>().toList();
+      expect(filesAfter, isEmpty,
+          reason: 'All files including .gz should be deleted');
+    });
+
+    test('drops buffered records that were not yet flushed', () async {
+      final tempDir = createTempDir();
+      final logPath = '${tempDir.path}/app.log';
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => logPath,
+        flushStrategy: FlushStrategy.buffered,
+      );
+
+      // Write and flush first record
+      writer.write(testRecord(message: 'flushed'));
+      await writer.flush();
+      expect(File(logPath).readAsStringSync(), contains('flushed'));
+
+      // Write a second record but don't flush — it stays buffered
+      writer.write(testRecord(message: 'still buffered'));
+
+      await writer.clearLogs();
+
+      // Write after clear
+      writer.write(testRecord(message: 'after clear'));
+      await writer.flush();
+
+      final content = File(logPath).readAsStringSync();
+      expect(content, contains('after clear'));
+      expect(content, isNot(contains('flushed')),
+          reason: 'Old flushed content should be gone');
+      expect(content, isNot(contains('still buffered')),
+          reason: 'Buffered record should have been dropped');
+    });
+
+    test('throws when baseFilePathProvider failed', () async {
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () =>
+            Future<String>.error(StateError('disk not found')),
+        onError: (_, __, ___) {},
+      );
+      addTearDown(() => writer.close());
+
+      // Trigger path resolution
+      writer.write(testRecord(message: 'trigger'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        () => writer.clearLogs(),
+        throwsStateError,
+      );
+    });
   });
 
   group('file deleted externally', () {

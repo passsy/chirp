@@ -126,6 +126,7 @@ class RotatingFileWriterIo extends ChirpWriter implements RotatingFileWriter {
   );
 
   /// Rotation + file I/O layer. Created when the base path resolves.
+  // ignore: use_late_for_private_fields_and_variables
   _RotatingFileSink? _sink;
 
   /// Buffer + coordination layer. Created eagerly, handles both sync and
@@ -551,7 +552,8 @@ class _RecordBuffer {
       }
 
       // Non-error record: if we accumulated an error batch, flush it first.
-      if (_buffer != null && _buffer!.isNotEmpty &&
+      if (_buffer != null &&
+          _buffer!.isNotEmpty &&
           _buffer!.last.level.severity >= ChirpLogLevel.error.severity) {
         _syncFlushBuffer();
       }
@@ -561,7 +563,8 @@ class _RecordBuffer {
     }
 
     // If the last record(s) were errors, flush immediately.
-    if (_buffer != null && _buffer!.isNotEmpty &&
+    if (_buffer != null &&
+        _buffer!.isNotEmpty &&
         _buffer!.last.level.severity >= ChirpLogLevel.error.severity) {
       _syncFlushBuffer();
       return;
