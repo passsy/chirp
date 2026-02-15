@@ -94,6 +94,9 @@ class MessageBuffer {
     }
   }
 
+  @override
+  String toString() => buffer.toString();
+
   /// Appends [value] followed by a newline to the log output.
   void writeln(Object? value) {
     final c = console;
