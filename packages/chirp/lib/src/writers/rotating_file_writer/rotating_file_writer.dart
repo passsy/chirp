@@ -477,6 +477,9 @@ enum FlushStrategy {
 /// This provides a minimal, allocation-friendly API for formatters to build
 /// log lines without allocating intermediate strings.
 class FileMessageBuffer {
+  /// Creates an empty file message buffer.
+  FileMessageBuffer();
+
   final StringBuffer _buffer = StringBuffer();
   bool _endsWithNewline = false;
 

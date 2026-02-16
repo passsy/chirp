@@ -34,6 +34,10 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub
 /// );
 /// ```
 abstract class RotatingFileReader {
+  /// Creates a reader for log files written by [RotatingFileWriter].
+  ///
+  /// The [baseFilePathProvider] must return the same path used by the writer
+  /// so the reader can locate all rotated files.
   factory RotatingFileReader({
     required FutureOr<String> Function() baseFilePathProvider,
     Duration? pollInterval,

@@ -23,6 +23,7 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer.dart
 /// }
 /// ```
 abstract class ChirpFormatter {
+  /// Creates a formatter for converting log records to text.
   const ChirpFormatter();
 
   /// Whether this formatter needs caller info (file, line, class, method).
@@ -59,6 +60,10 @@ abstract class ChirpFormatter {
 /// or [file] for target-specific features like ANSI styling or structured
 /// file data.
 class MessageBuffer {
+  /// Creates a [MessageBuffer] wrapping either a [ConsoleMessageBuffer] or
+  /// [FileMessageBuffer].
+  ///
+  /// Prefer [MessageBuffer.console] or [MessageBuffer.file] for convenience.
   MessageBuffer(this.buffer) {
     if (buffer is! ConsoleMessageBuffer && buffer is! FileMessageBuffer) {
       throw ArgumentError(
@@ -92,6 +97,8 @@ class MessageBuffer {
     return MessageBuffer(FileMessageBuffer());
   }
 
+  /// The underlying buffer, either [ConsoleMessageBuffer] or
+  /// [FileMessageBuffer].
   final Object buffer;
 
   /// The underlying [ConsoleMessageBuffer], or `null` when writing to a file.
