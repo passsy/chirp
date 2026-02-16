@@ -358,7 +358,8 @@ void main() {
       });
     });
 
-    test('lazy baseFilePathProvider drains buffer after flushInterval', () async {
+    test('lazy baseFilePathProvider drains buffer after flushInterval',
+        () async {
       await fakeAsyncWithDrain((async) async {
         final tempDir = createTempDir();
         final logPath = '${tempDir.path}/lazy-buffered/app.log';
