@@ -78,7 +78,10 @@ extension on FakeAsync {
   /// complete (e.g. writeFrom → flush → close, where each completion
   /// triggers the next operation).
   Future<void> settleIo() async {
-    for (var i = 0; i < 3; i++) {
+    // Chained async I/O (writeFrom → .whenComplete → flush → close) needs
+    // multiple event-loop yields to fully settle. 10 rounds handles deep
+    // chains reliably, even on slow CI containers.
+    for (var i = 0; i < 10; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 1));
       run((_) => flushMicrotasks());
     }
