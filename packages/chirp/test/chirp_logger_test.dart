@@ -1028,6 +1028,84 @@ void main() {
               'After adoption, only parent writers are used. Parent writer does not require caller info, so StackTrace.current should NOT be captured');
     });
   });
+
+  group('lazy message', () {
+    test('lambda is resolved when level passes', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+
+      logger.info(() => 'lazy message');
+
+      expect(records, hasLength(1));
+      expect(records[0].message, 'lazy message');
+    });
+
+    test('lambda is not called when level is filtered out', () {
+      var callCount = 0;
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..setMinLogLevel(ChirpLogLevel.warning)
+        ..addWriter(FakeWriter(records));
+
+      logger.trace(() {
+        callCount++;
+        return 'expensive message';
+      });
+
+      expect(records, isEmpty);
+      expect(callCount, 0);
+    });
+
+    test('non-lambda message still works', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+
+      logger.info('plain string');
+
+      expect(records, hasLength(1));
+      expect(records[0].message, 'plain string');
+    });
+
+    test('lambda works for all log levels', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..setMinLogLevel(ChirpLogLevel.trace)
+        ..addWriter(FakeWriter(records));
+
+      logger.log(() => 'log');
+      logger.trace(() => 'trace');
+      logger.debug(() => 'debug');
+      logger.info(() => 'info');
+      logger.notice(() => 'notice');
+      logger.success(() => 'success');
+      logger.warning(() => 'warning');
+      logger.error(() => 'error');
+      logger.critical(() => 'critical');
+      logger.wtf(() => 'wtf');
+
+      expect(records, hasLength(10));
+      expect(records[0].message, 'log');
+      expect(records[1].message, 'trace');
+      expect(records[2].message, 'debug');
+      expect(records[3].message, 'info');
+      expect(records[4].message, 'notice');
+      expect(records[5].message, 'success');
+      expect(records[6].message, 'warning');
+      expect(records[7].message, 'error');
+      expect(records[8].message, 'critical');
+      expect(records[9].message, 'wtf');
+    });
+
+    test('lambda returning null is stored as null', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+
+      logger.info(() => null);
+
+      expect(records, hasLength(1));
+      expect(records[0].message, isNull);
+    });
+  });
 }
 
 /// Fake writer implementation for testing.

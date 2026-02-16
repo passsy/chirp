@@ -1,3 +1,7 @@
+## Unreleased
+
+- **New** Lazy message construction — pass `() => 'expensive $message'` to any log method. The lambda is only called when the log level passes the filter, avoiding unnecessary string allocations.
+
 ## 0.8.0
 
 ### New Features

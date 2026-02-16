@@ -467,6 +467,20 @@ Chirp.root = ChirpLogger().addConsoleWriter();
 Chirp.root.addWriter(myWriter);
 ```
 
+### Lazy Messages
+
+Pass a lambda instead of a string to defer expensive message construction. The lambda is only called when the log level passes the filter — avoiding unnecessary allocations when the logger is "off":
+
+```dart
+// Always builds the string, even if trace is filtered out
+logger.trace('User data: ${jsonEncode(hugeMap)}');
+
+// Lambda only called when trace level is active
+logger.trace(() => 'User data: ${jsonEncode(hugeMap)}');
+```
+
+This is especially useful for `trace` and `debug` messages that are typically disabled in production but contain expensive-to-build strings.
+
 ### Filtering
 
 Chirp provides two ways to filter logs:
@@ -893,6 +907,7 @@ See [`examples/simple/bin/`](https://github.com/passsy/chirp/tree/main/examples/
 | [`instance_tracking.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/instance_tracking.dart) | The `.chirp` extension |
 | [`multiple_writers.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/multiple_writers.dart) | Console + JSON output |
 | [`file_writer.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/file_writer.dart) | File logging with rotation |
+| [`lazy_messages.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/lazy_messages.dart) | Lazy message construction for performance |
 | [`interceptors.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/interceptors.dart) | Filtering and transforming logs |
 | [`library.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/library.dart) / [`app.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/app.dart) | Library logger adoption |
 | [`main.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/main.dart) | Span transformers (advanced) |
