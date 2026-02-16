@@ -428,7 +428,7 @@ class ChirpLogger {
     if (min != null && level.severity < min.severity) return;
 
     // Resolve lazy message after level check
-    final resolvedMessage;
+    final Object? resolvedMessage;
     if (message is Object? Function()) {
       resolvedMessage = message();
     } else {
@@ -483,7 +483,7 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
-    final resolvedMessage;
+    final Object? resolvedMessage;
     if (message is Object? Function()) {
       resolvedMessage = message();
     } else {
@@ -536,7 +536,7 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
-    final resolvedMessage;
+    final Object? resolvedMessage;
     if (message is Object? Function()) {
       resolvedMessage = message();
     } else {
@@ -589,7 +589,7 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
-    final resolvedMessage;
+    final Object? resolvedMessage;
     if (message is Object? Function()) {
       resolvedMessage = message();
     } else {
@@ -641,7 +641,7 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
-    final resolvedMessage;
+    final Object? resolvedMessage;
     if (message is Object? Function()) {
       resolvedMessage = message();
     } else {
@@ -694,7 +694,7 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
-    final resolvedMessage;
+    final Object? resolvedMessage;
     if (message is Object? Function()) {
       resolvedMessage = message();
     } else {
@@ -745,7 +745,7 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
-    final resolvedMessage;
+    final Object? resolvedMessage;
     if (message is Object? Function()) {
       resolvedMessage = message();
     } else {
@@ -798,7 +798,7 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
-    final resolvedMessage;
+    final Object? resolvedMessage;
     if (message is Object? Function()) {
       resolvedMessage = message();
     } else {
@@ -849,7 +849,7 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
-    final resolvedMessage;
+    final Object? resolvedMessage;
     if (message is Object? Function()) {
       resolvedMessage = message();
     } else {
@@ -901,7 +901,7 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
-    final resolvedMessage;
+    final Object? resolvedMessage;
     if (message is Object? Function()) {
       resolvedMessage = message();
     } else {

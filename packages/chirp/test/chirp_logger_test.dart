@@ -1072,7 +1072,7 @@ void main() {
         ..setMinLogLevel(ChirpLogLevel.trace)
         ..addWriter(FakeWriter(records));
 
-      logger.log(() => 'log', level: ChirpLogLevel.info);
+      logger.log(() => 'log');
       logger.trace(() => 'trace');
       logger.debug(() => 'debug');
       logger.info(() => 'info');

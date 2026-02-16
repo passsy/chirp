@@ -8,9 +8,8 @@ import 'package:chirp/chirp.dart';
 void main() {
   // Configure logger with warning as minimum level.
   // trace and debug messages will be filtered out.
-  Chirp.root = ChirpLogger()
-    .setMinLogLevel(ChirpLogLevel.warning)
-    .addConsoleWriter();
+  Chirp.root =
+      ChirpLogger().setMinLogLevel(ChirpLogLevel.warning).addConsoleWriter();
 
   final hugeMap = {
     'users': List.generate(1000, (i) => {'id': i, 'name': 'User $i'}),
