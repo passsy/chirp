@@ -10,14 +10,20 @@ A lightweight, flexible logging library for Dart with instance tracking, child l
 ## Features
 
 - **Zero Configuration**: Works out of the box - just call `Chirp.info('hello')`
-- **Multiple APIs**: Static methods, named loggers, or `.chirp` extension on any object
-- **Child Loggers**: Hierarchical loggers with inherited writers and merged context
-- **Instance Tracking**: Differentiates logs from multiple instances of the same class
-- **Structured Logging**: Attach key-value data for machine-readable logs
 - **Custom Log Levels**: 9 built-in levels plus support for your own
-- **Interceptors**: Transform or filter logs before output (redaction, sampling, enrichment)
+- **Automatic Caller Info**: File, line, and class info included when available (configurable for performance)
+- **Object loggers**: Each object, automatically has its own `.chirp` logger (prints object hash)
+- **Structured Logging**: Cloud Json formatters, perfect for your dart backend (AWS, GCP)
 - **Multiple Writers**: Send logs to console, files, or custom destinations with different formats
-- **Designed for Packages**: Ship loggers with your libraries that apps can adopt
+- **Custom Writers**: Creating your own writer is as easy as writing your own Widget
+- **File-writer**: Write logs to files with automatic rotation and size limits
+- **Child Loggers**: Hierarchical loggers with inherited writers and merged context
+- **Map Support**: Pass in key-value pairs as `data: {"key": value, ...moreData}` instead of building long log strings manually
+
+`chirp` is extremely extensible:
+- **Extensible Writer**: Want to change the look of your logs? Change the output with transformers and the span-based formatting system
+- **Interceptors**: Transform or filter logs before output (redaction, sampling, enrichment)
+- **Designed for Packages**: Ship loggers with your packages that apps can adopt, to gain access to more fine-grained logs
 
 ## Installation
 
@@ -25,7 +31,7 @@ Add `chirp` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  chirp: ^0.5.0
+  chirp: ^0.8.0
 ```
 
 Then run:
@@ -304,7 +310,7 @@ Chirp.root = ChirpLogger()
 // Use both for maximum flexibility
 Chirp.root = ChirpLogger()
   .addConsoleWriter()  // PrintConsoleWriter - always works
-  .addWriter(DeveloperLogConsoleWriter(name: 'myapp'));  // Unlimited when debugging
+  .addWriter(DeveloperLogConsoleWriter());  // Unlimited when debugging
 ```
 
 ### File Writers
@@ -314,7 +320,7 @@ Chirp.root = ChirpLogger()
 ```dart
 // Size-based: rotate at 100 MB, keep 10 files, compress old logs
 final writer = RotatingFileWriter(
-  baseFilePath: '/var/log/app.jsonl',
+  baseFilePathProvider: () => '/var/log/app.jsonl',
   formatter: const JsonLogFormatter(),
   rotationConfig: FileRotationConfig.size(
     maxSize: 100 * 1024 * 1024,
@@ -331,7 +337,7 @@ Chirp.root = ChirpLogger()
 ```dart
 // Time-based: rotate daily, keep 30 days
 final writer = RotatingFileWriter(
-  baseFilePath: '/var/log/app.jsonl',
+  baseFilePathProvider: () => '/var/log/app.jsonl',
   formatter: const JsonLogFormatter(),
   rotationConfig: FileRotationConfig.daily(
     maxAge: Duration(days: 30),
@@ -418,7 +424,9 @@ FORCE_COLOR=3 dart run        # Force truecolor (0=off, 1=16, 2=256, 3=truecolor
 ```dart
 // Programmatic override
 Chirp.root = ChirpLogger()
-  .addConsoleWriter(colorSupport: TerminalColorSupport.none);  // or .truecolor
+  .addConsoleWriter(
+    capabilities: const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
+  );
 ```
 
 ### Root Logger
@@ -617,12 +625,12 @@ class NetworkWriter extends ChirpWriter {
 
   @override
   void write(LogRecord record) {
-    final buffer = ConsoleMessageBuffer(
+    final buffer = MessageBuffer.console(
       capabilities: const TerminalCapabilities(
         colorSupport: TerminalColorSupport.none,
       ),
     );
-    formatter.format(record, MessageBuffer(buffer));
+    formatter.format(record, buffer);
 
     // Send to logging service
     client.post(Uri.parse('https://logs.example.com'), body: buffer.toString());

@@ -1,3 +1,20 @@
+## 0.8.0
+
+### New Features
+- New `LogRecord.wallClock`, always capturing `DateTime.now()` vs. `LogRecord.time` capturing `clock.now()` which can be faked in tests
+- New `RotatingFileWriter` to write log files with automatic rotation and optional compression, including a `RotatingFileReader` to consume the log files again.
+- **Unified formatter architecture** — Console and file formatters now share a single `ChirpFormatter` base class with `MessageBuffer`, replacing the separate `ConsoleMessageFormatter` / `FileMessageFormatter` hierarchies.
+- Wasm support: `RotatingFileWriter` is only available on non-web platforms.
+- Add `minLevel` constructor parameter to all writers
+    
+### Breaking Changes
+- **Breaking** `ConsoleMessageFormatter` is now a deprecated typedef for `ChirpFormatter` — migrate custom formatters to extend `ChirpFormatter` and use `format(LogRecord record, MessageBuffer buffer)` instead of `format(LogRecord record, ConsoleMessageBuffer buffer)`
+- **Breaking** `FileMessageFormatter` is now a deprecated typedef for `ChirpFormatter` — migrate custom file formatters to extend `ChirpFormatter` and write to `buffer.file` instead of returning a `String`
+- **Breaking** `JsonFileFormatter` removed — use `JsonLogFormatter` instead
+- **Breaking** `JsonLogFormatter` (replaces `JsonMessageFormatter`) simplified: removed `includeSourceLocation`, `includeClassAndInstance`, `useUtcTimestamps`, `JsonDataStyle`, `.console()`, and `.file()` constructors. Source location and class/instance info are now always included. Timestamps are always UTC. Data fields are always written at the root level.
+- **Deprecated** `JsonMessageFormatter` — use `JsonLogFormatter` instead
+
+
 ## 0.7.0
 
 ### New Features
