@@ -388,7 +388,11 @@ class ChirpLogger {
   /// methods, or when the level is determined dynamically.
   ///
   /// Parameters:
-  /// - [message]: The log message (can be any object, will be converted via `toString()`)
+  /// - [message]: The log message (can be any object, will be converted via
+  ///   `toString()`). Can also be a `Object? Function()` lambda for lazy
+  ///   evaluation — the lambda is only called when the message will actually
+  ///   be logged, avoiding expensive string construction when the log level
+  ///   is filtered out.
   /// - [level]: The severity level (defaults to [ChirpLogLevel.info])
   /// - [error]: Optional error object to log
   /// - [stackTrace]: Optional stack trace (often from a catch block)
@@ -423,11 +427,19 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
+    // Resolve lazy message after level check
+    final resolvedMessage;
+    if (message is Object? Function()) {
+      resolvedMessage = message();
+    } else {
+      resolvedMessage = message;
+    }
+
     // Only capture caller if any writer needs it
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
 
     final entry = LogRecord(
-      message: message,
+      message: resolvedMessage,
       level: level,
       error: error,
       stackTrace: stackTrace,
@@ -471,10 +483,16 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
+    final resolvedMessage;
+    if (message is Object? Function()) {
+      resolvedMessage = message();
+    } else {
+      resolvedMessage = message;
+    }
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
 
     final entry = LogRecord(
-      message: message,
+      message: resolvedMessage,
       level: level,
       error: error,
       stackTrace: stackTrace,
@@ -518,10 +536,16 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
+    final resolvedMessage;
+    if (message is Object? Function()) {
+      resolvedMessage = message();
+    } else {
+      resolvedMessage = message;
+    }
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
 
     final entry = LogRecord(
-      message: message,
+      message: resolvedMessage,
       level: level,
       error: error,
       stackTrace: stackTrace,
@@ -565,10 +589,16 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
+    final resolvedMessage;
+    if (message is Object? Function()) {
+      resolvedMessage = message();
+    } else {
+      resolvedMessage = message;
+    }
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
 
     final entry = LogRecord(
-      message: message,
+      message: resolvedMessage,
       // ignore: avoid_redundant_argument_values
       level: level,
       error: error,
@@ -611,10 +641,16 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
+    final resolvedMessage;
+    if (message is Object? Function()) {
+      resolvedMessage = message();
+    } else {
+      resolvedMessage = message;
+    }
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
 
     final entry = LogRecord(
-      message: message,
+      message: resolvedMessage,
       level: level,
       error: error,
       stackTrace: stackTrace,
@@ -658,10 +694,16 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
+    final resolvedMessage;
+    if (message is Object? Function()) {
+      resolvedMessage = message();
+    } else {
+      resolvedMessage = message;
+    }
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
 
     final entry = LogRecord(
-      message: message,
+      message: resolvedMessage,
       level: level,
       error: error,
       stackTrace: stackTrace,
@@ -703,10 +745,16 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
+    final resolvedMessage;
+    if (message is Object? Function()) {
+      resolvedMessage = message();
+    } else {
+      resolvedMessage = message;
+    }
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
 
     final entry = LogRecord(
-      message: message,
+      message: resolvedMessage,
       level: level,
       error: error,
       stackTrace: stackTrace,
@@ -750,10 +798,16 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
+    final resolvedMessage;
+    if (message is Object? Function()) {
+      resolvedMessage = message();
+    } else {
+      resolvedMessage = message;
+    }
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
 
     final entry = LogRecord(
-      message: message,
+      message: resolvedMessage,
       level: level,
       error: error,
       stackTrace: stackTrace,
@@ -795,10 +849,16 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
+    final resolvedMessage;
+    if (message is Object? Function()) {
+      resolvedMessage = message();
+    } else {
+      resolvedMessage = message;
+    }
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
 
     final entry = LogRecord(
-      message: message,
+      message: resolvedMessage,
       level: level,
       error: error,
       stackTrace: stackTrace,
@@ -841,10 +901,16 @@ class ChirpLogger {
     final min = _effectiveMinLogLevel;
     if (min != null && level.severity < min.severity) return;
 
+    final resolvedMessage;
+    if (message is Object? Function()) {
+      resolvedMessage = message();
+    } else {
+      resolvedMessage = message;
+    }
     final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
 
     final entry = LogRecord(
-      message: message,
+      message: resolvedMessage,
       level: level,
       error: error,
       stackTrace: stackTrace,

@@ -467,6 +467,20 @@ Chirp.root = ChirpLogger().addConsoleWriter();
 Chirp.root.addWriter(myWriter);
 ```
 
+### Lazy Messages
+
+Pass a lambda instead of a string to defer expensive message construction. The lambda is only called when the log level passes the filter — avoiding unnecessary allocations when the logger is "off":
+
+```dart
+// Always builds the string, even if trace is filtered out
+logger.trace('User data: ${jsonEncode(hugeMap)}');
+
+// Lambda only called when trace level is active
+logger.trace(() => 'User data: ${jsonEncode(hugeMap)}');
+```
+
+This is especially useful for `trace` and `debug` messages that are typically disabled in production but contain expensive-to-build strings.
+
 ### Filtering
 
 Chirp provides two ways to filter logs:
