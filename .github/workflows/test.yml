@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         version: [
           # absolute minimum version, it is a breaking change when it doesn't work here anymore
