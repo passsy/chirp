@@ -358,8 +358,8 @@ void main() {
       });
     });
 
-    test('lazy baseFilePathProvider drains buffer after flushInterval', () {
-      fakeAsync((async) {
+    test('lazy baseFilePathProvider drains buffer after flushInterval', () async {
+      await fakeAsyncWithDrain((async) async {
         final tempDir = createTempDir();
         final logPath = '${tempDir.path}/lazy-buffered/app.log';
 
@@ -389,15 +389,16 @@ void main() {
               '(flushInterval is 10s)',
         );
 
-        // Advance past the flushInterval.
+        // Advance past the flushInterval — fires the flush timer which
+        // starts real async file I/O.
         async.elapse(const Duration(seconds: 2));
-        async.flushMicrotasks();
+        await drainEvent();
 
         final content = File(logPath).readAsStringSync();
         expect(content, contains('Buffered info'));
 
         writer.close();
-        async.flushMicrotasks();
+        await drainEvent();
       });
     });
 
