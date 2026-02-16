@@ -1594,8 +1594,8 @@ void main() {
   });
 
   group('FlushStrategy.buffered timer behavior', () {
-    test('first write starts timer, flushes after flushInterval', () {
-      fakeAsync((async) {
+    test('first write starts timer, flushes after flushInterval', () async {
+      await fakeAsyncWithDrain((async) async {
         final tempDir = createTempDir();
         final logPath = '${tempDir.path}/app.log';
         final writer = RotatingFileWriter(
@@ -1611,9 +1611,9 @@ void main() {
         expect(File(logPath).existsSync(), isFalse,
             reason: 'File should not exist immediately after write');
 
-        // Wait for timer to fire
+        // Wait for timer to fire and settle async I/O
         async.elapse(const Duration(milliseconds: 50));
-        async.flushMicrotasks();
+        await drainEvent();
 
         // Now file should exist
         expect(File(logPath).existsSync(), isTrue,
@@ -1623,12 +1623,12 @@ void main() {
         expect(content, contains('Message 1'));
 
         writer.close();
-        async.flushMicrotasks();
+        await drainEvent();
       });
     });
 
-    test('multiple writes before timer fires are batched together', () {
-      fakeAsync((async) {
+    test('multiple writes before timer fires are batched together', () async {
+      await fakeAsyncWithDrain((async) async {
         final tempDir = createTempDir();
         final logPath = '${tempDir.path}/app.log';
         final writer = RotatingFileWriter(
@@ -1645,9 +1645,9 @@ void main() {
         // Immediately, nothing written yet
         expect(File(logPath).existsSync(), isFalse);
 
-        // Wait for timer
+        // Wait for timer and settle async I/O
         async.elapse(const Duration(milliseconds: 100));
-        async.flushMicrotasks();
+        await drainEvent();
 
         // All 3 messages should be written in one batch
         final content = File(logPath).readAsStringSync();
@@ -1659,7 +1659,7 @@ void main() {
         expect(lines.length, 3, reason: 'All 3 messages batched in one flush');
 
         writer.close();
-        async.flushMicrotasks();
+        await drainEvent();
       });
     });
 
