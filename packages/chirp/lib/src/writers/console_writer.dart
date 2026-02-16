@@ -137,8 +137,8 @@ class PrintConsoleWriter extends ChirpWriter {
   @override
   void write(LogRecord record) {
     // Format
-    final buffer = ConsoleMessageBuffer(capabilities: capabilities);
-    formatter.format(record, MessageBuffer(buffer));
+    final buffer = MessageBuffer.console(capabilities: capabilities);
+    formatter.format(record, buffer);
     final text = buffer.toString();
 
     // No chunking needed (default on desktop/web)

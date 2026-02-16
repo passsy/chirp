@@ -1,4 +1,5 @@
 import 'package:chirp/src/core/log_record.dart';
+import 'package:chirp/src/platform/terminal_capabilities.dart';
 import 'package:chirp/src/writers/console_writer.dart';
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer.dart';
 
@@ -65,6 +66,30 @@ class MessageBuffer {
         'FileMessageBuffer, got ${buffer.runtimeType}',
       );
     }
+  }
+
+  /// Creates a [MessageBuffer] backed by a [ConsoleMessageBuffer].
+  ///
+  /// ```dart
+  /// final buffer = MessageBuffer.console(capabilities: capabilities);
+  /// formatter.format(record, buffer);
+  /// print(buffer.toString());
+  /// ```
+  factory MessageBuffer.console({
+    required TerminalCapabilities capabilities,
+  }) {
+    return MessageBuffer(ConsoleMessageBuffer(capabilities: capabilities));
+  }
+
+  /// Creates a [MessageBuffer] backed by a [FileMessageBuffer].
+  ///
+  /// ```dart
+  /// final buffer = MessageBuffer.file();
+  /// formatter.format(record, buffer);
+  /// file.writeAsStringSync(buffer.toString());
+  /// ```
+  factory MessageBuffer.file() {
+    return MessageBuffer(FileMessageBuffer());
   }
 
   final Object buffer;
