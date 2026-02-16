@@ -70,11 +70,11 @@ class DeveloperLogConsoleWriter extends ChirpWriter {
   void write(LogRecord record) {
     // Colors disabled - developer.log adds its own [name] prefix which
     // makes ANSI codes look messy in the output
-    final buffer = ConsoleMessageBuffer(
+    final buffer = MessageBuffer.console(
       capabilities:
           const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
     );
-    formatter.format(record, MessageBuffer(buffer));
+    formatter.format(record, buffer);
     final text = buffer.toString();
 
     developer.log(

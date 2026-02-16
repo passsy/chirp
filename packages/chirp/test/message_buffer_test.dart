@@ -6,12 +6,11 @@ import 'package:test/test.dart';
 void main() {
   group('MessageBuffer.toString()', () {
     test('returns console buffer contents', () {
-      final consoleBuffer = ConsoleMessageBuffer(
+      final buffer = MessageBuffer.console(
         capabilities: const TerminalCapabilities(
           colorSupport: TerminalColorSupport.none,
         ),
       );
-      final buffer = MessageBuffer(consoleBuffer);
 
       buffer.write('hello');
       buffer.write(' world');
@@ -20,8 +19,7 @@ void main() {
     });
 
     test('returns file buffer contents', () {
-      final fileBuffer = FileMessageBuffer();
-      final buffer = MessageBuffer(fileBuffer);
+      final buffer = MessageBuffer.file();
 
       buffer.write('hello');
       buffer.write(' world');
@@ -30,35 +28,54 @@ void main() {
     });
 
     test('returns empty string for empty console buffer', () {
-      final consoleBuffer = ConsoleMessageBuffer(
+      final buffer = MessageBuffer.console(
         capabilities: const TerminalCapabilities(
           colorSupport: TerminalColorSupport.none,
         ),
       );
-      final buffer = MessageBuffer(consoleBuffer);
 
       expect(buffer.toString(), '');
     });
 
     test('returns empty string for empty file buffer', () {
-      final fileBuffer = FileMessageBuffer();
-      final buffer = MessageBuffer(fileBuffer);
+      final buffer = MessageBuffer.file();
 
       expect(buffer.toString(), '');
     });
 
     test('includes newlines from writeln()', () {
-      final consoleBuffer = ConsoleMessageBuffer(
+      final buffer = MessageBuffer.console(
         capabilities: const TerminalCapabilities(
           colorSupport: TerminalColorSupport.none,
         ),
       );
-      final buffer = MessageBuffer(consoleBuffer);
 
       buffer.writeln('line 1');
       buffer.write('line 2');
 
       expect(buffer.toString(), 'line 1\nline 2');
+    });
+  });
+
+  group('MessageBuffer.console()', () {
+    test('exposes console buffer', () {
+      final buffer = MessageBuffer.console(
+        capabilities: const TerminalCapabilities(
+          colorSupport: TerminalColorSupport.none,
+        ),
+      );
+
+      expect(buffer.console, isNotNull);
+      expect(buffer.file, isNull);
+    });
+  });
+
+  group('MessageBuffer.file()', () {
+    test('exposes file buffer', () {
+      final buffer = MessageBuffer.file();
+
+      expect(buffer.file, isNotNull);
+      expect(buffer.console, isNull);
     });
   });
 }

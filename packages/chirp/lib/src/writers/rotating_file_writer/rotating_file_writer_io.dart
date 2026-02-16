@@ -888,8 +888,8 @@ class _RotatingFileSink {
   }
 
   String _formatRecord(LogRecord record) {
-    final buffer = FileMessageBuffer();
-    formatter.format(record, MessageBuffer(buffer));
+    final buffer = MessageBuffer.file();
+    formatter.format(record, buffer);
     return buffer.toString();
   }
 
