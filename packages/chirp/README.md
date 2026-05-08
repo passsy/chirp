@@ -467,6 +467,56 @@ Chirp.root = ChirpLogger().addConsoleWriter();
 Chirp.root.addWriter(myWriter);
 ```
 
+### Lazy Logging
+
+Defer expensive log construction until the logger has decided to actually emit.
+Two flavors, picked by what's expensive.
+
+#### Lazy Messages
+
+Pass a lambda instead of a string to defer expensive message construction.
+The lambda is only called when the log level passes the filter — avoiding unnecessary allocations when the logger is "off":
+
+```dart
+// Always builds the string, even if trace is filtered out
+logger.trace('User data: ${jsonEncode(hugeMap)}');
+
+// Lambda only called when trace level is active
+logger.trace(() => 'User data: ${jsonEncode(hugeMap)}');
+```
+
+This is especially useful for `trace` and `debug` messages that are typically disabled in production but contain expensive-to-build strings.
+
+#### Lazy Builders
+
+When the expensive work lives in `data`, `error`, `stackTrace`, or any other named argument — not just the message — use the `xxxLazy` variant.
+The builder is invoked only when the level passes, so every argument it constructs is paid for only on records that will actually be emitted.
+
+```dart
+// Defers EVERY argument (message, data, error, ...) until the logger emits
+Chirp.warningLazy(
+  (log) => log('snapshot', data: {'state': renderState(), 'metrics': dump()}),
+);
+
+// Works for every level
+Chirp.errorLazy((log) => log('failed', error: e, stackTrace: st));
+
+// logLazy takes a level: argument
+Chirp.logLazy(
+  (log) => log('msg', data: {'state': render()}),
+  level: ChirpLogLevel.debug,
+);
+```
+
+The inner `log` callback has the same shape as the eager method (typedef `ChirpLogFn`), so call sites read identically — minus the wasted work when the log will be discarded.
+
+Caller resolution is handled automatically: the `xxxLazy(...)` invocation line is reported, not the inner `(log) => ...` lambda body, so source locations look the same whether the call is eager or lazy.
+
+Available variants: `traceLazy`, `debugLazy`, `infoLazy`, `noticeLazy`, `successLazy`, `warningLazy`, `errorLazy`, `criticalLazy`, `wtfLazy`, plus the generic `logLazy` on both `ChirpLogger` instances and the global `Chirp` static API.
+
+Lazy builders cost one closure allocation per call when the level passes; the level-filtered hot path stays as cheap as the eager methods.
+Reach for `xxxLazy` when constructing `data` (or other arguments) is expensive; reach for the lazy-message form when only the message is.
+
 ### Filtering
 
 Chirp provides two ways to filter logs:
@@ -893,6 +943,7 @@ See [`examples/simple/bin/`](https://github.com/passsy/chirp/tree/main/examples/
 | [`instance_tracking.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/instance_tracking.dart) | The `.chirp` extension |
 | [`multiple_writers.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/multiple_writers.dart) | Console + JSON output |
 | [`file_writer.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/file_writer.dart) | File logging with rotation |
+| [`lazy_messages.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/lazy_messages.dart) | Lazy message construction for performance |
 | [`interceptors.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/interceptors.dart) | Filtering and transforming logs |
 | [`library.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/library.dart) / [`app.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/app.dart) | Library logger adoption |
 | [`main.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/main.dart) | Span transformers (advanced) |

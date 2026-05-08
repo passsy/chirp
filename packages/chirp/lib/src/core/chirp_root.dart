@@ -250,6 +250,51 @@ class Chirp {
       formatOptions: formatOptions,
     );
   }
+
+  /// Lazy variant of [log] — see [ChirpLogger.logLazy].
+  static void logLazy(
+    void Function(ChirpLogFn log) builder, {
+    ChirpLogLevel level = ChirpLogLevel.info,
+    int? skipFrames,
+  }) =>
+      _effectiveRootLogger.logLazy(builder,
+          level: level, skipFrames: skipFrames);
+
+  /// Lazy variant of [trace] — see [ChirpLogger.traceLazy].
+  static void traceLazy(void Function(ChirpLogFn log) builder) =>
+      _effectiveRootLogger.traceLazy(builder);
+
+  /// Lazy variant of [debug] — see [ChirpLogger.debugLazy].
+  static void debugLazy(void Function(ChirpLogFn log) builder) =>
+      _effectiveRootLogger.debugLazy(builder);
+
+  /// Lazy variant of [info] — see [ChirpLogger.infoLazy].
+  static void infoLazy(void Function(ChirpLogFn log) builder) =>
+      _effectiveRootLogger.infoLazy(builder);
+
+  /// Lazy variant of [notice] — see [ChirpLogger.noticeLazy].
+  static void noticeLazy(void Function(ChirpLogFn log) builder) =>
+      _effectiveRootLogger.noticeLazy(builder);
+
+  /// Lazy variant of [success] — see [ChirpLogger.successLazy].
+  static void successLazy(void Function(ChirpLogFn log) builder) =>
+      _effectiveRootLogger.successLazy(builder);
+
+  /// Lazy variant of [warning] — see [ChirpLogger.warningLazy].
+  static void warningLazy(void Function(ChirpLogFn log) builder) =>
+      _effectiveRootLogger.warningLazy(builder);
+
+  /// Lazy variant of [error] — see [ChirpLogger.errorLazy].
+  static void errorLazy(void Function(ChirpLogFn log) builder) =>
+      _effectiveRootLogger.errorLazy(builder);
+
+  /// Lazy variant of [critical] — see [ChirpLogger.criticalLazy].
+  static void criticalLazy(void Function(ChirpLogFn log) builder) =>
+      _effectiveRootLogger.criticalLazy(builder);
+
+  /// Lazy variant of [wtf] — see [ChirpLogger.wtfLazy].
+  static void wtfLazy(void Function(ChirpLogFn log) builder) =>
+      _effectiveRootLogger.wtfLazy(builder);
 }
 
 /// Extension on [ChirpLogger] to add convenience methods for console writers.

@@ -1,3 +1,18 @@
+## Unreleased
+
+- **New** Lazy message construction — pass `() => 'expensive $message'` to any log method.
+  The lambda is only called when the log level passes the filter, avoiding unnecessary string allocations.
+- **New** Lazy log builders — `traceLazy`, `debugLazy`, `infoLazy`, `noticeLazy`, `successLazy`, `warningLazy`, `errorLazy`, `criticalLazy`, `wtfLazy`, and `logLazy` (with a `level:` argument) — defer the entire log call (message, `data`, `error`, `stackTrace`, `formatOptions`) until the level filter passes.
+  Useful when expensive work lives in the structured `data` map, not just the message string.
+  ```dart
+  Chirp.warningLazy(
+    (log) => log('snapshot', data: {'state': renderState()}),
+  );
+  ```
+  Matching `Chirp.*Lazy` static forwarders are exposed on the global logger.
+  Caller resolution lands on the `xxxLazy(...)` invocation line, not the inner `(log) => ...` lambda body, so eager and lazy calls report consistent source locations.
+  Adds the `ChirpLogFn` typedef for the inner `log` callback.
+
 ## 0.8.0
 
 ### New Features

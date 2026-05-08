@@ -31,7 +31,7 @@ export 'package:chirp/src/ansi/console_color.dart'
 export 'package:chirp/src/core/chirp_formatter.dart'
     show ChirpFormatter, MessageBuffer;
 export 'package:chirp/src/core/chirp_interceptor.dart' show ChirpInterceptor;
-export 'package:chirp/src/core/chirp_logger.dart' show ChirpLogger;
+export 'package:chirp/src/core/chirp_logger.dart' show ChirpLogFn, ChirpLogger;
 export 'package:chirp/src/core/chirp_root.dart'
     show Chirp, ChirpInstanceLogger, ChirpLoggerConsoleWriterExt, LogRecordExt;
 export 'package:chirp/src/core/chirp_writer.dart' show ChirpWriter;
