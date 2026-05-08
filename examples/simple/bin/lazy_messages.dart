@@ -1,4 +1,4 @@
-/// Example: Lazy message construction to avoid expensive string building.
+/// Example: Lazy message and lazy log construction.
 ///
 /// Run with: dart run bin/lazy_messages.dart
 import 'dart:convert';
@@ -15,21 +15,33 @@ void main() {
     'users': List.generate(1000, (i) => {'id': i, 'name': 'User $i'}),
   };
 
-  // Without lazy messages: jsonEncode() runs even though trace is filtered out
+  // Without lazy: jsonEncode() runs even though trace is filtered out.
   Chirp.trace('User data: ${jsonEncode(hugeMap)}');
 
-  // With lazy messages: the lambda is never called because trace is filtered
+  // Lazy message: the lambda is never called because trace is filtered.
   Chirp.trace(() => 'User data: ${jsonEncode(hugeMap)}');
 
-  // Works with all log levels
-  Chirp.warning(() => 'This warning is logged');
-  Chirp.error(() => 'This error is logged');
+  // traceLazy / warningLazy / etc.: defer EVERY argument (message, data,
+  // error, …) until the logger has decided to actually emit. Use this when
+  // expensive work is in the structured `data` map, not just the message.
+  Chirp.traceLazy(
+    (log) => log('User data', data: {'snapshot': jsonEncode(hugeMap)}),
+  );
+  Object().chirp.traceLazy((log) => log(() => 'asdf'));
 
-  // Plain strings still work as before
+  // Works at every level.
+  Chirp.warningLazy(
+    (log) => log('Rendered users', data: {'count': hugeMap.length}),
+  );
+  Chirp.errorLazy((log) => log('This error is logged'));
+
+  // Plain strings and lazy messages still work as before.
   Chirp.warning('Plain string warning');
+  Chirp.warning(() => 'Lazy string warning');
 }
 
 // Output (only warning and above are shown):
-// ... [warning] This warning is logged
+// ... [warning] Rendered users {count: 1}
 // ... [error] This error is logged
 // ... [warning] Plain string warning
+// ... [warning] Lazy string warning

@@ -1106,6 +1106,229 @@ void main() {
       expect(records[0].message, isNull);
     });
   });
+
+  group('xxxLazy', () {
+    test('builder is invoked when level passes and forwards all args', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+
+      logger.warningLazy(
+        (log) => log('oops', data: {'k': 'v'}, error: 'err'),
+      );
+
+      expect(records, hasLength(1));
+      expect(records[0].message, 'oops');
+      expect(records[0].level, ChirpLogLevel.warning);
+      expect(records[0].data, {'k': 'v'});
+      expect(records[0].error, 'err');
+    });
+
+    test('builder is not invoked when level is filtered out', () {
+      var callCount = 0;
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..setMinLogLevel(ChirpLogLevel.warning)
+        ..addWriter(FakeWriter(records));
+
+      logger.traceLazy((log) {
+        callCount++;
+        log('expensive', data: {'big': 'payload'});
+      });
+
+      expect(records, isEmpty);
+      expect(callCount, 0);
+    });
+
+    test('lazy variants exist for every level', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..setMinLogLevel(ChirpLogLevel.trace)
+        ..addWriter(FakeWriter(records));
+
+      logger.logLazy((log) => log('log'));
+      logger.traceLazy((log) => log('trace'));
+      logger.debugLazy((log) => log('debug'));
+      logger.infoLazy((log) => log('info'));
+      logger.noticeLazy((log) => log('notice'));
+      logger.successLazy((log) => log('success'));
+      logger.warningLazy((log) => log('warning'));
+      logger.errorLazy((log) => log('error'));
+      logger.criticalLazy((log) => log('critical'));
+      logger.wtfLazy((log) => log('wtf'));
+
+      expect(records.map((r) => r.message), [
+        'log',
+        'trace',
+        'debug',
+        'info',
+        'notice',
+        'success',
+        'warning',
+        'error',
+        'critical',
+        'wtf',
+      ]);
+    });
+
+    test('logLazy respects the level: argument', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+
+      logger.logLazy(
+        (log) => log('boom'),
+        level: ChirpLogLevel.error,
+      );
+
+      expect(records, hasLength(1));
+      expect(records[0].level, ChirpLogLevel.error);
+      expect(records[0].message, 'boom');
+    });
+
+    test('logLazy filters by level before invoking the builder', () {
+      var callCount = 0;
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..setMinLogLevel(ChirpLogLevel.error)
+        ..addWriter(FakeWriter(records));
+
+      logger.logLazy(
+        (log) {
+          callCount++;
+          log('should not run');
+        },
+        level: ChirpLogLevel.debug,
+      );
+
+      expect(records, isEmpty);
+      expect(callCount, 0);
+    });
+
+    test('builder callback message can itself be a lambda', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()..addWriter(FakeWriter(records));
+
+      logger.infoLazy((log) => log(() => 'nested lazy'));
+
+      expect(records, hasLength(1));
+      expect(records[0].message, 'nested lazy');
+    });
+
+    test('logger context is merged into lazy log data', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger(context: {'requestId': 'r-1'})
+        ..addWriter(FakeWriter(records));
+
+      logger.infoLazy((log) => log('msg', data: {'extra': 'x'}));
+
+      expect(records, hasLength(1));
+      expect(records[0].data, {'requestId': 'r-1', 'extra': 'x'});
+    });
+  });
+
+  group('xxxLazy caller resolution', () {
+    test('caller is captured when a writer requires it', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..addWriter(FakeWriterRequiringCallerInfo(records));
+
+      logger.traceLazy((log) => log('msg'));
+
+      expect(records, hasLength(1));
+      expect(records[0].caller, isNotNull);
+      expect(records[0].caller.toString(), contains('chirp_logger_test.dart'));
+    });
+
+    test('caller resolves to the user file, not chirp internals', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..addWriter(FakeWriterRequiringCallerInfo(records));
+
+      logger.traceLazy((log) => log('msg'));
+
+      final info = records[0].callerInfo;
+      expect(info, isNotNull);
+      expect(info!.file, contains('chirp_logger_test.dart'),
+          reason: 'caller should resolve to the test file, not chirp internals');
+    });
+
+    test(
+        'multi-line lazy call reports the invocation line, not the lambda body',
+        () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..addWriter(FakeWriterRequiringCallerInfo(records));
+
+      // Adjacent eager and lazy calls. The lazy call spans 3 lines but its
+      // resolved caller line should equal `eagerLine + 1` — i.e. the
+      // `traceLazy(` invocation, not the `(log) => log(...)` body that lives
+      // one line below.
+      logger.trace('eager');
+      logger.traceLazy(
+        (log) => log('lazy'),
+      );
+
+      final eagerLine = records[0].callerInfo!.line;
+      final lazyLine = records[1].callerInfo!.line;
+      expect(
+        lazyLine - eagerLine,
+        1,
+        reason: 'Got eagerLine=$eagerLine lazyLine=$lazyLine. The lazy call '
+            'site is one line below the eager call. Caller should resolve to '
+            'the .traceLazy() invocation, not the inner lambda body.',
+      );
+    });
+
+    test('lazy and eager report adjacent lines when on adjacent single lines',
+        () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..addWriter(FakeWriterRequiringCallerInfo(records));
+
+      logger.trace('eager');
+      logger.traceLazy((log) => log('lazy'));
+
+      final eagerLine = records[0].callerInfo!.line;
+      final lazyLine = records[1].callerInfo!.line;
+      expect(lazyLine, eagerLine + 1);
+    });
+
+    test('logLazy skipFrames composes with the internal lambda absorption', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..addWriter(FakeWriterRequiringCallerInfo(records));
+
+      // Wrappers that themselves call into the logger. With skipFrames: 1 the
+      // caller should resolve past the wrapper to its own caller — the test
+      // body — for both eager and lazy paths.
+      void eagerWrapper(String msg) => logger.log(msg, skipFrames: 1);
+      void lazyWrapper(String msg) =>
+          logger.logLazy((log) => log(msg), skipFrames: 1);
+
+      eagerWrapper('eager');
+      lazyWrapper('lazy');
+
+      final eagerLine = records[0].callerInfo!.line;
+      final lazyLine = records[1].callerInfo!.line;
+      expect(
+        lazyLine - eagerLine,
+        1,
+        reason: 'Got eagerLine=$eagerLine lazyLine=$lazyLine. With '
+            'skipFrames: 1 both should resolve through the wrapper to the '
+            'two adjacent test-body lines.',
+      );
+    });
+
+    test('logLazy without explicit skipFrames resolves to user code', () {
+      final records = <LogRecord>[];
+      final logger = ChirpLogger()
+        ..addWriter(FakeWriterRequiringCallerInfo(records));
+
+      logger.logLazy((log) => log('msg'), level: ChirpLogLevel.warning);
+
+      expect(records[0].callerInfo, isNotNull);
+      expect(records[0].callerInfo!.file, contains('chirp_logger_test.dart'));
+    });
+  });
 }
 
 /// Fake writer implementation for testing.

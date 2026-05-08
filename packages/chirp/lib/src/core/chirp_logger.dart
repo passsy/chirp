@@ -8,6 +8,26 @@ import 'package:chirp/src/core/log_level.dart';
 import 'package:chirp/src/core/log_record.dart';
 import 'package:clock/clock.dart';
 
+/// Signature of the inner `log` callback passed to a lazy log builder.
+///
+/// Mirrors the named arguments of the level methods ([ChirpLogger.trace],
+/// [ChirpLogger.info], etc.) so that a lazy log call reads identically to the
+/// eager form:
+///
+/// ```dart
+/// // eager
+/// logger.trace('msg', data: {/* expensive */});
+/// // lazy — body only runs when the level passes the filter
+/// logger.traceLazy((log) => log('msg', data: {/* expensive */}));
+/// ```
+typedef ChirpLogFn = void Function(
+  Object? message, {
+  Object? error,
+  StackTrace? stackTrace,
+  Map<String, Object?>? data,
+  List<FormatOptions>? formatOptions,
+});
+
 /// Flexible logger class supporting named loggers, child loggers, and custom writers.
 ///
 /// [ChirpLogger] provides instance methods for logging at different severity
@@ -925,6 +945,147 @@ class ChirpLogger {
     );
 
     _logRecord(entry);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Lazy variants
+  //
+  // Each `xxxLazy` method below mirrors its eager counterpart but only invokes
+  // the supplied builder when the level passes the [minLogLevel] filter. The
+  // builder receives a [ChirpLogFn] that takes the same named arguments as the
+  // eager method, so call sites read identically — minus the wasted work when
+  // the log will be discarded.
+  //
+  // Unlike the eager methods (which inline LogRecord construction to keep the
+  // filtered-out hot path cheap), the lazy methods share a single
+  // [_lazyLogFn] helper. The level filter still runs in each method, so the
+  // helper is only reached for records that will actually be emitted.
+  // ---------------------------------------------------------------------------
+
+  /// Lazy variant of [log]. The [builder] is invoked only when [level] passes
+  /// the effective minimum log level. Use this when constructing the message
+  /// or `data` map is expensive.
+  ///
+  /// ```dart
+  /// logger.logLazy(
+  ///   (log) => log('snapshot', data: {'state': renderState()}),
+  ///   level: ChirpLogLevel.debug,
+  /// );
+  /// ```
+  void logLazy(
+    void Function(ChirpLogFn log) builder, {
+    ChirpLogLevel level = ChirpLogLevel.info,
+    int? skipFrames,
+  }) {
+    final min = _effectiveMinLogLevel;
+    if (min != null && level.severity < min.severity) return;
+    builder(_lazyLogFn(level, skipFrames: skipFrames));
+  }
+
+  /// Lazy variant of [trace]. See [logLazy] for usage.
+  void traceLazy(void Function(ChirpLogFn log) builder) {
+    const level = ChirpLogLevel.trace;
+    final min = _effectiveMinLogLevel;
+    if (min != null && level.severity < min.severity) return;
+    builder(_lazyLogFn(level));
+  }
+
+  /// Lazy variant of [debug]. See [logLazy] for usage.
+  void debugLazy(void Function(ChirpLogFn log) builder) {
+    const level = ChirpLogLevel.debug;
+    final min = _effectiveMinLogLevel;
+    if (min != null && level.severity < min.severity) return;
+    builder(_lazyLogFn(level));
+  }
+
+  /// Lazy variant of [info]. See [logLazy] for usage.
+  void infoLazy(void Function(ChirpLogFn log) builder) {
+    const level = ChirpLogLevel.info;
+    final min = _effectiveMinLogLevel;
+    if (min != null && level.severity < min.severity) return;
+    builder(_lazyLogFn(level));
+  }
+
+  /// Lazy variant of [notice]. See [logLazy] for usage.
+  void noticeLazy(void Function(ChirpLogFn log) builder) {
+    const level = ChirpLogLevel.notice;
+    final min = _effectiveMinLogLevel;
+    if (min != null && level.severity < min.severity) return;
+    builder(_lazyLogFn(level));
+  }
+
+  /// Lazy variant of [success]. See [logLazy] for usage.
+  void successLazy(void Function(ChirpLogFn log) builder) {
+    const level = ChirpLogLevel.success;
+    final min = _effectiveMinLogLevel;
+    if (min != null && level.severity < min.severity) return;
+    builder(_lazyLogFn(level));
+  }
+
+  /// Lazy variant of [warning]. See [logLazy] for usage.
+  void warningLazy(void Function(ChirpLogFn log) builder) {
+    const level = ChirpLogLevel.warning;
+    final min = _effectiveMinLogLevel;
+    if (min != null && level.severity < min.severity) return;
+    builder(_lazyLogFn(level));
+  }
+
+  /// Lazy variant of [error]. See [logLazy] for usage.
+  void errorLazy(void Function(ChirpLogFn log) builder) {
+    const level = ChirpLogLevel.error;
+    final min = _effectiveMinLogLevel;
+    if (min != null && level.severity < min.severity) return;
+    builder(_lazyLogFn(level));
+  }
+
+  /// Lazy variant of [critical]. See [logLazy] for usage.
+  void criticalLazy(void Function(ChirpLogFn log) builder) {
+    const level = ChirpLogLevel.critical;
+    final min = _effectiveMinLogLevel;
+    if (min != null && level.severity < min.severity) return;
+    builder(_lazyLogFn(level));
+  }
+
+  /// Lazy variant of [wtf]. See [logLazy] for usage.
+  void wtfLazy(void Function(ChirpLogFn log) builder) {
+    const level = ChirpLogLevel.wtf;
+    final min = _effectiveMinLogLevel;
+    if (min != null && level.severity < min.severity) return;
+    builder(_lazyLogFn(level));
+  }
+
+  /// Builds the [ChirpLogFn] handed to a lazy builder. Reached only after the
+  /// level filter has passed, so the closure cost lands on records that will
+  /// actually be emitted.
+  ChirpLogFn _lazyLogFn(ChirpLogLevel level, {int? skipFrames}) {
+    // +1 skips the user's `(log) => log(...)` frame so caller resolution
+    // matches the eager methods.
+    final lazySkipFrames = (skipFrames ?? 0) + 1;
+    return (message, {error, stackTrace, data, formatOptions}) {
+      final Object? resolvedMessage;
+      if (message is Object? Function()) {
+        resolvedMessage = message();
+      } else {
+        resolvedMessage = message;
+      }
+      final caller = _effectiveRequiresCallerInfo ? StackTrace.current : null;
+      final entry = LogRecord(
+        message: resolvedMessage,
+        level: level,
+        error: error,
+        stackTrace: stackTrace,
+        caller: caller,
+        skipFrames: lazySkipFrames,
+        timestamp: clock.now(),
+        wallClock: DateTime.now(),
+        zone: Zone.current,
+        loggerName: name,
+        instance: instance,
+        data: _mergeData(_effectiveContext, data),
+        formatOptions: formatOptions,
+      );
+      _logRecord(entry);
+    };
   }
 
   /// Writes a log record to all configured writers.
