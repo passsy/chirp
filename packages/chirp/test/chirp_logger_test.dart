@@ -1248,7 +1248,8 @@ void main() {
       final info = records[0].callerInfo;
       expect(info, isNotNull);
       expect(info!.file, contains('chirp_logger_test.dart'),
-          reason: 'caller should resolve to the test file, not chirp internals');
+          reason:
+              'caller should resolve to the test file, not chirp internals');
     });
 
     test(
