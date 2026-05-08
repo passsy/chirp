@@ -2,7 +2,7 @@ name: chirp
 description: >-
   A lightweight, fully customizable Dart logger with automatic caller info, zero      
     config, rotating file writers, and structured logging.
-version: 0.8.0
+version: 0.9.0
 repository: https://github.com/passsy/chirp
 topics:
   - logging
