@@ -13,6 +13,7 @@ import 'package:test/test.dart';
 
 import 'fake_async_with_drain.dart';
 import 'test_log_record.dart';
+import 'tracking_io_overrides.dart';
 
 void main() {
   group('SimpleFileFormatter', () {
@@ -1664,39 +1665,46 @@ void main() {
     });
 
     test('timer resets after flush, next write starts new timer', () async {
-      await fakeAsyncWithDrain((async) async {
-        final tempDir = createTempDir();
-        final logPath = '${tempDir.path}/app.log';
-        final writer = RotatingFileWriter(
-          baseFilePathProvider: () => logPath,
-          flushStrategy: FlushStrategy.buffered,
-        );
+      final io = TrackingIoOverrides();
+      await io.run(() async {
+        await fakeAsyncWithDrain((async) async {
+          final tempDir = createTempDir();
+          final logPath = '${tempDir.path}/app.log';
+          final writer = RotatingFileWriter(
+            baseFilePathProvider: () => logPath,
+            flushStrategy: FlushStrategy.buffered,
+          );
 
-        // First batch
-        writer.write(testRecord(message: 'Batch 1'));
-        async.elapse(const Duration(seconds: 1));
-        await drainEvent();
+          // First batch
+          writer.write(testRecord(message: 'Batch 1'));
+          final firstFlush = io.trapFlush();
+          async.elapse(const Duration(seconds: 1));
+          await firstFlush.wait();
+          async.flushMicrotasks();
 
-        final content = File(logPath).readAsStringSync();
-        expect(content, contains('Batch 1'));
-        expect(content, isNot(contains('Batch 2')));
+          final content = File(logPath).readAsStringSync();
+          expect(content, contains('Batch 1'));
+          expect(content, isNot(contains('Batch 2')));
 
-        // Second batch - starts new timer
-        writer.write(testRecord(message: 'Batch 2'));
+          // Second batch - starts new timer
+          writer.write(testRecord(message: 'Batch 2'));
 
-        // Immediately, batch 2 not flushed yet
-        expect(File(logPath).readAsStringSync(), isNot(contains('Batch 2')),
-            reason: 'Batch 2 not yet flushed');
+          // Immediately, batch 2 not flushed yet
+          expect(File(logPath).readAsStringSync(), isNot(contains('Batch 2')),
+              reason: 'Batch 2 not yet flushed');
 
-        async.elapse(const Duration(seconds: 1));
-        await drainEvent();
+          final secondFlush = io.trapFlush();
+          async.elapse(const Duration(seconds: 1));
+          await secondFlush.wait();
+          async.flushMicrotasks();
 
-        final content2 = File(logPath).readAsStringSync();
-        expect(content2, contains('Batch 1'));
-        expect(content2, contains('Batch 2'));
+          final content2 = File(logPath).readAsStringSync();
+          expect(content2, contains('Batch 1'));
+          expect(content2, contains('Batch 2'));
 
-        await writer.close();
-        await drainEvent();
+          await writer.close();
+          await drainEvent();
+        });
       });
     });
 
@@ -1891,50 +1899,59 @@ void main() {
     });
 
     test('sustained logging: each flush resets timer for next batch', () async {
-      await fakeAsyncWithDrain((async) async {
-        final tempDir = createTempDir();
-        final logPath = '${tempDir.path}/app.log';
-        final writer = RotatingFileWriter(
-          baseFilePathProvider: () => logPath,
-          flushStrategy: FlushStrategy.buffered,
-        );
+      final io = TrackingIoOverrides();
+      await io.run(() async {
+        await fakeAsyncWithDrain((async) async {
+          final tempDir = createTempDir();
+          final logPath = '${tempDir.path}/app.log';
+          final writer = RotatingFileWriter(
+            baseFilePathProvider: () => logPath,
+            flushStrategy: FlushStrategy.buffered,
+          );
 
-        // Batch 1
-        writer.write(testRecord(message: 'Batch 1 - Msg 1'));
-        writer.write(testRecord(message: 'Batch 1 - Msg 2'));
-        async.elapse(const Duration(seconds: 1));
-        await drainEvent();
+          // Batch 1
+          writer.write(testRecord(message: 'Batch 1 - Msg 1'));
+          writer.write(testRecord(message: 'Batch 1 - Msg 2'));
+          final firstFlush = io.trapFlush();
+          async.elapse(const Duration(seconds: 1));
+          await firstFlush.wait();
+          async.flushMicrotasks();
 
-        var content = File(logPath).readAsStringSync();
-        expect(content, contains('Batch 1 - Msg 1'));
-        expect(content, contains('Batch 1 - Msg 2'));
+          var content = File(logPath).readAsStringSync();
+          expect(content, contains('Batch 1 - Msg 1'));
+          expect(content, contains('Batch 1 - Msg 2'));
 
-        // Batch 2
-        writer.write(testRecord(message: 'Batch 2 - Msg 1'));
-        async.elapse(const Duration(seconds: 1));
-        await drainEvent();
+          // Batch 2
+          writer.write(testRecord(message: 'Batch 2 - Msg 1'));
+          final secondFlush = io.trapFlush();
+          async.elapse(const Duration(seconds: 1));
+          await secondFlush.wait();
+          async.flushMicrotasks();
 
-        content = File(logPath).readAsStringSync();
-        expect(content, contains('Batch 2 - Msg 1'));
+          content = File(logPath).readAsStringSync();
+          expect(content, contains('Batch 2 - Msg 1'));
 
-        // Batch 3
-        writer.write(testRecord(message: 'Batch 3 - Msg 1'));
-        writer.write(testRecord(message: 'Batch 3 - Msg 2'));
-        writer.write(testRecord(message: 'Batch 3 - Msg 3'));
-        async.elapse(const Duration(seconds: 1));
-        await drainEvent();
+          // Batch 3
+          writer.write(testRecord(message: 'Batch 3 - Msg 1'));
+          writer.write(testRecord(message: 'Batch 3 - Msg 2'));
+          writer.write(testRecord(message: 'Batch 3 - Msg 3'));
+          final thirdFlush = io.trapFlush();
+          async.elapse(const Duration(seconds: 1));
+          await thirdFlush.wait();
+          async.flushMicrotasks();
 
-        // All batches flushed
-        content = File(logPath).readAsStringSync();
-        expect(content, contains('Batch 1 - Msg 1'));
-        expect(content, contains('Batch 1 - Msg 2'));
-        expect(content, contains('Batch 2 - Msg 1'));
-        expect(content, contains('Batch 3 - Msg 1'));
-        expect(content, contains('Batch 3 - Msg 2'));
-        expect(content, contains('Batch 3 - Msg 3'));
+          // All batches flushed
+          content = File(logPath).readAsStringSync();
+          expect(content, contains('Batch 1 - Msg 1'));
+          expect(content, contains('Batch 1 - Msg 2'));
+          expect(content, contains('Batch 2 - Msg 1'));
+          expect(content, contains('Batch 3 - Msg 1'));
+          expect(content, contains('Batch 3 - Msg 2'));
+          expect(content, contains('Batch 3 - Msg 3'));
 
-        await writer.close();
-        await drainEvent();
+          await writer.close();
+          await drainEvent();
+        });
       });
     });
 
