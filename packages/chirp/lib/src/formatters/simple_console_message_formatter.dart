@@ -73,6 +73,16 @@ class SimpleConsoleMessageFormatter extends SpanBasedFormatter {
     super.spanTransformers,
   });
 
+  /// Requires caller info when it renders anything derived from the stack
+  /// trace: the source location and method name ([showCaller]), or the class
+  /// label ([showInstance]), which falls back to the caller-derived class name
+  /// when the record carries no instance.
+  ///
+  /// Construct the formatter with `showCaller: false, showInstance: false` to
+  /// opt out of the expensive `StackTrace.current` capture.
+  @override
+  bool get requiresCallerInfo => showCaller || showInstance;
+
   @override
   LogSpan buildSpan(LogRecord record) {
     return _buildSimpleLogSpan(
