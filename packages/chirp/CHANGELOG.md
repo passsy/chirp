@@ -2,10 +2,7 @@
 
 ## Unreleased
 
-- **Fix** `SimpleConsoleMessageFormatter` now reports `requiresCallerInfo` correctly, so the source location shows up again.
-  It renders `file:line`, the method name and the caller-derived class name, but never asked the logger to capture the stack trace.
-  The location only appeared when some *other* writer (e.g. a file writer with `JsonLogFormatter`) happened to request caller info.
-  `requiresCallerInfo` now follows the display options — `showCaller || showInstance` — so `SimpleConsoleMessageFormatter(showCaller: false, showInstance: false)` still skips the expensive `StackTrace.current` capture.
+- **Fix** `SimpleConsoleMessageFormatter` requests caller info again, restoring the missing source location
 
 ## 0.9.0
 
