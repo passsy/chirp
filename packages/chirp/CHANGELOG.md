@@ -1,5 +1,9 @@
 # Chirp Changelog
 
+## Unreleased
+
+- **Fix** `SimpleConsoleMessageFormatter` requests caller info again, restoring the missing source location ([#46](https://github.com/passsy/chirp/issues/46))
+
 ## 0.9.0
 
 - **New** Lazy message construction — pass `() => 'expensive $message'` to any log method.

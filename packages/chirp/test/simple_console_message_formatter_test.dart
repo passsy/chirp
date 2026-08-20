@@ -365,6 +365,74 @@ void main() {
       expect(result, contains('_TestClass@$hash'));
       expect(result, isNot(contains('DifferentClass@')));
     });
+
+    group('requiresCallerInfo', () {
+      test('is true by default', () {
+        expect(SimpleConsoleMessageFormatter().requiresCallerInfo, isTrue);
+      });
+
+      test('stays true for showCaller alone', () {
+        final formatter = SimpleConsoleMessageFormatter(
+          showCaller: true,
+          showInstance: false,
+        );
+
+        expect(formatter.requiresCallerInfo, isTrue);
+      });
+
+      test('stays true for showInstance alone', () {
+        // ClassName.fromRecord falls back to the caller-derived class name
+        // when the record carries no instance.
+        final formatter = SimpleConsoleMessageFormatter(
+          showCaller: false,
+          showInstance: true,
+        );
+
+        expect(formatter.requiresCallerInfo, isTrue);
+      });
+
+      test('is false when neither caller nor instance is shown', () {
+        final formatter = SimpleConsoleMessageFormatter(
+          showCaller: false,
+          showInstance: false,
+        );
+
+        expect(formatter.requiresCallerInfo, isFalse);
+      });
+
+      test('logger prints the location without a second writer', () {
+        final messages = <String>[];
+        ChirpLogger()
+            .addConsoleWriter(
+              formatter: SimpleConsoleMessageFormatter(),
+              output: messages.add,
+            )
+            .info('hello');
+
+        expect(
+          messages.single,
+          matches(RegExp(r'simple_console_message_formatter_test:\d+')),
+        );
+      });
+
+      test('logger skips caller capture when the formatter opts out', () {
+        final messages = <String>[];
+        ChirpLogger()
+            .addConsoleWriter(
+              formatter: SimpleConsoleMessageFormatter(
+                showCaller: false,
+                showInstance: false,
+              ),
+              output: messages.add,
+            )
+            .info('hello');
+
+        expect(
+          messages.single,
+          isNot(matches(RegExp(r'simple_console_message_formatter_test:\d+'))),
+        );
+      });
+    });
   });
 
   group('FullTimestamp', () {
