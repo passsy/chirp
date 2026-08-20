@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Fix** `SimpleConsoleMessageFormatter` requests caller info again, restoring the missing source location
+- **Fix** `SimpleConsoleMessageFormatter` requests caller info again, restoring the missing source location ([#46](https://github.com/passsy/chirp/issues/46))
 
 ## 0.9.0
 
