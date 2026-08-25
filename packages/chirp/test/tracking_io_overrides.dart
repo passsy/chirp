@@ -6,8 +6,13 @@ import 'dart:typed_data';
 /// Tracks file I/O created through [File] while delegating to the real file
 /// system.
 final class TrackingIoOverrides extends IOOverrides {
+  final Zone _trackingZone = Zone.current;
+
   int _completedFlushes = 0;
   final List<_FlushWaiter> _flushWaiters = [];
+  int _pendingOperations = 0;
+
+  bool get hasPendingOperations => _pendingOperations > 0;
 
   Future<T> run<T>(Future<T> Function() body) {
     return IOOverrides.runWithIOOverrides(body, this);
@@ -26,11 +31,34 @@ final class TrackingIoOverrides extends IOOverrides {
     return _TrackingFile(file, this);
   }
 
-  void _trackFlush(Future<RandomAccessFile> flush) {
-    flush.whenComplete(() {
+  Future<T> _trackOperation<T>(
+    Future<T> operation, {
+    bool isFlush = false,
+  }) {
+    _pendingOperations++;
+
+    // Register the tracking callback outside FakeAsync's zone. Otherwise the
+    // callback that marks the operation complete would itself be held in the
+    // fake microtask queue while the test waits for the operation to settle.
+    _trackingZone.run(() {
+      operation.then<void>(
+        (_) => _completeOperation(isFlush: isFlush),
+        onError: (Object _, StackTrace __) {
+          _completeOperation(isFlush: isFlush);
+        },
+      );
+    });
+
+    return operation;
+  }
+
+  void _completeOperation({required bool isFlush}) {
+    if (isFlush) {
       _completedFlushes++;
       _completeReadyFlushWaiters();
-    });
+    }
+
+    _pendingOperations--;
   }
 
   Future<void> _waitForFlushAfter(int completedFlushes) {
@@ -66,12 +94,8 @@ final class TrackingIoTrap {
   final TrackingIoOverrides _overrides;
   final int _completedFlushesAtCreation;
 
-  Future<void> wait({
-    Duration timeout = const Duration(seconds: 5),
-  }) {
-    return _overrides
-        ._waitForFlushAfter(_completedFlushesAtCreation)
-        .timeout(timeout);
+  Future<void> wait() {
+    return _overrides._waitForFlushAfter(_completedFlushesAtCreation);
   }
 }
 
@@ -116,7 +140,7 @@ final class _TrackingFile implements File {
 
   @override
   Future<bool> exists() {
-    return _file.exists();
+    return _overrides._trackOperation(_file.exists());
   }
 
   @override
@@ -126,7 +150,7 @@ final class _TrackingFile implements File {
 
   @override
   Future<int> length() {
-    return _file.length();
+    return _overrides._trackOperation(_file.length());
   }
 
   @override
@@ -140,9 +164,9 @@ final class _TrackingFile implements File {
   @override
   Future<RandomAccessFile> open({
     FileMode mode = FileMode.read,
-  }) async {
-    final file = await _file.open(mode: mode);
-    return _TrackingRandomAccessFile(file, _overrides);
+  }) {
+    final open = _overrides._trackOperation(_file.open(mode: mode));
+    return open.then((file) => _TrackingRandomAccessFile(file, _overrides));
   }
 
   @override
@@ -156,7 +180,9 @@ final class _TrackingFile implements File {
   Future<String> readAsString({
     Encoding encoding = utf8,
   }) {
-    return _file.readAsString(encoding: encoding);
+    return _overrides._trackOperation(
+      _file.readAsString(encoding: encoding),
+    );
   }
 
   @override
@@ -166,7 +192,7 @@ final class _TrackingFile implements File {
 
   @override
   Future<Uint8List> readAsBytes() {
-    return _file.readAsBytes();
+    return _overrides._trackOperation(_file.readAsBytes());
   }
 
   @override
@@ -190,14 +216,16 @@ final class _TrackingFile implements File {
     FileMode mode = FileMode.write,
     Encoding encoding = utf8,
     bool flush = false,
-  }) async {
-    await _file.writeAsString(
-      contents,
-      mode: mode,
-      encoding: encoding,
-      flush: flush,
+  }) {
+    final write = _overrides._trackOperation(
+      _file.writeAsString(
+        contents,
+        mode: mode,
+        encoding: encoding,
+        flush: flush,
+      ),
     );
-    return this;
+    return write.then((_) => this);
   }
 
   @override
@@ -214,9 +242,11 @@ final class _TrackingFile implements File {
     List<int> bytes, {
     FileMode mode = FileMode.write,
     bool flush = false,
-  }) async {
-    await _file.writeAsBytes(bytes, mode: mode, flush: flush);
-    return this;
+  }) {
+    final write = _overrides._trackOperation(
+      _file.writeAsBytes(bytes, mode: mode, flush: flush),
+    );
+    return write.then((_) => this);
   }
 
   @override
@@ -230,7 +260,9 @@ final class _TrackingFile implements File {
   Future<FileSystemEntity> delete({
     bool recursive = false,
   }) {
-    return _file.delete(recursive: recursive);
+    return _overrides._trackOperation(
+      _file.delete(recursive: recursive),
+    );
   }
 
   @override
@@ -240,9 +272,9 @@ final class _TrackingFile implements File {
   }
 
   @override
-  Future<File> rename(String newPath) async {
-    final file = await _file.rename(newPath);
-    return _TrackingFile(file, _overrides);
+  Future<File> rename(String newPath) {
+    final rename = _overrides._trackOperation(_file.rename(newPath));
+    return rename.then((file) => _TrackingFile(file, _overrides));
   }
 
   @override
@@ -252,7 +284,7 @@ final class _TrackingFile implements File {
 
   @override
   Future<FileStat> stat() {
-    return _file.stat();
+    return _overrides._trackOperation(_file.stat());
   }
 
   @override
@@ -275,9 +307,11 @@ final class _TrackingRandomAccessFile implements RandomAccessFile {
     List<int> buffer, [
     int start = 0,
     int? end,
-  ]) async {
-    await _file.writeFrom(buffer, start, end);
-    return this;
+  ]) {
+    final write = _overrides._trackOperation(
+      _file.writeFrom(buffer, start, end),
+    );
+    return write.then((_) => this);
   }
 
   @override
@@ -291,11 +325,11 @@ final class _TrackingRandomAccessFile implements RandomAccessFile {
 
   @override
   Future<RandomAccessFile> flush() {
-    final flush = _file.flush().then((_) {
-      return this;
-    });
-    _overrides._trackFlush(flush);
-    return flush;
+    final flush = _overrides._trackOperation(
+      _file.flush(),
+      isFlush: true,
+    );
+    return flush.then((_) => this);
   }
 
   @override
@@ -305,7 +339,7 @@ final class _TrackingRandomAccessFile implements RandomAccessFile {
 
   @override
   Future<void> close() {
-    return _file.close();
+    return _overrides._trackOperation(_file.close());
   }
 
   @override

@@ -2,88 +2,103 @@ import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
 
-/// Pending drain completers, managed by [fakeAsyncWithDrain].
-List<Completer<void>>? _drainCompleters;
+import 'tracking_io_overrides.dart';
+
+/// Controls fake time and tracked file I/O inside [fakeAsyncWithDrain].
+final class AsyncIoContext {
+  AsyncIoContext._(this._fake, this._io);
+
+  final FakeAsync _fake;
+  final TrackingIoOverrides _io;
+  final List<Completer<void>> _drainCompleters = [];
+
+  /// Advances fake time and fires timers due within [duration].
+  void elapse(Duration duration) => _fake.elapse(duration);
+
+  /// Runs all microtasks queued in the fake async zone.
+  void flushMicrotasks() => _fake.flushMicrotasks();
+
+  /// Completes after the next tracked file flush finishes.
+  TrackingIoTrap trapFlush() => _io.trapFlush();
+
+  /// Completes after tracked file I/O and its fake-zone continuations settle.
+  Future<void> drain() {
+    final completer = Completer<void>();
+    _drainCompleters.add(completer);
+    return completer.future;
+  }
+
+  void _completeDrainRequests() {
+    while (_drainCompleters.isNotEmpty) {
+      _drainCompleters.removeAt(0).complete();
+    }
+  }
+}
 
 /// Runs [callback] inside fakeAsync with support for real I/O draining.
 ///
-/// Inside the callback, call `await drainEvent()` after triggering async
+/// Inside the callback, call `await async.drain()` after triggering async
 /// file I/O (e.g. via `async.elapse()` that fires a buffered flush timer)
-/// to let the real event loop deliver I/O completion callbacks. The outer
-/// loop then flushes fakeAsync microtasks so guards like `_pendingFlush`
-/// are cleared before the next batch.
+/// to wait for all tracked file operations to complete. The outer loop then
+/// flushes fakeAsync microtasks so guards like `_pendingFlush` are cleared
+/// before the next batch.
 ///
 /// Modelled after Flutter's `runAsync` pattern from
 /// `AutomatedTestWidgetsFlutterBinding`.
 Future<void> fakeAsyncWithDrain(
-  Future<void> Function(FakeAsync async) callback,
+  Future<void> Function(AsyncIoContext async) callback,
 ) async {
   final fake = FakeAsync();
+  final io = TrackingIoOverrides();
+  final async = AsyncIoContext._(fake, io);
   var done = false;
   Object? caughtError;
   StackTrace? caughtStack;
-  final completers = <Completer<void>>[];
-  _drainCompleters = completers;
 
-  fake.run((_) {
-    callback(fake).then((_) {
-      done = true;
-    }, onError: (Object e, StackTrace s) {
-      caughtError = e;
-      caughtStack = s;
-      done = true;
+  await io.run(() async {
+    fake.run((_) {
+      callback(async).then((_) {
+        done = true;
+      }, onError: (Object e, StackTrace s) {
+        caughtError = e;
+        caughtStack = s;
+        done = true;
+      });
     });
-  });
 
-  while (!done) {
-    // Settle pending I/O: yield to the real event loop so that
-    // RawReceivePort callbacks (from writeFrom / flush / close) are
-    // delivered, then flush fake-zone microtasks to run continuations.
-    // Multiple rounds handle chained I/O (writeFrom completes → code
-    // continues → file.flush starts → file.flush completes → …).
-    await fake.settleIo();
-    // Complete pending drainEvent() calls.
-    while (completers.isNotEmpty) {
-      completers.removeAt(0).complete();
+    while (!done) {
+      // Settle pending I/O, including chains where completing one operation
+      // starts another from a fake-zone continuation.
+      await fake.settleIo(io);
+
+      async._completeDrainRequests();
+
+      // Process test continuations and any I/O they start.
+      fake.run((_) => fake.flushMicrotasks());
     }
-    // Process test continuations and settle any new I/O they start.
-    fake.run((_) => fake.flushMicrotasks());
-  }
-
-  _drainCompleters = null;
+  });
 
   if (caughtError != null) {
     Error.throwWithStackTrace(caughtError!, caughtStack!);
   }
 }
 
-/// Yields control from a [fakeAsyncWithDrain] callback to let the real
-/// event loop process pending I/O completion callbacks.
-///
-/// Returns a [Future] that completes when the [fakeAsyncWithDrain] outer
-/// loop has drained real events and flushed fake microtasks. This ensures
-/// async I/O guards like `_pendingFlush` are cleared between batches.
-Future<void> drainEvent() {
-  final completers = _drainCompleters;
-  assert(completers != null,
-      'drainEvent() must be called inside fakeAsyncWithDrain');
-  final completer = Completer<void>();
-  completers!.add(completer);
-  return completer.future;
-}
-
 extension on FakeAsync {
-  /// Yields to the real event loop multiple times and flushes fake-zone
-  /// microtasks after each yield. This lets chained async I/O operations
-  /// complete (e.g. writeFrom → flush → close, where each completion
-  /// triggers the next operation).
-  Future<void> settleIo() async {
-    // Chained async I/O (writeFrom → .whenComplete → flush → close) needs
-    // multiple event-loop yields to fully settle. 10 rounds handles deep
-    // chains reliably, even on slow CI containers.
-    for (var i = 0; i < 10; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 1));
+  /// Waits until tracked file I/O and the fake-zone continuations it schedules
+  /// reach quiescence. Fake timers are not advanced.
+  Future<void> settleIo(TrackingIoOverrides io) async {
+    while (true) {
       run((_) => flushMicrotasks());
+
+      if (!io.hasPendingOperations) {
+        return;
+      }
+
+      // dart:io futures contain continuations registered in FakeAsync's zone.
+      // Give the real event loop a turn for native I/O, then process those
+      // continuations above. Keep going until the tracked operation count,
+      // rather than an arbitrary number of turns, reaches zero.
+      await Future<void>.delayed(Duration.zero);
     }
   }
 }
