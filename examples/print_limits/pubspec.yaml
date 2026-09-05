@@ -20,7 +20,7 @@ dependency_overrides:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  lint: ^2.8.0
+  lint: ^2.11.0
 
 flutter:
   uses-material-design: true
