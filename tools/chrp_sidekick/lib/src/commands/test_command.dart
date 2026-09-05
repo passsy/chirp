@@ -79,7 +79,7 @@ class TestCommand extends Command {
     exit(collector.exitCode);
   }
 
-  Future<_TestResult> _runTestsAtPath(String inputPath) {
+  Future<_TestResult> _runTestsAtPath(String inputPath) async {
     final isDirectory = FileSystemEntity.isDirectorySync(inputPath);
     final entity = isDirectory ? Directory(inputPath) : File(inputPath);
     final absolutePath = entity.absolute.path;
@@ -105,13 +105,13 @@ class TestCommand extends Command {
 
     // If the path IS the package root, run all tests
     if (normalizedPath == packageRootPath) {
-      return _executeTests(package, requireTests: true);
+      return await _executeTests(package, requireTests: true);
     }
 
     // Get the relative path from the package root
     final relativePath = normalizedPath.substring(packageRootPath.length + 1);
 
-    return _executeTests(
+    return await _executeTests(
       package,
       relativePath: relativePath,
       requireTests: true,
@@ -198,16 +198,16 @@ class TestCommand extends Command {
     List<String> args, {
     Progress? progress,
     bool nothrow = false,
-  }) {
+  }) async {
     if (package.isFlutterPackage) {
-      return flutter(
+      return await flutter(
         args,
         workingDirectory: package.root,
         progress: progress,
         nothrow: nothrow,
       );
     } else {
-      return dart(
+      return await dart(
         args,
         workingDirectory: package.root,
         progress: progress,
