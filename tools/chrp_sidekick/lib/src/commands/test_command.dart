@@ -79,7 +79,7 @@ class TestCommand extends Command {
     exit(collector.exitCode);
   }
 
-  Future<_TestResult> _runTestsAtPath(String inputPath) async {
+  Future<_TestResult> _runTestsAtPath(String inputPath) {
     final isDirectory = FileSystemEntity.isDirectorySync(inputPath);
     final entity = isDirectory ? Directory(inputPath) : File(inputPath);
     final absolutePath = entity.absolute.path;
@@ -198,7 +198,7 @@ class TestCommand extends Command {
     List<String> args, {
     Progress? progress,
     bool nothrow = false,
-  }) async {
+  }) {
     if (package.isFlutterPackage) {
       return flutter(
         args,
