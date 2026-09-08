@@ -60,7 +60,7 @@ void main() {
         '\x1B[38;5;196m' // red re-applied after newline
         '\x1B[38;5;21mblue\n'
         '\x1B[38;5;21m' // blue re-applied after newline
-        '\x1B[38;5;196m' // red restored after blue pops
+        '\x1B[0m\x1B[38;5;196m' // clear child style and restore red
         'red2'
         '\x1B[0m',
       );
