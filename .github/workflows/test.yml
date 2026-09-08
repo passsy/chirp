@@ -40,3 +40,29 @@ jobs:
       - name: Run tests (chirp)
         run: dart test
         working-directory: packages/chirp
+
+      - name: Get dependencies (chirp_terminal)
+        run: dart pub get
+        working-directory: packages/chirp_terminal
+      - name: Run tests (chirp_terminal)
+        run: dart test
+        working-directory: packages/chirp_terminal
+
+  terminal-platforms:
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+      - run: dart pub get
+        working-directory: packages/chirp_terminal
+      - run: dart test
+        working-directory: packages/chirp_terminal
+      - name: Real terminal smoke test
+        if: runner.os == 'macOS'
+        run: python3 tool/pty_smoke.py
+        working-directory: packages/chirp_terminal

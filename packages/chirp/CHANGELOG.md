@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add reverse-video styling to `AnsiStyled` and `ConsoleMessageBuffer`.
+- Restore inherited parent styles after nested spans without leaking child colors or attributes.
+
 - **Fix** `SimpleConsoleMessageFormatter` requests caller info again, restoring the missing source location ([#46](https://github.com/passsy/chirp/issues/46))
 
 ## 0.9.0

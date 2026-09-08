@@ -11,6 +11,9 @@ pubspec.lock
 coverage/
 .test_coverage.dart
 
+# Interactive terminal example output
+chirp-terminal-demo.jsonl*
+
 # Documentation
 doc/api/
 

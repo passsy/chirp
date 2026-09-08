@@ -242,6 +242,7 @@ class ConsoleMessageBuffer {
   /// - [italic]: Apply italic styling (SGR code 3)
   /// - [underline]: Apply underline styling (SGR code 4)
   /// - [strikethrough]: Apply strikethrough styling (SGR code 9)
+  /// - [reversed]: Swap foreground and background (SGR code 7)
   void pushStyle({
     ConsoleColor? foreground,
     ConsoleColor? background,
@@ -250,6 +251,7 @@ class ConsoleMessageBuffer {
     bool italic = false,
     bool underline = false,
     bool strikethrough = false,
+    bool reversed = false,
   }) {
     final state = _StyleState(
       foreground,
@@ -259,6 +261,7 @@ class ConsoleMessageBuffer {
       italic: italic,
       underline: underline,
       strikethrough: strikethrough,
+      reversed: reversed,
     );
     _styleStack.add(state);
     if (capabilities.supportsColors) {
@@ -268,16 +271,18 @@ class ConsoleMessageBuffer {
 
   /// Pops the current style and restores the previous one.
   ///
-  /// If the stack becomes empty, writes an ANSI reset code.
-  /// Otherwise, writes the ANSI codes for the previous style.
+  /// Writes an ANSI reset, then restores all remaining parent styles.
+  /// This prevents child colors and attributes from leaking into siblings.
   void popStyle() {
-    if (_styleStack.isEmpty) return;
+    if (_styleStack.isEmpty) {
+      return;
+    }
     _styleStack.removeLast();
     if (capabilities.supportsColors) {
-      if (_styleStack.isEmpty) {
-        _buffer.write('\x1B[0m');
-      } else {
-        _writeStyleCode(_styleStack.last);
+      // Clear the child style before restoring all inherited parent styles.
+      _buffer.write('\x1B[0m');
+      for (final state in _styleStack) {
+        _writeStyleCode(state);
       }
     }
   }
@@ -294,6 +299,9 @@ class ConsoleMessageBuffer {
     }
     if (state.underline) {
       _buffer.write('\x1B[4m'); // SGR 4: underline
+    }
+    if (state.reversed) {
+      _buffer.write('\x1B[7m');
     }
     if (state.strikethrough) {
       _buffer.write('\x1B[9m'); // SGR 9: strikethrough
@@ -419,6 +427,7 @@ class _StyleState {
   final bool italic;
   final bool underline;
   final bool strikethrough;
+  final bool reversed;
 
   _StyleState(
     this.foreground,
@@ -428,6 +437,7 @@ class _StyleState {
     this.italic = false,
     this.underline = false,
     this.strikethrough = false,
+    this.reversed = false,
   });
 }
 

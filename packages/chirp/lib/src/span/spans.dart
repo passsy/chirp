@@ -175,6 +175,9 @@ class AnsiStyled extends SingleChildSpan {
   /// Whether to apply strikethrough styling (ANSI SGR code 9).
   final bool strikethrough;
 
+  /// Whether to swap foreground and background (ANSI SGR code 7).
+  final bool reversed;
+
   /// Creates a styled span that applies ANSI formatting to its [child].
   ///
   /// All style options default to false/null (no styling applied).
@@ -187,6 +190,7 @@ class AnsiStyled extends SingleChildSpan {
     this.italic = false,
     this.underline = false,
     this.strikethrough = false,
+    this.reversed = false,
   });
 
   @override
@@ -201,6 +205,7 @@ class AnsiStyled extends SingleChildSpan {
       italic: italic,
       underline: underline,
       strikethrough: strikethrough,
+      reversed: reversed,
     );
     c.render(buffer);
     buffer.popStyle();
@@ -210,7 +215,7 @@ class AnsiStyled extends SingleChildSpan {
   String toString() =>
       'AnsiStyled(fg: $foreground, bg: $background, bold: $bold, dim: $dim, '
       'italic: $italic, underline: $underline, strikethrough: $strikethrough, '
-      'child: $child)';
+      'reversed: $reversed, child: $child)';
 }
 
 // =============================================================================

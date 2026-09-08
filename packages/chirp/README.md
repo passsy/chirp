@@ -7,6 +7,8 @@
 
 A lightweight, flexible logging library for Dart with instance tracking, child loggers, and multiple output formats.
 
+For interactive command-line applications, see [chirp_terminal](../chirp_terminal/README.md) for prompts, progress displays, and inline styled logging backed by Chirp.
+
 ## Features
 
 - **Zero Configuration**: Works out of the box - just call `Chirp.info('hello')`
