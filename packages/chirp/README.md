@@ -94,6 +94,17 @@ The name celebrates Dart and Flutter's feathered identity.
 
 ## Usage
 
+### AI agent skill
+
+Chirp ships a `chirp-logging` skill with guidance for logger setup, structured context, writers, and lazy logging.
+After upgrading to a release that includes it, install the skill from your app's root:
+
+```bash
+dart run skills@ get --package chirp
+```
+
+See [package skills](https://dart.dev/ai/package-skills) for CLI setup and supported agents.
+
 ### Named Loggers
 
 Create named loggers for different parts of your application:
