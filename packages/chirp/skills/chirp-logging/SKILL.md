@@ -27,26 +27,49 @@ Do not try to configure the default logger by calling `Chirp.root.addWriter(...)
 Replacing the root during setup also avoids accumulating writers across repeated setup calls.
 
 `addConsoleWriter()` returns the logger for chaining and uses `RainbowMessageFormatter` by default.
-Use `JsonLogFormatter` when the destination expects structured JSON.
+Choose the formatter for the reader and destination using the options below.
 Logger-level `setMinLogLevel(...)` rejects records before constructing them; a writer's `minLogLevel` only controls that destination.
 Choose thresholds based on the application's needs rather than assuming debug logs are disabled by default.
+
+## Choose the formatter for the destination
+
+| Formatter | Use it for | Useful customization |
+| --- | --- | --- |
+| `RainbowMessageFormatter` | Colorful development output with distinct caller and level colors. | `RainbowFormatOptions` controls caller details, timestamps, and inline or multiline structured data. |
+| `CompactChirpMessageFormatter` | Dense, single-line messages with caller location and inline data; errors and stacks follow below. | `timeDisplay` controls timestamps; `spanTransformers` customizes the layout. |
+| `SimpleConsoleMessageFormatter` | Detailed text output when inspecting logger, caller, instance, and data together. | Toggle `showCaller`, `showMethod`, `showInstance`, `showLoggerName`, and `showData`. |
+| `GcpMessageFormatter` | Google Cloud Logging and Error Reporting. | Set `projectId` for trace correlation and `serviceName`/`serviceVersion` for error reporting. |
+| `AwsMessageFormatter` | AWS CloudWatch's level conventions and structured fields. | Enable `includeSourceLocation` when useful. |
+| `JsonLogFormatter` | A generic JSON collector without a cloud-specific schema. | Use when the consumer expects Chirp's general JSON record format. |
+
+The text formatters support `spanTransformers` for deeper layout changes; inspect `package:chirp/chirp_spans.dart` when customization beyond their options is requested.
+Multiline Rainbow data uses YAML-like formatting; `yaml_formatter.dart` is a helper, not a standalone `YamlFormatter` to instantiate.
+A writer chooses where logs go; a formatter chooses their representation.
+`DeveloperLogConsoleWriter` strips ANSI colors, so use a console writer when the Rainbow colors themselves are wanted.
 
 ## Choose the setup for the project
 
 ### Flutter apps
 
 Configure the root before `runApp`.
-For Flutter DevTools and the attached debugger, use `DeveloperLogConsoleWriter`, which forwards records to `dart:developer` with their level, error, and stack trace.
-It requires a debugger connection and does not provide release-build, logcat, or Xcode console output.
-When those destinations are required, configure `addConsoleWriter(formatter: RainbowMessageFormatter())` or an appropriate persistent writer instead of relying solely on the developer writer.
+For colorful console output, use `RainbowMessageFormatter` with multiline data so nested objects are readable while debugging.
+For the Flutter DevTools Logging view, choose `DeveloperLogConsoleWriter(formatter: CompactChirpMessageFormatter())` instead; it forwards the level, error, and stack trace to `dart:developer`.
+The developer writer requires a debugger connection and does not provide release-build, logcat, or Xcode console output.
+Choose writers and log levels explicitly for the app's release logging needs.
 
 ```dart
 import 'package:chirp/chirp.dart';
 import 'package:flutter/material.dart';
 
 void main() {
-  Chirp.root = ChirpLogger()
-    ..addWriter(DeveloperLogConsoleWriter());
+  Chirp.root = ChirpLogger().addConsoleWriter(
+    formatter: RainbowMessageFormatter(
+      options: const RainbowFormatOptions(
+        data: DataPresentation.multiline,
+        showLocation: true,
+      ),
+    ),
+  );
 
   Chirp.info('Application started');
   runApp(const MaterialApp(home: Scaffold(body: Text('Ready'))));
@@ -58,37 +81,32 @@ Keep Flutter imports in the application; the Chirp package itself does not requi
 
 ### Server-side backends
 
-Use structured JSON console output for log collectors and a child logger for each request or job.
-Configure the root once at process startup, then pass the request logger to code that needs its context.
-`JsonLogFormatter` is a general-purpose default; use `GcpMessageFormatter` or `AwsMessageFormatter` when integrating with their respective cloud logging formats.
-The example uses an `info` threshold; choose the deployment's intended level explicitly.
+Use Rainbow or Compact output during local development and select the deployment's collector format in production.
+Configure the root once at process startup.
+For example, a backend deployed to Google Cloud can select its formatter through a compile-time setting:
 
 ```dart
 import 'package:chirp/chirp.dart';
 
 void main() {
+  const googleCloud = bool.fromEnvironment('GOOGLE_CLOUD');
   Chirp.root = ChirpLogger()
       .setMinLogLevel(ChirpLogLevel.info)
-      .addConsoleWriter(formatter: JsonLogFormatter());
-
-  final requestLogger = Chirp.root.child(
-    name: 'Orders',
-    context: {'requestId': 'req-42'},
-  );
-  requestLogger.info('Request received');
-
-  try {
-    throw StateError('Inventory unavailable');
-  } catch (error, stackTrace) {
-    requestLogger.error(
-      'Order failed',
-      error: error,
-      stackTrace: stackTrace,
-      data: {'orderId': 'order-7'},
-    );
-  }
+      .addConsoleWriter(
+        formatter: googleCloud
+            ? GcpMessageFormatter(serviceName: 'orders-api')
+            : RainbowMessageFormatter(
+                options: const RainbowFormatOptions(
+                  data: DataPresentation.multiline,
+                ),
+              ),
+      );
+  Chirp.info('Backend configured');
 }
 ```
+
+For AWS, select `AwsMessageFormatter`; retain `JsonLogFormatter` for generic JSON collectors.
+Use the HTTP middleware example below to populate request context before the first request log.
 
 ### Reusable packages
 
@@ -116,7 +134,7 @@ import 'inventory.dart';
 
 void main() {
   Chirp.root = ChirpLogger().addConsoleWriter(
-    formatter: JsonLogFormatter(),
+    formatter: CompactChirpMessageFormatter(),
   );
   Chirp.root.adopt(inventoryLogger);
   refreshInventory();
@@ -133,6 +151,58 @@ Use child `context` for fields shared by a request or operation, and `data` for 
 Context is merged from parent to child, then with call data; more local values override the same keys.
 Parent context is resolved at log time, so later mutations are visible to existing children.
 Keep concurrent requests on separate child loggers instead of putting request-specific fields on the shared root.
+
+In a Shelf backend, create the child logger in middleware, fill its context, and attach it to the immutable request before emitting the first request log.
+Downstream handlers reuse that logger from `request.context`, so they keep the same request metadata without repeating it at each call.
+The following example uses `package:shelf/shelf.dart` in the consuming backend; Shelf is not a dependency of Chirp itself.
+
+```dart
+import 'package:chirp/chirp.dart';
+import 'package:shelf/shelf.dart';
+
+const requestLoggerKey = 'orders.requestLogger';
+
+Middleware requestLogging(ChirpLogger root) {
+  var requestNumber = 0;
+  return (Handler inner) {
+    return (Request request) async {
+      final logger = root.child(name: 'HTTP');
+      logger.context.addAll({
+        'requestId': request.headers['x-request-id'] ??
+            'request-${++requestNumber}',
+        'method': request.method,
+        'path': request.url.path,
+      });
+      final contextualRequest = request.change(
+        context: {requestLoggerKey: logger},
+      );
+
+      logger.info('Request received');
+      try {
+        final response = await inner(contextualRequest);
+        logger.info('Request completed', data: {'status': response.statusCode});
+        return response;
+      } catch (error, stackTrace) {
+        logger.error('Request failed', error: error, stackTrace: stackTrace);
+        rethrow;
+      }
+    };
+  };
+}
+
+Handler ordersHandler(ChirpLogger root) {
+  return Pipeline().addMiddleware(requestLogging(root)).addHandler((request) {
+    final logger = request.context[requestLoggerKey] as ChirpLogger;
+    logger.debug('Loading orders');
+    return Response.ok('[]', headers: {'content-type': 'application/json'});
+  });
+}
+```
+
+Install this middleware before downstream components that need the request logger.
+All request logs above, including the first one and failures, carry `requestId`, `method`, and `path`.
+The fallback counter is scoped to this middleware instance; use the backend's existing request-ID or tracing policy when available.
+Awaiting the inner handler keeps asynchronous failures inside the catch block; rethrowing preserves the backend's existing error-response handling.
 
 Pass the caught error and stack trace through `error:` and `stackTrace:` to preserve their structure.
 Choose fields deliberately; avoid putting credentials or entire sensitive request bodies in messages or data.
