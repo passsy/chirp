@@ -1,6 +1,6 @@
 ---
 name: chirp-logging
-description: Add or change logging with package:chirp, including root setup, child loggers, structured context, writer configuration, and lazy logging. Use when a project uses Chirp or the user asks to adopt it.
+description: Set up and use package:chirp in Flutter apps, server backends, and reusable Dart packages, including structured context, writers, and lazy logging. Use when a project uses Chirp or the user asks to adopt it.
 ---
 
 # Logging with Chirp
@@ -31,7 +31,37 @@ Use `JsonLogFormatter` when the destination expects structured JSON.
 Logger-level `setMinLogLevel(...)` rejects records before constructing them; a writer's `minLogLevel` only controls that destination.
 Choose thresholds based on the application's needs rather than assuming debug logs are disabled by default.
 
-## Complete example
+## Choose the setup for the project
+
+### Flutter apps
+
+Configure the root before `runApp`.
+For Flutter DevTools and the attached debugger, use `DeveloperLogConsoleWriter`, which forwards records to `dart:developer` with their level, error, and stack trace.
+It requires a debugger connection and does not provide release-build, logcat, or Xcode console output.
+When those destinations are required, configure `addConsoleWriter(formatter: RainbowMessageFormatter())` or an appropriate persistent writer instead of relying solely on the developer writer.
+
+```dart
+import 'package:chirp/chirp.dart';
+import 'package:flutter/material.dart';
+
+void main() {
+  Chirp.root = ChirpLogger()
+    ..addWriter(DeveloperLogConsoleWriter());
+
+  Chirp.info('Application started');
+  runApp(const MaterialApp(home: Scaffold(body: Text('Ready'))));
+}
+```
+
+Use `chirp` in widget or service instance methods and `Chirp` in static or top-level code.
+Keep Flutter imports in the application; the Chirp package itself does not require Flutter.
+
+### Server-side backends
+
+Use structured JSON console output for log collectors and a child logger for each request or job.
+Configure the root once at process startup, then pass the request logger to code that needs its context.
+`JsonLogFormatter` is a general-purpose default; use `GcpMessageFormatter` or `AwsMessageFormatter` when integrating with their respective cloud logging formats.
+The example uses an `info` threshold; choose the deployment's intended level explicitly.
 
 ```dart
 import 'package:chirp/chirp.dart';
@@ -59,6 +89,43 @@ void main() {
   }
 }
 ```
+
+### Reusable packages
+
+Expose a named, standalone logger without writers and log through that logger inside the package.
+This keeps the package silent until the host application opts in.
+Do not assign `Chirp.root`, attach console writers, or use global `Chirp` calls or the root-backed `chirp` extension for package-internal messages.
+
+```dart
+// inventory.dart, exported by the package's public library.
+import 'package:chirp/chirp.dart';
+
+final inventoryLogger = ChirpLogger(name: 'inventory');
+
+void refreshInventory() {
+  inventoryLogger.debug('Refreshing inventory');
+}
+```
+
+The host application selects its Flutter or backend setup above, then adopts the package logger:
+
+```dart
+import 'package:chirp/chirp.dart';
+
+import 'inventory.dart';
+
+void main() {
+  Chirp.root = ChirpLogger().addConsoleWriter(
+    formatter: JsonLogFormatter(),
+  );
+  Chirp.root.adopt(inventoryLogger);
+  refreshInventory();
+}
+```
+
+Here `inventory.dart` is the preceding example file; in a consuming app, import the package's public library instead.
+Adoption connects the package logger to the host's writers, context, and inherited minimum level.
+Avoid setting a package-specific minimum level unless the package intentionally needs to override the host's threshold.
 
 ## Context and errors
 

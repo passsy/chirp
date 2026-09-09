@@ -96,7 +96,7 @@ The name celebrates Dart and Flutter's feathered identity.
 
 ### AI agent skill
 
-Chirp ships a `chirp-logging` skill with guidance for logger setup, structured context, writers, and lazy logging.
+Chirp ships a `chirp-logging` skill with separate setups for Flutter apps, server-side backends, and reusable packages, plus guidance for structured context, writers, and lazy logging.
 After upgrading to a release that includes it, install the skill from your app's root:
 
 ```bash
