@@ -1011,15 +1011,22 @@ class _RotatingFileSink {
         .replaceAll('T', '_')
         .split('.')[0];
 
-    // Check if file already exists, add counter suffix if needed
-    var path = '$dir/$baseName.$ts$extension';
-    var counter = 1;
-    while (File(path).existsSync()) {
-      path = '$dir/$baseName.${ts}_$counter$extension';
-      counter++;
+    // Several rotations within one second get a counter suffix. It counts
+    // on from the highest one that exists, plain or compressed, so that the
+    // names keep the order of the rotations when older files are deleted.
+    final prefix = '$baseName.$ts';
+    final counters = getRotatedFiles()
+        .map((it) => File(it.path).uri.pathSegments.last)
+        .where((it) => it.startsWith(prefix))
+        .map((it) {
+      final match = _counterPattern.firstMatch(it.substring(prefix.length));
+      return int.parse(match?.group(1) ?? '0');
+    }).toList();
+    if (counters.isEmpty) {
+      return '$dir/$prefix$extension';
     }
-
-    return path;
+    final highest = counters.reduce((a, b) => a > b ? a : b);
+    return '$dir/${prefix}_${highest + 1}$extension';
   }
 
   /// Compresses a file using gzip in a separate isolate.
@@ -1111,6 +1118,8 @@ void _compressFileSync(String path) {
 }
 
 typedef _FileEntry = ({String path, DateTime modified});
+
+final _counterPattern = RegExp(r'^_(\d+)');
 
 // Matches the YYYY-MM-DD_HH-MM-SS[_N] part of a rotated file name.
 final _rotatedTimestampPattern =

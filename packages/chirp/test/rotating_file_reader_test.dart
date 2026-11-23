@@ -7,6 +7,7 @@ import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_io.d
     as io_impl;
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader_stub.dart'
     as stub_impl;
+import 'package:clock/clock.dart';
 import 'package:test/test.dart';
 
 import 'test_log_record.dart';
@@ -602,7 +603,7 @@ void main() {
 
         // The reader has listed the rotated files and opened the current
         // file when it lists a second time.
-        final hooks = _DirectoryHooks(dir.path);
+        final hooks = _IoHooks(dir.path);
         hooks.beforeListing[2] = () {
           base.renameSync('${dir.path}/app.2024-01-01_10-00-00.log');
           base.writeAsStringSync('new1\nnew2\n', flush: true);
@@ -623,6 +624,90 @@ void main() {
       });
     }
 
+    test('keeps the history apart when a name is reused while it starts',
+        () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+      rotated.writeAsStringSync('old\n');
+      base.writeAsStringSync('current\n');
+
+      // The retention policy deletes the rotated file, and two rotations
+      // follow. The first one gets the name of the deleted file.
+      final hooks = _IoHooks(dir.path);
+      hooks.beforeListing[2] = () {
+        rotated.deleteSync();
+        base.renameSync(rotated.path);
+        base.writeAsStringSync('middle\n', flush: true);
+        base.renameSync('${dir.path}/app.2024-01-01_10-00-00_1.log');
+        base.writeAsStringSync('replacement\n', flush: true);
+      };
+
+      await IOOverrides.runWithIOOverrides(() async {
+        final reader =
+            RotatingFileReader(baseFilePathProvider: () => base.path);
+        final lines = StreamIterator(reader.tail(last: 1));
+        addTearDown(lines.cancel);
+        expect(
+          await _nextLines(lines, 3),
+          ['current', 'middle', 'replacement'],
+        );
+      }, hooks);
+    });
+
+    test('reads a rotated file again when it could not be opened', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+      base.writeAsStringSync('before\n');
+
+      final hooks = _IoHooks(dir.path);
+      await IOOverrides.runWithIOOverrides(() async {
+        final reader = RotatingFileReader(
+          baseFilePathProvider: () => base.path,
+          pollInterval: const Duration(milliseconds: 30),
+        );
+        final lines = StreamIterator(reader.tail());
+        addTearDown(lines.cancel);
+        expect(await _nextLines(lines, 1), ['before']);
+
+        hooks.failOpenOnce.add(rotated.path);
+        base.writeAsStringSync('unread\n', mode: FileMode.append, flush: true);
+        base.renameSync(rotated.path);
+        base.writeAsStringSync('replacement\n', flush: true);
+
+        expect(await _nextLines(lines, 2), ['unread', 'replacement']);
+        expect(hooks.failOpenOnce, isEmpty);
+      }, hooks);
+    });
+
+    test('starts again when the current file could not be opened', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('old\nalready\n');
+
+      final hooks = _IoHooks(dir.path);
+      hooks.failOpenOnce.add(base.path);
+      await IOOverrides.runWithIOOverrides(() async {
+        final reader = RotatingFileReader(
+          baseFilePathProvider: () => base.path,
+          pollInterval: const Duration(milliseconds: 30),
+        );
+        final lines = StreamIterator(reader.tail(last: 1));
+        addTearDown(lines.cancel);
+
+        // Not `old`, which would be a history that ignores `last`.
+        expect(await _nextLines(lines, 1), ['already']);
+        expect(hooks.failOpenOnce, isEmpty);
+
+        base.writeAsStringSync('new\n', mode: FileMode.append, flush: true);
+        expect(await _nextLines(lines, 1), ['new']);
+      }, hooks);
+    });
+
     test('emits a rotated file once when it is compressed while listed',
         () async {
       final dir = createTempDir();
@@ -632,7 +717,7 @@ void main() {
       rotated.writeAsStringSync('old\n');
       base.writeAsStringSync('current\n');
 
-      final hooks = _DirectoryHooks(dir.path);
+      final hooks = _IoHooks(dir.path);
       await IOOverrides.runWithIOOverrides(() async {
         final reader =
             RotatingFileReader(baseFilePathProvider: () => base.path);
@@ -1099,6 +1184,63 @@ void main() {
     });
   });
 
+  group('rotated file that is compressed after it was listed', () {
+    for (final last in [null, 5]) {
+      test('read(last: $last) reads its .gz', () async {
+        final dir = createTempDir();
+
+        final base = File('${dir.path}/app.log');
+        final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+        File('${rotated.path}.gz')
+            .writeAsBytesSync(gzip.encode(utf8.encode('old\n')));
+        base.writeAsStringSync('current\n');
+
+        // Listed as a plain file that is gone when it is opened.
+        final hooks = _IoHooks(dir.path);
+        hooks.listedOnce.add(File(rotated.path));
+
+        await IOOverrides.runWithIOOverrides(() async {
+          final reader =
+              RotatingFileReader(baseFilePathProvider: () => base.path);
+          expect(await reader.read(last: last).toList(), ['old', 'current']);
+        }, hooks);
+      });
+    }
+  });
+
+  group('rotations within one second', () {
+    test('are read in their order when older files are deleted', () async {
+      final dir = createTempDir();
+      final time = DateTime(2024, 1, 15, 10);
+
+      await withClock(Clock.fixed(time), () async {
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => '${dir.path}/app.log',
+          rotationConfig: FileRotationConfig.size(
+            maxSize: 1024 * 1024,
+            maxFiles: 3,
+          ),
+        );
+        addTearDown(() => writer.close());
+
+        for (var i = 1; i <= 5; i++) {
+          writer.write(testRecord(message: 'record $i', timestamp: time));
+          if (i < 5) {
+            await writer.forceRotate();
+          }
+        }
+        await writer.flush();
+
+        final records = await writer.reader.read().toList();
+        expect(records, [
+          contains('record 3'),
+          contains('record 4'),
+          contains('record 5'),
+        ]);
+      });
+    });
+  });
+
   group('log file named *.gz', () {
     test('lists and reads its plain and compressed rotated files', () async {
       final dir = createTempDir();
@@ -1385,9 +1527,9 @@ final class _WatchAttempts extends IOOverrides {
   }
 }
 
-/// Runs actions right before the reader lists the directory at [path], and
-/// adds entries to what it gets listed.
-final class _DirectoryHooks extends IOOverrides {
+/// Runs actions right before the reader lists the directory at [path], adds
+/// entries to what it gets listed and lets it fail to open files.
+final class _IoHooks extends IOOverrides {
   final String path;
 
   /// Actions by the number of the listing they run before, starting at 1.
@@ -1397,9 +1539,12 @@ final class _DirectoryHooks extends IOOverrides {
   /// right after they were listed.
   final listedOnce = <FileSystemEntity>[];
 
+  /// Paths of files whose next open fails although they exist.
+  final failOpenOnce = <String>{};
+
   int _listings = 0;
 
-  _DirectoryHooks(this.path);
+  _IoHooks(this.path);
 
   @override
   Directory createDirectory(String path) {
@@ -1409,11 +1554,20 @@ final class _DirectoryHooks extends IOOverrides {
     }
     return _HookedDirectory(directory, this);
   }
+
+  @override
+  File createFile(String path) {
+    final file = super.createFile(path);
+    if (!failOpenOnce.contains(path)) {
+      return file;
+    }
+    return _HookedFile(file, this);
+  }
 }
 
 class _HookedDirectory implements Directory {
   final Directory _directory;
-  final _DirectoryHooks _hooks;
+  final _IoHooks _hooks;
 
   _HookedDirectory(this._directory, this._hooks);
 
@@ -1444,6 +1598,36 @@ class _HookedDirectory implements Directory {
     bool recursive = false,
   }) {
     return _directory.watch(events: events, recursive: recursive);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _HookedFile implements File {
+  final File _file;
+  final _IoHooks _hooks;
+
+  _HookedFile(this._file, this._hooks);
+
+  @override
+  String get path => _file.path;
+
+  @override
+  Uri get uri => _file.uri;
+
+  @override
+  Directory get parent => _file.parent;
+
+  @override
+  FileStat statSync() => _file.statSync();
+
+  @override
+  Future<RandomAccessFile> open({FileMode mode = FileMode.read}) async {
+    if (_hooks.failOpenOnce.remove(path)) {
+      throw FileSystemException('Injected failure', path);
+    }
+    return await _file.open(mode: mode);
   }
 
   @override

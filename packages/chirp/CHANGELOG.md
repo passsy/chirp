@@ -18,6 +18,11 @@
 
 - **Fix** `RotatingFileReader` reads a rotated file once while it is compressed, when both it and its `.gz` exist ([#52](https://github.com/passsy/chirp/pull/52))
 
+- **Fix** `RotatingFileWriter` keeps counting the suffix of rotated files within one second.
+  It reused the name of a deleted or compressed file, which put the files out of order and could overwrite a compressed one ([#52](https://github.com/passsy/chirp/pull/52))
+
+- **Fix** `RotatingFileReader.read` reads the `.gz` of a rotated file that is compressed after it was listed, instead of failing ([#52](https://github.com/passsy/chirp/pull/52))
+
 - **Fix** `RotatingFileReader` orders rotated files by the time in their names.
   Compressing a file changed its modification time and could move it behind newer files ([#52](https://github.com/passsy/chirp/pull/52))
 
