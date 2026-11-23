@@ -15,6 +15,11 @@ final class IoHooks extends IOOverrides {
   /// Paths of files whose next open fails although they exist.
   final failOpenOnce = <String>{};
 
+  /// Actions by path, run before each open of the file with the number of
+  /// the open, starting at 1.
+  final beforeOpen = <String, void Function(int open)>{};
+  final _opens = <String, int>{};
+
   /// Makes every listing fail.
   bool failListing = false;
 
@@ -34,7 +39,7 @@ final class IoHooks extends IOOverrides {
   @override
   File createFile(String path) {
     final file = super.createFile(path);
-    if (!failOpenOnce.contains(path)) {
+    if (!failOpenOnce.contains(path) && !beforeOpen.containsKey(path)) {
       return file;
     }
     return _HookedFile(file, this);
@@ -103,6 +108,9 @@ class _HookedFile implements File {
 
   @override
   Future<RandomAccessFile> open({FileMode mode = FileMode.read}) async {
+    final open = (_hooks._opens[path] ?? 0) + 1;
+    _hooks._opens[path] = open;
+    _hooks.beforeOpen[path]?.call(open);
     if (_hooks.failOpenOnce.remove(path)) {
       throw FileSystemException('Injected failure', path);
     }

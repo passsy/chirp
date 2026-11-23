@@ -1245,13 +1245,14 @@ void main() {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
-      base.writeAsStringSync('first\uFEFFsecond\uFEFF');
+      // Starts with a byte order mark, which only separates later on.
+      base.writeAsStringSync('\uFEFFfirst\uFEFFsecond\uFEFF');
 
       final reader = RotatingFileReader(
         baseFilePathProvider: () => base.path,
         recordSeparator: '\uFEFF',
       );
-      final lines = StreamIterator(reader.tail(last: 2));
+      final lines = StreamIterator(reader.tail());
       addTearDown(lines.cancel);
 
       expect(await _nextLines(lines, 2), ['first', 'second']);
@@ -1380,6 +1381,51 @@ void main() {
         addTearDown(lines.cancel);
 
         expect(await _nextLines(lines, 3), ['current', 'next', 'end']);
+      }, hooks);
+    });
+
+    test('reads a rotated file only under the identity it has', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+      rotated.writeAsStringSync('old\n');
+      base.writeAsStringSync('current\n');
+
+      // Another file takes the name of the rotated one after the tail read
+      // its first bytes and before it reads its records.
+      final hooks = IoHooks(dir.path);
+      hooks.beforeOpen[rotated.path] = (open) {
+        if (open == 2) {
+          rotated.deleteSync();
+          rotated.writeAsStringSync('replacement\n');
+        }
+      };
+
+      await IOOverrides.runWithIOOverrides(() async {
+        final reader =
+            RotatingFileReader(baseFilePathProvider: () => base.path);
+        final events = <Object>[];
+        final done = Completer<void>();
+        final subscription = reader.tail().listen(
+          (record) {
+            events.add(record);
+            if (record == 'current') {
+              done.complete();
+            }
+          },
+          onError: events.add,
+        );
+        addTearDown(subscription.cancel);
+
+        await done.future.timeout(const Duration(seconds: 15));
+        // The replacement is read once, as a file of its own, and `old`,
+        // which was gone before it was read, is reported once noticed.
+        expect(events, [
+          'replacement',
+          isA<FileSystemException>(),
+          'current',
+        ]);
       }, hooks);
     });
 

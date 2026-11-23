@@ -628,6 +628,12 @@ class _Tail {
       try {
         final opened = await File(file.path).open();
         try {
+          final start = await _readBytes(opened, 0, generation.start.length);
+          if (!generation.isStartOf(start)) {
+            // Another file took the name since it was identified. The next
+            // pass identifies it, and reports this one as gone.
+            return true;
+          }
           final length = await opened.length();
           while (generation.offset < length) {
             if (_stopped) {
@@ -728,9 +734,17 @@ class _Tail {
       ..setAll(carry.length, bytes);
     final windowOffset = chunkOffset - carry.length;
 
+    // UTF-8 decodes a byte order mark at the start of a file to nothing, so
+    // it can not be a separator there.
+    var bom = 0;
+    if (chunkOffset == 0 && _encoding is Utf8Codec) {
+      if (_indexOf(window, _utf8Bom, 0) == 0) {
+        bom = _utf8Bom.length;
+      }
+    }
     var start = 0;
     while (true) {
-      final end = _indexOf(window, _separator, start);
+      final end = _indexOf(window, _separator, start == 0 ? bom : start);
       if (end < 0) {
         break;
       }
@@ -1002,6 +1016,8 @@ Future<void> _close(RandomAccessFile file) async {
     // Only read, so nothing is lost.
   }
 }
+
+const _utf8Bom = [0xEF, 0xBB, 0xBF];
 
 /// The first [length] bytes of [chunks], followed by [tail].
 Uint8List _join(List<Uint8List> chunks, int length, List<int> tail) {
