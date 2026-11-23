@@ -315,26 +315,24 @@ class _Tail {
       return true;
     }
 
-    // Only read as far as their records are needed.
+    // Only read as far as their records are needed, and decoded like the
+    // followed ones.
     final chunks = <List<String>>[];
     var missing = count - ring.length;
     for (final file in rotated.reversed) {
       if (missing <= 0 || _cancelled) {
         break;
       }
+      final records = ListQueue<String>();
+      _ring = records;
+      _ringSize = missing;
       try {
-        final lines = await _readRecords(
-          file.path,
-          _encoding,
-          _reader._recordSeparator,
-          compressed: file.compressed,
-          rotated: true,
-        ).toList();
-        chunks.add(lines);
-        missing -= lines.length;
-      } on FormatException catch (e, stack) {
-        _reportBroken(file, e, stack);
+        await _readRotated(file, _Generation());
+      } finally {
+        _ring = null;
       }
+      chunks.add(records.toList());
+      missing -= records.length;
     }
     if (_cancelled) {
       return true;
@@ -455,7 +453,7 @@ class _Tail {
       _generations.retainWhere(seen.contains);
       final paths = rotated.map((it) => it.path).toSet();
       _known.removeWhere((path, _) => !paths.contains(path));
-      final states = rotated.map((it) => '${it.path} ${it.state}').toSet();
+      final states = rotated.map(_brokenKey).toSet();
       _reported.retainWhere(states.contains);
       return rotated;
     }
@@ -468,6 +466,10 @@ class _Tail {
     _RotatedFile file,
     Set<_Generation> seen,
   ) async {
+    if (_reported.contains(_brokenKey(file))) {
+      // A broken archive is not decompressed again until it changes.
+      return null;
+    }
     final known = _known[file.path];
     if (known != null && known.state == file.state) {
       // Forgotten when its file was gone in a pass.
@@ -713,10 +715,12 @@ class _Tail {
   }
 
   void _reportBroken(_RotatedFile file, Object error, StackTrace stack) {
-    if (_reported.add('${file.path} ${file.state}')) {
+    if (_reported.add(_brokenKey(file))) {
       _controller.addError(error, stack);
     }
   }
+
+  String _brokenKey(_RotatedFile file) => '${file.path} ${file.state}';
 
   /// Whether a rotated file appeared since [before] was listed.
   bool _rotatedSince(List<_RotatedFile> before) {
@@ -897,7 +901,7 @@ class _RotatedFile {
 /// The bytes of [file] from [start] to [end], or fewer when it ends earlier.
 Future<List<int>> _readBytes(RandomAccessFile file, int start, int end) async {
   await file.setPosition(start);
-  return file.read(end - start);
+  return await file.read(end - start);
 }
 
 Future<void> _close(RandomAccessFile file) async {

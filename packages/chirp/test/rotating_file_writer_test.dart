@@ -998,6 +998,10 @@ void main() {
         message: 'Message to compress',
         timestamp: DateTime(2024, 1, 15, 10),
       ));
+      await writer.flush();
+      // The age of the records, which maxAge goes by.
+      final modified = DateTime(2024, 1, 15, 10);
+      File(logPath).setLastModifiedSync(modified);
 
       // Write on Jan 16 (triggers rotation and compression)
       writer.write(testRecord(
@@ -1026,6 +1030,7 @@ void main() {
           reason: 'Decompressed content should contain the rotated message');
       expect(text, isNot(contains('New day message')),
           reason: 'Compressed file should not contain new day message');
+      expect(gzFiles.first.lastModifiedSync(), modified);
     });
   });
 

@@ -1186,6 +1186,26 @@ void main() {
       expect(await next, ['before', 'after', 'end']);
     });
 
+    test('emits the history around an undecodable record of a rotated file',
+        () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      File('${dir.path}/app.2024-01-01_10-00-00.log').writeAsBytesSync(
+        [...utf8.encode('before\n'), 0xff, ...utf8.encode('\nafter\n')],
+      );
+      base.writeAsStringSync('current\n');
+
+      final error = Completer<Object>();
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines =
+          StreamIterator(reader.tail(last: 10).handleError(error.complete));
+      addTearDown(lines.cancel);
+
+      expect(await _nextLines(lines, 3), ['before', 'after', 'current']);
+      expect(await error.future, isA<FormatException>());
+    });
+
     test('reads the history again when a rotation reuses a name meanwhile',
         () async {
       final dir = createTempDir();
