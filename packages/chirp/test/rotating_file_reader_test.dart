@@ -1250,6 +1250,90 @@ void main() {
       await expectLater(reader.tail().first, throwsArgumentError);
     });
 
+    test('reports records that were deleted before they were read', () async {
+      final dir = createTempDir();
+
+      // Several reads long.
+      final records = [for (var i = 0; i < 50000; i++) 'record-$i'];
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('${records.join('\n')}\n');
+
+      final paused = Completer<void>();
+      final deleted = Completer<void>();
+      final hooks = _IoHooks(dir.path);
+      // A pass that lists the files again has stopped the paused one, so the
+      // file is not open anymore. Then the retention policy deletes it.
+      for (var listing = 1; listing < 1000; listing++) {
+        hooks.beforeListing[listing] = () {
+          if (!paused.isCompleted || deleted.isCompleted) {
+            return;
+          }
+          final rotated = '${dir.path}/app.2024-01-01_10-00-00.log';
+          base.renameSync(rotated);
+          File(rotated).deleteSync();
+          base.writeAsStringSync('after\n');
+          deleted.complete();
+        };
+      }
+
+      await IOOverrides.runWithIOOverrides(() async {
+        final reader = RotatingFileReader(
+          baseFilePathProvider: () => base.path,
+          pollInterval: const Duration(milliseconds: 30),
+        );
+        final events = <Object>[];
+        final done = Completer<void>();
+        // ignore: cancel_subscriptions
+        StreamSubscription<String>? subscription;
+        subscription = reader.tail().listen(
+          (record) {
+            events.add(record);
+            if (!paused.isCompleted) {
+              subscription?.pause();
+              paused.complete();
+            }
+            if (record == 'after') {
+              done.complete();
+            }
+          },
+          onError: events.add,
+        );
+        addTearDown(subscription.cancel);
+
+        await deleted.future.timeout(const Duration(seconds: 15));
+        subscription.resume();
+        await done.future.timeout(const Duration(seconds: 15));
+
+        // The gap is reported between the records that were read and the
+        // records after it.
+        final error = events.indexWhere((it) => it is FileSystemException);
+        expect(error, events.length - 2);
+        expect(events.last, 'after');
+        final read = events.sublist(0, error);
+        expect(read.length, lessThan(records.length));
+        expect(read, records.sublist(0, read.length));
+      }, hooks);
+    });
+
+    test('finds a separator split between two reads of a long record',
+        () async {
+      final dir = createTempDir();
+
+      // The separator starts in the last byte of the first read of 64 KiB.
+      final long = 'x' * (64 * 1024 - 1);
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('$long\x1E\nnext\x1E\n');
+
+      final reader = RotatingFileReader(
+        baseFilePathProvider: () => base.path,
+        recordSeparator: '\x1E\n',
+      );
+      final lines = StreamIterator(reader.tail(last: 2));
+      addTearDown(lines.cancel);
+
+      expect(await _nextLines(lines, 2), [long, 'next']);
+    });
+
     test('reads the history again when a rotation reuses a name meanwhile',
         () async {
       final dir = createTempDir();

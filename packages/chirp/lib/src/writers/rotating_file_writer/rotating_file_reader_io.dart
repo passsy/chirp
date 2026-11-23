@@ -181,7 +181,9 @@ class RotatingFileReaderIo implements RotatingFileReader {
 ///   is shorter, start like those of an older one is taken for its
 ///   continuation when the older one is not there anymore.
 /// - A rotated file that the retention policy deletes before it was read is
-///   gone.
+///   gone. Only bytes that a pass saw are reported as missing.
+/// - Two short failures to read in polls one interval apart are reported
+///   like one failure that lasts.
 class _Tail {
   final RotatingFileReaderIo _reader;
   final File _file;
@@ -440,26 +442,27 @@ class _Tail {
           // read yet.
           continue;
         }
-        if (current != null) {
-          final generation = await _identifyCurrent(current, seen);
-          if (generation != null) {
-            seen.add(generation);
-            if (!await _readCurrent(current, generation)) {
-              // Rewritten in place while it was read.
-              _generations.remove(generation);
-              continue;
-            }
-            if (_stopped) {
-              return null;
-            }
+        final generation =
+            current == null ? null : await _identifyCurrent(current, seen);
+        if (generation != null) {
+          seen.add(generation);
+        }
+        // The gap comes before the records of the current file.
+        _forgetGone(seen);
+        if (generation != null) {
+          if (!await _readCurrent(current!, generation)) {
+            // Rewritten in place while it was read.
+            _generations.remove(generation);
+            continue;
+          }
+          if (_stopped) {
+            return null;
           }
         }
       } finally {
         await current?.close();
       }
 
-      // Forgets the generations whose files are gone.
-      _generations.retainWhere(seen.contains);
       final paths = rotated.map((it) => it.path).toSet();
       _known.removeWhere((path, _) => !paths.contains(path));
       final states = rotated.map(_brokenKey).toSet();
@@ -467,6 +470,33 @@ class _Tail {
       return rotated;
     }
     return null;
+  }
+
+  /// Forgets the generations whose files are gone, and reports those with
+  /// bytes that were seen but not read, like a rotated file that the
+  /// retention policy deleted while the listener paused.
+  ///
+  /// Bytes written after the last look are not known, so their loss is not
+  /// reported.
+  void _forgetGone(Set<_Generation> seen) {
+    final gone = _generations.where((it) => !seen.contains(it)).toList();
+    _generations.retainWhere(seen.contains);
+    if (_ring != null) {
+      // The history only promises the records that are there.
+      return;
+    }
+    for (final generation in gone) {
+      if (generation.offset >= generation.size) {
+        continue;
+      }
+      _controller.addError(
+        FileSystemException(
+          'Deleted before tail read it, '
+          '${generation.size - generation.offset} bytes of records are missing',
+          generation.path,
+        ),
+      );
+    }
   }
 
   /// The generation of [file], or null when it can not be identified yet.
@@ -479,7 +509,9 @@ class _Tail {
       // A broken archive is not decompressed again until it changes.
       return null;
     }
-    final known = _known[file.path];
+    // Decompressing the start on every pass would cost, so an unchanged
+    // archive keeps its generation. A plain file is identified by its bytes.
+    final known = file.compressed ? _known[file.path] : null;
     if (known != null && known.state == file.state) {
       // Forgotten when its file was gone in a pass.
       if (_generations.contains(known.generation)) {
@@ -508,7 +540,12 @@ class _Tail {
       return file.compressed || file.state.size >= it.offset;
     }).firstOrNull;
     final result = generation ?? _addGeneration();
-    result.grow(start);
+    result
+      ..grow(start)
+      ..path = file.path;
+    if (!file.compressed) {
+      result.size = file.state.size;
+    }
     _known[file.path] = (state: file.state, generation: result);
     return result;
   }
@@ -532,7 +569,10 @@ class _Tail {
       return length >= it.offset;
     }).lastOrNull;
     final result = generation ?? _addGeneration();
-    result.grow(start);
+    result
+      ..grow(start)
+      ..path = _file.path
+      ..size = length;
     return result;
   }
 
@@ -667,43 +707,61 @@ class _Tail {
   }
 
   void _decode(_Generation generation, List<int> bytes) {
+    final chunkOffset = generation.offset;
     generation.offset += bytes.length;
-    final partial = generation.partial;
-    final data = Uint8List(partial.length + bytes.length)
-      ..setAll(0, partial)
-      ..setAll(partial.length, bytes);
 
-    // The partial record has no separator, but one may end in [bytes].
-    var from = max(0, partial.length - _separator.length + 1);
+    // The pending record has no separator, but one may start in its last
+    // bytes. Only those are searched again, so a long record costs linear
+    // time.
+    final carry = _lastBytes(
+      generation.pending,
+      min(_separator.length - 1, generation.pendingLength),
+    );
+    final window = Uint8List(carry.length + bytes.length)
+      ..setAll(0, carry)
+      ..setAll(carry.length, bytes);
+    final windowOffset = chunkOffset - carry.length;
+
     var start = 0;
-    final dataOffset = generation.offset - data.length;
     while (true) {
-      final end = _indexOf(data, _separator, from);
+      final end = _indexOf(window, _separator, start);
       if (end < 0) {
         break;
       }
-      _emitRecord(
-        Uint8List.sublistView(data, start, end),
-        atFileStart: dataOffset + start == 0,
-      );
+      if (start == 0) {
+        // Completes the pending record.
+        final recordOffset = chunkOffset - generation.pendingLength;
+        final record = _join(
+          generation.pending,
+          generation.pendingLength - carry.length,
+          Uint8List.sublistView(window, 0, end),
+        );
+        generation.clearPending();
+        _emitRecord(record, atFileStart: recordOffset == 0);
+      } else {
+        _emitRecord(
+          Uint8List.sublistView(window, start, end),
+          atFileStart: windowOffset + start == 0,
+        );
+      }
       start = end + _separator.length;
-      from = start;
     }
-    generation.partial = Uint8List.sublistView(data, start);
+
+    // The carry is pending already.
+    final rest = Uint8List.sublistView(window, max(start, carry.length));
+    generation.addPending(rest);
   }
 
   /// Ends a generation that was read to its last byte. A record without
   /// separator at its end is complete then.
   void _end(_Generation generation) {
-    final partial = generation.partial;
-    if (partial.isNotEmpty) {
-      _emitRecord(
-        partial,
-        atFileStart: generation.offset == partial.length,
-      );
+    final length = generation.pendingLength;
+    if (length > 0) {
+      final record = _join(generation.pending, length, const []);
+      _emitRecord(record, atFileStart: generation.offset == length);
     }
     generation
-      ..partial = Uint8List(0)
+      ..clearPending()
       ..done = true;
   }
 
@@ -876,8 +934,14 @@ class _Generation {
   /// The number of bytes read, decompressed.
   int offset = 0;
 
-  /// The bytes of the record that is not complete yet.
-  Uint8List partial = Uint8List(0);
+  /// The bytes of the record that is not complete yet, as they were read.
+  final pending = <Uint8List>[];
+  int pendingLength = 0;
+
+  /// Where it was seen last, and its size there, to report it when it is
+  /// gone before it was read. The size of a compressed file is not known.
+  String? path;
+  int size = 0;
 
   /// Read to its last byte. Only a rotated file ends.
   bool done = false;
@@ -893,6 +957,19 @@ class _Generation {
       }
     }
     return true;
+  }
+
+  void addPending(Uint8List bytes) {
+    if (bytes.isEmpty) {
+      return;
+    }
+    pending.add(bytes);
+    pendingLength += bytes.length;
+  }
+
+  void clearPending() {
+    pending.clear();
+    pendingLength = 0;
   }
 
   /// Takes the longer start of a file that grew.
@@ -934,6 +1011,35 @@ Future<void> _close(RandomAccessFile file) async {
   } on FileSystemException {
     // Only read, so nothing is lost.
   }
+}
+
+/// The first [length] bytes of [chunks], followed by [tail].
+Uint8List _join(List<Uint8List> chunks, int length, List<int> tail) {
+  final result = Uint8List(length + tail.length);
+  var at = 0;
+  for (final chunk in chunks) {
+    if (at >= length) {
+      break;
+    }
+    final take = min(chunk.length, length - at);
+    result.setRange(at, at + take, chunk);
+    at += take;
+  }
+  result.setAll(length, tail);
+  return result;
+}
+
+/// The last [count] bytes of [chunks].
+List<int> _lastBytes(List<Uint8List> chunks, int count) {
+  final bytes = <int>[];
+  for (final chunk in chunks.reversed) {
+    if (bytes.length >= count) {
+      break;
+    }
+    final take = min(chunk.length, count - bytes.length);
+    bytes.insertAll(0, chunk.sublist(chunk.length - take));
+  }
+  return bytes;
 }
 
 /// The index of [pattern] in [data] from [from] on, or -1.

@@ -9,7 +9,8 @@
 - **Fix** `RotatingFileReader.tail` lost, repeated or split records when the file was appended to or rotated while it was read.
   It identifies a file by its first 1024 bytes now, like Filebeat and Vector, and reads every file of the log once, in order, also when it was rotated or compressed in between.
   Two files that start with the same bytes can still be taken for one.
-  Records written right before a rotation are read from the rotated file, as long as it exists ([#52](https://github.com/passsy/chirp/pull/52))
+  Records written right before a rotation are read from the rotated file, as long as it exists.
+  When retention deletes a file with records the tail saw but did not read yet, the gap is a stream error ([#52](https://github.com/passsy/chirp/pull/52))
 
 - **Fix** `RotatingFileReader.tail` waits for the rest of an incomplete record or character instead of emitting it in two parts ([#52](https://github.com/passsy/chirp/pull/52))
 
