@@ -1131,11 +1131,22 @@ bool isRotatedLogFile(
   required String extension,
 }) {
   if (!fileName.startsWith('$baseName.')) return false;
-  var rest = fileName.substring(baseName.length + 1); // skip "baseName."
-  if (rest.endsWith('.gz')) {
-    rest = rest.substring(0, rest.length - '.gz'.length);
+  final rest = fileName.substring(baseName.length + 1); // skip "baseName."
+
+  bool isRotated(String name) {
+    if (!name.endsWith(extension)) {
+      return false;
+    }
+    final timestamp = name.substring(0, name.length - extension.length);
+    return _rotatedTimestampPattern.hasMatch(timestamp);
   }
-  if (!rest.endsWith(extension)) return false;
-  final timestamp = rest.substring(0, rest.length - extension.length);
-  return _rotatedTimestampPattern.hasMatch(timestamp);
+
+  if (isRotated(rest)) {
+    return true;
+  }
+  // The extension itself may be `.gz`, so this is checked second.
+  if (!rest.endsWith('.gz')) {
+    return false;
+  }
+  return isRotated(rest.substring(0, rest.length - '.gz'.length));
 }

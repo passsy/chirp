@@ -534,6 +534,140 @@ void main() {
       });
     }
 
+    for (final last in [0, -1]) {
+      test('emits the lines of a file rotated in while it starts (last: $last)',
+          () async {
+        final dir = createTempDir();
+
+        final base = File('${dir.path}/app.log');
+        base.writeAsStringSync('current\n');
+
+        final encoding = _HookedUtf8.afterReading('current', () {
+          base.renameSync('${dir.path}/app.2024-01-02_10-00-00.log');
+          base.writeAsStringSync('new1\nnew2\n', flush: true);
+        });
+
+        final reader =
+            RotatingFileReader(baseFilePathProvider: () => base.path);
+        final lines =
+            StreamIterator(reader.tail(last: last, encoding: encoding));
+        addTearDown(lines.cancel);
+
+        expect(await _nextLines(lines, 2), ['new1', 'new2']);
+      });
+    }
+
+    for (final compressed in [false, true]) {
+      test(
+          'emits lines appended right before a rotation (compressed: $compressed)',
+          () async {
+        final dir = createTempDir();
+
+        final base = File('${dir.path}/app.log');
+        base.writeAsStringSync('first\n');
+
+        final reader =
+            RotatingFileReader(baseFilePathProvider: () => base.path);
+        final lines = StreamIterator(reader.tail());
+        addTearDown(lines.cancel);
+        expect(await _nextLines(lines, 1), ['first']);
+
+        // All of this happens before the reader can look again.
+        base.writeAsStringSync('missed\n', mode: FileMode.append, flush: true);
+        final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+        base.renameSync(rotated.path);
+        if (compressed) {
+          File('${rotated.path}.gz')
+              .writeAsBytesSync(gzip.encode(rotated.readAsBytesSync()));
+          rotated.deleteSync();
+        }
+        base.writeAsStringSync('fresh\n', flush: true);
+
+        expect(await _nextLines(lines, 2), ['missed', 'fresh']);
+      });
+    }
+
+    test('emits lines of two rotations between two looks', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('first\n');
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail());
+      addTearDown(lines.cancel);
+      expect(await _nextLines(lines, 1), ['first']);
+
+      base.writeAsStringSync('second\n', mode: FileMode.append, flush: true);
+      final rotated1 = File('${dir.path}/app.2024-01-01_10-00-00.log');
+      base.renameSync(rotated1.path);
+      rotated1.setLastModifiedSync(DateTime(2024, 1, 1, 10));
+
+      base.writeAsStringSync('third\nunterminated', flush: true);
+      final rotated2 = File('${dir.path}/app.2024-01-02_10-00-00.log');
+      base.renameSync(rotated2.path);
+      rotated2.setLastModifiedSync(DateTime(2024, 1, 2, 10));
+
+      base.writeAsStringSync('fourth\n', flush: true);
+
+      expect(
+        await _nextLines(lines, 4),
+        ['second', 'third', 'unterminated', 'fourth'],
+      );
+    });
+
+    test('reads a file from its start when its beginning was rewritten',
+        () async {
+      final dir = createTempDir();
+      final sameRecord = 'x' * 64;
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('old\n$sameRecord\n');
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail());
+      addTearDown(lines.cancel);
+      expect(await _nextLines(lines, 2), ['old', sameRecord]);
+
+      // Same size and same last bytes up to where the reader was.
+      base.writeAsStringSync('new\n$sameRecord\nafter\n', flush: true);
+      expect(await _nextLines(lines, 3), ['new', sameRecord, 'after']);
+    });
+
+    test('stops polling when cancelled while it starts to follow', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('current\n');
+
+      final timers = <Timer>[];
+      final cancelled = Completer<void>();
+      await runZoned(
+        () async {
+          // ignore: cancel_subscriptions
+          StreamSubscription<String>? subscription;
+          final encoding = _HookedUtf8.afterReading('current', () {
+            cancelled.complete(subscription?.cancel());
+          });
+          final reader =
+              RotatingFileReader(baseFilePathProvider: () => base.path);
+          subscription = reader.tail(encoding: encoding).listen((_) {});
+          await cancelled.future;
+          // Lets the cancelled tail run to its end.
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        },
+        zoneSpecification: ZoneSpecification(
+          createPeriodicTimer: (self, parent, zone, period, callback) {
+            final timer = parent.createPeriodicTimer(zone, period, callback);
+            timers.add(timer);
+            return timer;
+          },
+        ),
+      );
+
+      expect(timers.where((it) => it.isActive), isEmpty);
+    });
+
     test('emits lines of a new file that grew past the old one', () async {
       final dir = createTempDir();
 
@@ -667,20 +801,73 @@ void main() {
       final dir = Directory('${createTempDir().path}/logs');
       final base = File('${dir.path}/app.log');
 
+      final watchAttempts = _WatchAttempts();
+      await IOOverrides.runWithIOOverrides(() async {
+        final reader = RotatingFileReader(
+          baseFilePathProvider: () => base.path,
+          pollInterval: const Duration(milliseconds: 30),
+        );
+        final lines = StreamIterator(reader.tail());
+        addTearDown(lines.cancel);
+        final next = _nextLines(lines, 1);
+
+        // The reader tried to watch the missing directory when it started
+        // and again with a poll.
+        await watchAttempts.second.future;
+
+        dir.createSync();
+        base.writeAsStringSync('appeared\n');
+        expect(await next, ['appeared']);
+      }, watchAttempts);
+    });
+
+    test('works when directory is replaced', () async {
+      final dir = Directory('${createTempDir().path}/logs')..createSync();
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('first\n');
+
       final reader = RotatingFileReader(
         baseFilePathProvider: () => base.path,
         pollInterval: const Duration(milliseconds: 30),
       );
       final lines = StreamIterator(reader.tail());
       addTearDown(lines.cancel);
-      final next = _nextLines(lines, 1);
+      expect(await _nextLines(lines, 1), ['first']);
 
-      // The line arrives whether or not tail started before the directory
-      // exists, so the order of the two cannot fail the test.
+      dir.deleteSync(recursive: true);
       dir.createSync();
       base.writeAsStringSync('appeared\n');
+      expect(await _nextLines(lines, 1), ['appeared']);
+    });
+  });
 
-      expect(await next, ['appeared']);
+  group('log file named *.gz', () {
+    test('lists and reads its plain and compressed rotated files', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/other.gz');
+      final rotatedPlain = File('${dir.path}/other.2024-01-02_10-00-00.gz');
+      final rotatedGz = File('${dir.path}/other.2024-01-01_10-00-00.gz.gz');
+
+      rotatedGz.writeAsBytesSync(gzip.encode(utf8.encode('old1\n')));
+      rotatedPlain.writeAsStringSync('old2\n');
+      base.writeAsStringSync('current\n');
+
+      rotatedGz.setLastModifiedSync(DateTime(2024, 1, 1, 10));
+      rotatedPlain.setLastModifiedSync(DateTime(2024, 1, 2, 10));
+      base.setLastModifiedSync(DateTime(2024, 1, 3, 10));
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      expect(
+        await reader.listFiles(),
+        [rotatedGz.path, rotatedPlain.path, base.path],
+      );
+      expect(await reader.read().toList(), ['old1', 'old2', 'current']);
+      expect(await reader.read(last: 3).toList(), ['old1', 'old2', 'current']);
+
+      final lines = StreamIterator(reader.tail());
+      addTearDown(lines.cancel);
+      expect(await _nextLines(lines, 3), ['old1', 'old2', 'current']);
     });
   });
 
@@ -921,5 +1108,21 @@ class _HookedSink implements Sink<List<int>> {
   @override
   void close() {
     _utf8.close();
+  }
+}
+
+/// Completes [second] when the reader asked a second time whether it can
+/// watch the directory.
+final class _WatchAttempts extends IOOverrides {
+  final second = Completer<void>();
+  int _count = 0;
+
+  @override
+  bool fsWatchIsSupported() {
+    _count++;
+    if (_count == 2) {
+      second.complete();
+    }
+    return super.fsWatchIsSupported();
   }
 }

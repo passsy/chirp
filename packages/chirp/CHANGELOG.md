@@ -6,11 +6,15 @@
 
 - **Fix** `SimpleConsoleMessageFormatter` requests caller info again, restoring the missing source location ([#46](https://github.com/passsy/chirp/issues/46))
 
-- **Fix** `RotatingFileReader.tail` emits every record exactly once, also when the file is appended to, rotated or replaced while the history is read ([#52](https://github.com/passsy/chirp/pull/52))
+- **Fix** `RotatingFileReader.tail` no longer loses, repeats or splits records when the file is appended to, rotated or replaced while it is read. Records written right before a rotation are read from the rotated file ([#52](https://github.com/passsy/chirp/pull/52))
 
 - **Fix** `RotatingFileReader.tail` waits for the rest of an incomplete record or character instead of emitting it in two parts ([#52](https://github.com/passsy/chirp/pull/52))
 
+- **Fix** `RotatingFileReader.tail` reports undecodable bytes as a stream error and stops its timer when it is cancelled while it starts ([#52](https://github.com/passsy/chirp/pull/52))
+
 - **Fix** Only files with the extension of the log file count as its rotated files. `app.2024-01-01_10-00-00.backup` is no longer read as history of `app.log` or deleted by the retention policy ([#52](https://github.com/passsy/chirp/pull/52))
+
+- **Fix** `RotatingFileReader` no longer treats a log file that is itself named `*.gz` as compressed ([#52](https://github.com/passsy/chirp/pull/52))
 
 ## 0.9.0
 
