@@ -77,8 +77,24 @@ class RotatingFileReaderIo implements RotatingFileReader {
   Stream<String> read({
     int? last,
     Encoding encoding = utf8,
+  }) {
+    return _read(last: last, encoding: encoding);
+  }
+
+  /// Like [read], but reads only the first [currentFileEnd] bytes of the
+  /// current file, so that [tail] can follow from exactly that offset.
+  Stream<String> _read({
+    required int? last,
+    required Encoding encoding,
+    int? currentFileEnd,
   }) async* {
     final files = await listFiles();
+    final currentPath = await _resolveBaseFilePath();
+    final currentName = File(currentPath).uri.pathSegments.last;
+    int? endOf(String path) {
+      final isCurrent = File(path).uri.pathSegments.last == currentName;
+      return isCurrent ? currentFileEnd : null;
+    }
 
     // When last is requested, we need to materialize to compute the tail.
     if (last != null) {
@@ -91,8 +107,12 @@ class RotatingFileReaderIo implements RotatingFileReader {
       for (final path in files.reversed) {
         if (remaining <= 0) break;
 
-        final lines =
-            await _readAllLinesFromFile(path, encoding, _recordSeparator);
+        final lines = await _readAllLinesFromFile(
+          path,
+          encoding,
+          _recordSeparator,
+          end: endOf(path),
+        );
         if (lines.isEmpty) continue;
 
         if (lines.length > remaining) {
@@ -123,7 +143,7 @@ class RotatingFileReaderIo implements RotatingFileReader {
         yield* Stream<String>.fromIterable(records);
       } else {
         yield* File(path)
-            .openRead()
+            .openRead(0, endOf(path))
             .transform(encoding.decoder)
             .transform(_RecordSplitter(_recordSeparator));
       }
@@ -135,19 +155,21 @@ class RotatingFileReaderIo implements RotatingFileReader {
     int? last,
     Encoding encoding = utf8,
   }) async* {
-    yield* read(last: last, encoding: encoding);
+    final resolvedPath = await _resolveBaseFilePath();
+    final file = File(resolvedPath);
+    final dir = file.parent;
+    final fileName = file.uri.pathSegments.last;
+
+    // The history ends and the follow starts at this offset. Taking it after
+    // the history read would lose lines appended in between.
+    var offset = file.existsSync() ? file.lengthSync() : 0;
+    yield* _read(last: last, encoding: encoding, currentFileEnd: offset);
 
     // Follow current file (baseFilePath) for new lines.
     //
     // Implementation note: This primarily reacts to file-system events and
     // uses a lightweight periodic poll as a fallback for filesystems that
     // don't reliably emit change events.
-    final resolvedPath = await _resolveBaseFilePath();
-    final file = File(resolvedPath);
-    final dir = file.parent;
-    final fileName = file.uri.pathSegments.last;
-
-    var offset = file.existsSync() ? file.lengthSync() : 0;
     FileStat? lastStat;
     var unchangedIterations = 0;
 
@@ -264,8 +286,9 @@ bool _statsEqual(FileStat previous, FileStat current) {
 Future<List<String>> _readAllLinesFromFile(
   String path,
   Encoding encoding,
-  String recordSeparator,
-) async {
+  String recordSeparator, {
+  int? end,
+}) async {
   if (path.endsWith('.gz')) {
     final bytes = await File(path).readAsBytes();
     final decompressed = gzip.decode(bytes);
@@ -274,7 +297,7 @@ Future<List<String>> _readAllLinesFromFile(
   }
 
   return File(path)
-      .openRead()
+      .openRead(0, end)
       .transform(encoding.decoder)
       .transform(_RecordSplitter(recordSeparator))
       .toList();

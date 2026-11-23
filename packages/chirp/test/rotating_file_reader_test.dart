@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -385,18 +386,13 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('first\n');
 
-      final received = <String>[];
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final sub = reader.tail(last: 10).listen(received.add);
-      addTearDown(() => sub.cancel());
+      final lines = StreamIterator(reader.tail(last: 10));
+      addTearDown(lines.cancel);
 
-      // Append new content.
+      expect(await nextLines(lines, 1), ['first']);
       base.writeAsStringSync('second\n', mode: FileMode.append, flush: true);
-
-      // Wait for the filesystem event + read.
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-
-      expect(received, containsAllInOrder(['first', 'second']));
+      expect(await nextLines(lines, 1), ['second']);
     });
 
     test('emits historical lines then new lines', () async {
@@ -412,12 +408,46 @@ void main() {
       base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final tailFuture = reader.tail(last: 2).take(3).toList();
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      final lines = StreamIterator(reader.tail(last: 2));
+      addTearDown(lines.cancel);
 
+      // Append only after the history arrived, or `last: 2` would rightly
+      // count the appended line as history.
+      final received = await nextLines(lines, 2);
       base.writeAsStringSync('appended\n', mode: FileMode.append, flush: true);
-      final received = await tailFuture;
-      expect(received, containsAllInOrder(['old2', 'current', 'appended']));
+      received.addAll(await nextLines(lines, 1));
+      expect(received, ['old2', 'current', 'appended']);
+    });
+
+    test('emits a line appended right after the history was read', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+
+      rotated.writeAsStringSync('old1\nold2\n');
+      base.writeAsStringSync('current\n');
+
+      rotated.setLastModifiedSync(DateTime(2024, 1, 1, 10));
+      base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
+
+      // Appends in the window between reading the history of the current
+      // file and following it.
+      var appended = false;
+      final encoding = _NotifyingUtf8(onDecoded: () {
+        if (appended) {
+          return;
+        }
+        appended = true;
+        base.writeAsStringSync('appended\n',
+            mode: FileMode.append, flush: true);
+      });
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail(last: 2, encoding: encoding));
+      addTearDown(lines.cancel);
+
+      expect(await nextLines(lines, 3), ['old2', 'current', 'appended']);
     });
 
     test('emits lines after truncation', () async {
@@ -426,41 +456,37 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('first\nsecond\n');
 
-      const pollInterval = Duration(milliseconds: 30);
-      final received = <String>[];
       final reader = RotatingFileReader(
         baseFilePathProvider: () => base.path,
-        pollInterval: pollInterval,
+        pollInterval: const Duration(milliseconds: 30),
       );
-      final sub = reader.tail(last: 0).listen(received.add);
-      addTearDown(() => sub.cancel());
+      final lines = StreamIterator(reader.tail(last: 2));
+      addTearDown(lines.cancel);
 
-      // Truncate file to simulate rotation/truncation.
+      // The history proves the reader is past the old content.
+      expect(await nextLines(lines, 2), ['first', 'second']);
+
+      // Truncate file to simulate rotation/truncation, then append.
       base.writeAsStringSync('', flush: true);
-      // Let the poller observe the truncation.
-      await Future<void>.delayed(pollInterval);
-
-      // Append new content after truncation.
       base.writeAsStringSync('after\n', mode: FileMode.append, flush: true);
-      await Future<void>.delayed(pollInterval);
-      expect(received, contains('after'));
+      expect(await nextLines(lines, 1), ['after']);
     });
 
     test('works when file does not exist yet', () async {
       final dir = createTempDir();
       final base = File('${dir.path}/app.log');
 
-      final received = <String>[];
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final sub = reader.tail().listen(received.add);
-      addTearDown(() => sub.cancel());
+      final lines = StreamIterator(reader.tail());
+      addTearDown(lines.cancel);
+      final next = nextLines(lines, 1);
 
-      // Create the file after tail started.
+      // Gives tail the time to start without the file. The line arrives
+      // either way, so this delay cannot fail the test.
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       base.writeAsStringSync('appeared\n');
 
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-
-      expect(received, contains('appeared'));
+      expect(await next, ['appeared']);
     });
   });
 
@@ -619,4 +645,51 @@ void main() {
       expect(jsonDecode(lines[1]), containsPair('message', 'World'));
     });
   });
+}
+
+/// Awaits the next [count] lines of a tail, which never ends by itself.
+Future<List<String>> nextLines(StreamIterator<String> lines, int count) async {
+  final result = <String>[];
+  while (result.length < count && await lines.moveNext()) {
+    result.add(lines.current);
+  }
+  return result;
+}
+
+/// UTF-8 that calls [onDecoded] each time a byte stream was decoded to its
+/// end, which is when a file was read completely.
+class _NotifyingUtf8 extends Encoding {
+  final void Function() onDecoded;
+
+  _NotifyingUtf8({required this.onDecoded});
+
+  @override
+  String get name => utf8.name;
+
+  @override
+  Converter<String, List<int>> get encoder => utf8.encoder;
+
+  @override
+  Converter<List<int>, String> get decoder => _NotifyingUtf8Decoder(onDecoded);
+}
+
+class _NotifyingUtf8Decoder extends Converter<List<int>, String> {
+  final void Function() onDecoded;
+
+  _NotifyingUtf8Decoder(this.onDecoded);
+
+  @override
+  String convert(List<int> input) => utf8.decode(input);
+
+  @override
+  Stream<String> bind(Stream<List<int>> stream) {
+    return utf8.decoder.bind(stream).transform(
+      StreamTransformer.fromHandlers(
+        handleDone: (sink) {
+          onDecoded();
+          sink.close();
+        },
+      ),
+    );
+  }
 }

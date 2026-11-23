@@ -6,6 +6,8 @@
 
 - **Fix** `SimpleConsoleMessageFormatter` requests caller info again, restoring the missing source location ([#46](https://github.com/passsy/chirp/issues/46))
 
+- **Fix** `RotatingFileReader.tail` no longer loses a line that is appended while it reads the history.
+
 ## 0.9.0
 
 - **New** Lazy message construction — pass `() => 'expensive $message'` to any log method.
