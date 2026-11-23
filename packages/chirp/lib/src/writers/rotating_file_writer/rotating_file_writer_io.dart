@@ -864,28 +864,16 @@ class _RotatingFileSink {
 
   /// Gets all rotated log files (not the current one).
   List<_FileEntry> getRotatedFiles() {
-    final currentFile = File(basePath);
-    final dir = currentFile.parent;
-    final name = currentFile.uri.pathSegments.last;
-
-    // Extract base name for matching rotated files
-    final dotIndex = name.lastIndexOf('.');
-    final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
-    final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
+    final dir = File(basePath).parent;
+    final log = LogFileName(basePath);
 
     if (!dir.existsSync()) return [];
 
-    return dir.listSync().whereType<File>().where((file) {
-      final fileName = file.uri.pathSegments.last;
-      if (fileName == name) {
-        return false;
-      }
-      return isRotatedLogFile(
-        fileName,
-        baseName: baseName,
-        extension: extension,
-      );
-    }).map((file) {
+    return dir
+        .listSync()
+        .whereType<File>()
+        .where((file) => log.isRotated(file.path))
+        .map((file) {
       final stat = file.statSync();
       return (path: file.path, modified: stat.modified);
     }).toList();
@@ -999,14 +987,10 @@ class _RotatingFileSink {
   /// If a file with the timestamp already exists (multiple rotations in the
   /// same second), appends a counter suffix: `app.2024-01-15_10-30-45_1.log`
   String _generateRotatedPath(DateTime timestamp) {
-    final file = File(basePath);
-    final dir = file.parent.path;
-    final name = file.uri.pathSegments.last;
-
-    // Split name into base and extension
-    final dotIndex = name.lastIndexOf('.');
-    final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
-    final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
+    final dir = File(basePath).parent.path;
+    final log = LogFileName(basePath);
+    final baseName = log.baseName;
+    final extension = log.extension;
 
     // Format timestamp for filename
     var ts = timestamp
@@ -1021,10 +1005,10 @@ class _RotatingFileSink {
     final rotated = getRotatedFiles().map((it) => it.path).toList();
     if (rotated.isNotEmpty) {
       final newest = rotated.reduce((a, b) {
-        return compareRotatedLogFiles(a, b, baseName: baseName) > 0 ? a : b;
+        return log.compareRotated(a, b) > 0 ? a : b;
       });
       final candidate = '$dir/$baseName.$ts$extension';
-      if (compareRotatedLogFiles(candidate, newest, baseName: baseName) < 0) {
+      if (log.compareRotated(candidate, newest) < 0) {
         final newestName = File(newest).uri.pathSegments.last;
         ts = _rotationPattern
             .firstMatch(newestName.substring(baseName.length + 1))!
@@ -1083,19 +1067,13 @@ class _RotatingFileSink {
     final config = rotationConfig;
     if (config == null) return;
 
-    final name = File(basePath).uri.pathSegments.last;
-    final dotIndex = name.lastIndexOf('.');
-    final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
-    final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
+    final log = LogFileName(basePath);
 
     // While a rotated file is compressed, both it and its .gz exist. They
     // count as one file.
     final byGeneration = <String, List<_FileEntry>>{};
     for (final file in getRotatedFiles()) {
-      var generation = file.path;
-      if (generation.endsWith('$extension.gz')) {
-        generation = generation.substring(0, generation.length - 3);
-      }
+      final generation = log.uncompressed(file.path);
       byGeneration.putIfAbsent(generation, () => []).add(file);
     }
     if (byGeneration.isEmpty) {
@@ -1106,7 +1084,7 @@ class _RotatingFileSink {
     // time changes when a file is compressed.
     final generations = byGeneration.keys.toList()
       ..sort((a, b) {
-        return compareRotatedLogFiles(b, a, baseName: baseName);
+        return log.compareRotated(b, a);
       });
     final rotatedFiles = [
       for (final generation in generations) ...byGeneration[generation]!,
@@ -1190,64 +1168,106 @@ final _counterPattern = RegExp(r'^_(\d+)');
 final _rotationPattern =
     RegExp(r'^(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})(?:_(\d+))?');
 
-/// Orders the rotated files [a] and [b] of the log `baseName` + extension
-/// from old to new, by the time and the counter in their names.
-int compareRotatedLogFiles(String a, String b, {required String baseName}) {
-  ({String time, int counter}) rotation(String path) {
-    final name = File(path).uri.pathSegments.last;
-    final match = _rotationPattern.firstMatch(
-      name.substring(baseName.length + 1),
-    );
-    return (
-      time: match?.group(1) ?? '',
-      counter: int.parse(match?.group(2) ?? '0'),
-    );
-  }
-
-  final rotationA = rotation(a);
-  final rotationB = rotation(b);
-  final byTime = rotationA.time.compareTo(rotationB.time);
-  if (byTime != 0) {
-    return byTime;
-  }
-  return rotationA.counter.compareTo(rotationB.counter);
-}
-
 // Matches the YYYY-MM-DD_HH-MM-SS[_N] part of a rotated file name.
 final _rotatedTimestampPattern =
     RegExp(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_\d+)?$');
 
-/// Returns `true` if [fileName] (without directory path) is a rotated file
-/// of the log file `baseName` + [extension], which is named
-/// `baseName.YYYY-MM-DD_HH-MM-SS[_N]` + [extension] + optional `.gz`.
+/// The name of a log file like `app.log`, and the names of its rotated
+/// files: `app.YYYY-MM-DD_HH-MM-SS[_N].log`, compressed with `.gz` appended.
 ///
-/// ```dart
-/// isRotatedLogFile('app.2024-01-15_10-30-45.log',
-///     baseName: 'app', extension: '.log') // true
-/// isRotatedLogFile('app.log', baseName: 'app', extension: '.log') // false
-/// ```
-bool isRotatedLogFile(
-  String fileName, {
-  required String baseName,
-  required String extension,
-}) {
-  if (!fileName.startsWith('$baseName.')) return false;
-  final rest = fileName.substring(baseName.length + 1); // skip "baseName."
+/// The writer names and deletes rotated files by it, the reader finds and
+/// orders them by it.
+class LogFileName {
+  /// The name of the current log file, like `app.log`.
+  final String name;
 
-  bool isRotated(String name) {
-    if (!name.endsWith(extension)) {
+  /// The name without its extension, like `app`.
+  final String baseName;
+
+  /// The extension with its dot, like `.log`, or empty.
+  final String extension;
+
+  factory LogFileName(String path) {
+    final name = File(path).uri.pathSegments.last;
+    final dotIndex = name.lastIndexOf('.');
+    return LogFileName._(
+      name: name,
+      baseName: dotIndex > 0 ? name.substring(0, dotIndex) : name,
+      extension: dotIndex > 0 ? name.substring(dotIndex) : '',
+    );
+  }
+
+  LogFileName._({
+    required this.name,
+    required this.baseName,
+    required this.extension,
+  });
+
+  /// Whether [path] is a rotated file of this log, compressed or not.
+  ///
+  /// ```dart
+  /// LogFileName('app.log').isRotated('app.2024-01-15_10-30-45.log') // true
+  /// LogFileName('app.log').isRotated('app.log') // false
+  /// ```
+  bool isRotated(String path) {
+    final fileName = File(path).uri.pathSegments.last;
+    if (fileName == name) return false;
+    if (!fileName.startsWith('$baseName.')) return false;
+    final rest = fileName.substring(baseName.length + 1); // skip "baseName."
+
+    bool isRotated(String name) {
+      if (!name.endsWith(extension)) {
+        return false;
+      }
+      final timestamp = name.substring(0, name.length - extension.length);
+      return _rotatedTimestampPattern.hasMatch(timestamp);
+    }
+
+    if (isRotated(rest)) {
+      return true;
+    }
+    // The extension itself may be `.gz`, so this is checked second.
+    if (!rest.endsWith('.gz')) {
       return false;
     }
-    final timestamp = name.substring(0, name.length - extension.length);
-    return _rotatedTimestampPattern.hasMatch(timestamp);
+    return isRotated(rest.substring(0, rest.length - '.gz'.length));
   }
 
-  if (isRotated(rest)) {
-    return true;
+  /// Whether the rotated file [path] is compressed. The log file may itself
+  /// be named `*.gz`.
+  bool isCompressed(String path) {
+    final fileName = File(path).uri.pathSegments.last;
+    return fileName != name && fileName.endsWith('$extension.gz');
   }
-  // The extension itself may be `.gz`, so this is checked second.
-  if (!rest.endsWith('.gz')) {
-    return false;
+
+  /// The path of the rotated file [path] before it was compressed.
+  String uncompressed(String path) {
+    if (!isCompressed(path)) {
+      return path;
+    }
+    return path.substring(0, path.length - '.gz'.length);
   }
-  return isRotated(rest.substring(0, rest.length - '.gz'.length));
+
+  /// Orders the rotated files [a] and [b] from old to new, by the time and
+  /// the counter in their names.
+  int compareRotated(String a, String b) {
+    ({String time, int counter}) rotation(String path) {
+      final fileName = File(path).uri.pathSegments.last;
+      final match = _rotationPattern.firstMatch(
+        fileName.substring(baseName.length + 1),
+      );
+      return (
+        time: match?.group(1) ?? '',
+        counter: int.parse(match?.group(2) ?? '0'),
+      );
+    }
+
+    final rotationA = rotation(a);
+    final rotationB = rotation(b);
+    final byTime = rotationA.time.compareTo(rotationB.time);
+    if (byTime != 0) {
+      return byTime;
+    }
+    return rotationA.counter.compareTo(rotationB.counter);
+  }
 }

@@ -7,7 +7,7 @@ import 'dart:typed_data';
 
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader.dart';
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.dart'
-    show compareRotatedLogFiles, isRotatedLogFile;
+    show LogFileName;
 import 'package:clock/clock.dart';
 
 /// `dart:io`-based implementation of [RotatingFileReader].
@@ -56,25 +56,23 @@ class RotatingFileReaderIo implements RotatingFileReader {
 
     if (!dir.existsSync()) return const [];
 
+    final log = LogFileName(resolvedPath);
     final files = dir.listSync().whereType<File>().map((it) => it.path).toSet();
     final rotated = files.where((it) {
-      if (!_isRotatedLog(it, currentPath: resolvedPath)) {
+      if (!log.isRotated(it)) {
         return false;
       }
-      if (!_isCompressedLog(it, currentPath: resolvedPath)) {
+      if (!log.isCompressed(it)) {
         return true;
       }
       // While a rotated file is compressed, both it and its .gz exist, and
       // only the plain file is complete.
-      return !files.contains(it.substring(0, it.length - '.gz'.length));
+      return !files.contains(log.uncompressed(it));
     }).toList()
-      ..sort((a, b) {
-        return _compareRotatedLogs(a, b, currentPath: resolvedPath);
-      });
+      ..sort(log.compareRotated);
 
-    final name = current.uri.pathSegments.last;
     final currentPaths = files.where((it) {
-      return File(it).uri.pathSegments.last == name;
+      return File(it).uri.pathSegments.last == log.name;
     });
     return [...rotated, if (includeCurrent) ...currentPaths];
   }
@@ -85,7 +83,7 @@ class RotatingFileReaderIo implements RotatingFileReader {
     Encoding encoding = utf8,
   }) async* {
     final files = await listFiles();
-    final currentPath = await _resolveBaseFilePath();
+    final log = LogFileName(await _resolveBaseFilePath());
 
     // When last is requested, we need to materialize to compute the tail.
     if (last != null) {
@@ -102,8 +100,8 @@ class RotatingFileReaderIo implements RotatingFileReader {
           path,
           encoding,
           _recordSeparator,
-          compressed: _isCompressedLog(path, currentPath: currentPath),
-          rotated: _isRotatedLog(path, currentPath: currentPath),
+          compressed: log.isCompressed(path),
+          rotated: log.isRotated(path),
         ).toList();
         if (lines.isEmpty) continue;
 
@@ -131,8 +129,8 @@ class RotatingFileReaderIo implements RotatingFileReader {
         path,
         encoding,
         _recordSeparator,
-        compressed: _isCompressedLog(path, currentPath: currentPath),
-        rotated: _isRotatedLog(path, currentPath: currentPath),
+        compressed: log.isCompressed(path),
+        rotated: log.isRotated(path),
       );
     }
   }
@@ -187,12 +185,14 @@ class RotatingFileReaderIo implements RotatingFileReader {
 class _Tail {
   final RotatingFileReaderIo _reader;
   final File _file;
+  final LogFileName _log;
   final int? _last;
   final Encoding _encoding;
 
   /// The encoded record separator. Records are split before they are
   /// decoded, so that a malformed record does not take others with it.
   final List<int> _separator;
+  final List<int> _space;
   final _controller = StreamController<String>();
 
   /// The generations of the last pass, oldest first.
@@ -229,9 +229,11 @@ class _Tail {
     required Encoding encoding,
   })  : _reader = reader,
         _file = file,
+        _log = LogFileName(file.path),
         _last = last,
         _encoding = encoding,
-        _separator = encoding.encode(reader._recordSeparator) {
+        _separator = encoding.encode(reader._recordSeparator),
+        _space = encoding.encode(' ') {
     _controller.onListen = () {
       unawaited(_run());
     };
@@ -486,6 +488,10 @@ class _Tail {
       return;
     }
     for (final generation in gone) {
+      if (generation.done) {
+        // Read to its end, or skipped as history.
+        continue;
+      }
       if (generation.offset >= generation.size) {
         continue;
       }
@@ -792,8 +798,9 @@ class _Tail {
     if (atFileStart) {
       return _encoding.decode(bytes);
     }
-    final text = _encoding.decode([..._separator, ...bytes]);
-    return text.substring(_reader._recordSeparator.length);
+    // Behind a space, a leading U+FEFF is not taken for a byte order mark.
+    final text = _encoding.decode([..._space, ...bytes]);
+    return text.substring(1);
   }
 
   void _reportBroken(_RotatedFile file, Object error, StackTrace stack) {
@@ -850,7 +857,7 @@ class _Tail {
         .listSync()
         .whereType<File>()
         .map((it) => it.path)
-        .where((it) => _isRotatedLog(it, currentPath: _file.path))
+        .where(_log.isRotated)
         .toSet();
 
     _RotatedFile? stat(String path, {required String generation}) {
@@ -870,31 +877,14 @@ class _Tail {
       );
     }
 
-    final generations = paths.map((it) {
-      if (_isCompressedLog(it, currentPath: _file.path)) {
-        return it.substring(0, it.length - '.gz'.length);
-      }
-      return it;
-    }).toSet();
-
-    final rotated = <_RotatedFile>[];
-    for (final generation in generations) {
-      // While a rotated file is compressed, both it and its .gz exist, and
-      // only the plain file is complete. It is deleted when the .gz is.
-      final file = stat(generation, generation: generation) ??
-          stat('$generation.gz', generation: generation);
-      if (file != null) {
-        rotated.add(file);
-      }
-    }
-    rotated.sort((a, b) {
-      return _compareRotatedLogs(
-        a.generation,
-        b.generation,
-        currentPath: _file.path,
-      );
+    final generations = paths.map(_log.uncompressed).toSet();
+    // While a rotated file is compressed, both it and its .gz exist, and
+    // only the plain file is complete. It is deleted when the .gz is.
+    final rotated = generations.map((it) {
+      return stat(it, generation: it) ?? stat('$it.gz', generation: it);
     });
-    return rotated;
+    return rotated.nonNulls.toList()
+      ..sort((a, b) => _log.compareRotated(a.generation, b.generation));
   }
 
   /// Watches the directory. It may not exist yet or be replaced later, the
@@ -1057,59 +1047,6 @@ int _indexOf(List<int> data, List<int> pattern, int from) {
     }
   }
   return -1;
-}
-
-/// Whether [path] is a rotated file of the log at [currentPath] that was
-/// compressed. A log file may itself be named `*.gz`.
-bool _isCompressedLog(String path, {required String currentPath}) {
-  final current = _LogName(currentPath);
-  final name = File(path).uri.pathSegments.last;
-  return name != current.name && name.endsWith('${current.extension}.gz');
-}
-
-/// Whether [path] is a rotated file of the log at [currentPath].
-bool _isRotatedLog(String path, {required String currentPath}) {
-  final current = _LogName(currentPath);
-  final name = File(path).uri.pathSegments.last;
-  if (name == current.name) {
-    return false;
-  }
-  return isRotatedLogFile(
-    name,
-    baseName: current.baseName,
-    extension: current.extension,
-  );
-}
-
-int _compareRotatedLogs(String a, String b, {required String currentPath}) {
-  return compareRotatedLogFiles(
-    a,
-    b,
-    baseName: _LogName(currentPath).baseName,
-  );
-}
-
-/// The parts of the name of a log file.
-class _LogName {
-  final String name;
-  final String baseName;
-  final String extension;
-
-  factory _LogName(String path) {
-    final name = File(path).uri.pathSegments.last;
-    final dotIndex = name.lastIndexOf('.');
-    return _LogName._(
-      name: name,
-      baseName: dotIndex > 0 ? name.substring(0, dotIndex) : name,
-      extension: dotIndex > 0 ? name.substring(dotIndex) : '',
-    );
-  }
-
-  _LogName._({
-    required this.name,
-    required this.baseName,
-    required this.extension,
-  });
 }
 
 /// The records of the log file at [path].

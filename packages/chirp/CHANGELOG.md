@@ -16,6 +16,8 @@
 
 - **Fix** `RotatingFileReader.tail` reports undecodable bytes and broken archives as stream errors and continues behind them ([#52](https://github.com/passsy/chirp/pull/52))
 
+- **Breaking** `RotatingFileReader.tail` emits an `ArgumentError` for an empty `recordSeparator` instead of a record per character ([#52](https://github.com/passsy/chirp/pull/52))
+
 - **Fix** `RotatingFileReader` orders rotated files by the time and counter in their names.
   Compressing a file changed its modification time and could move it behind newer files ([#52](https://github.com/passsy/chirp/pull/52))
 

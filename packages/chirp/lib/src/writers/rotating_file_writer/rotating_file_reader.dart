@@ -79,8 +79,8 @@ abstract class RotatingFileReader {
   /// before a rotation are read from the rotated file, as long as it exists.
   /// A rotated file that the retention policy deletes before it was read is
   /// lost. When the tail had seen its unread bytes, which happens when the
-  /// listener pauses, the gap is emitted as a `FileSystemException` between
-  /// the records around it.
+  /// listener pauses, the gap is emitted as a `FileSystemException` once the
+  /// tail notices it, which can be after records of newer rotated files.
   ///
   /// The log has to be append-only, with rotated files named as
   /// [RotatingFileWriter] names them. Like Filebeat and Vector, the tail
