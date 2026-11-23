@@ -272,43 +272,37 @@ class _Tail {
     }
   }
 
-  /// Emits the last [count] records of the files that exist right now.
+  /// Emits the last [count] records that exist when the files were read.
   /// Everything written or rotated in later is followed.
+  ///
+  /// The files are looked at again until no rotation happened in between.
+  /// Only then it is certain which file is the current one and that all
+  /// rotated files are older. Records written until then are history.
   Future<void> _emitLast(int count) async {
     final ring = ListQueue<String>();
-    _ring = ring;
-    _ringSize = count;
     var older = <_RotatedFile>[];
     try {
-      final listed = _listRotated();
-      final current = await _openCurrent();
-      try {
-        final listedAgain = _listRotated();
-        // A name can be reused, so the files are compared, not the names.
-        final rotatedSince = listedAgain.where((it) {
-          return !listed.any((before) => _isSameFile(before, it));
-        }).toList();
-        older = listedAgain.where((it) => !rotatedSince.contains(it)).toList();
+      while (!_cancelled) {
+        _ring = ring..clear();
+        _ringSize = count;
+        _restart();
 
-        if (rotatedSince.isEmpty) {
+        older = _listRotated();
+        final current = await _openCurrent();
+        try {
+          if (!_isSameListing(older, _listRotated())) {
+            continue;
+          }
           if (current != null) {
             final intact = await _read(current, canPause: false);
             if (!intact) {
-              _restart();
+              continue;
             }
           }
-        } else {
-          // Rotated since the first listing. The file that was current then
-          // is the oldest of the new rotated files, whether the rotation
-          // happened before or after the open.
-          await _readGeneration(
-            rotatedSince.first,
-            mustContinue: false,
-            canPause: false,
-          );
+          break;
+        } finally {
+          await current?.close();
         }
-      } finally {
-        await current?.close();
       }
     } finally {
       _ring = null;
@@ -676,6 +670,18 @@ class _Tail {
     }).toList();
   }
 
+  bool _isSameListing(List<_RotatedFile> before, List<_RotatedFile> now) {
+    if (before.length != now.length) {
+      return false;
+    }
+    for (var i = 0; i < before.length; i++) {
+      if (!_isSameFile(before[i], now[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /// Whether [now] is the file that was listed as [before].
   bool _isSameFile(_RotatedFile before, _RotatedFile now) {
     if (before.generation != now.generation) {
@@ -823,7 +829,12 @@ class _FileBytes implements _Bytes {
 
   @override
   Future<void> close() async {
-    await _file.close();
+    try {
+      await _file.close();
+    } on FileSystemException {
+      // Nothing was written, so nothing is lost. Throwing would discard
+      // what was read through this file.
+    }
   }
 }
 

@@ -7,7 +7,7 @@
 - **Fix** `SimpleConsoleMessageFormatter` requests caller info again, restoring the missing source location ([#46](https://github.com/passsy/chirp/issues/46))
 
 - **Fix** `RotatingFileReader.tail` lost, repeated or split records when the file was appended to or rotated while it was read.
-  Records written right before a rotation are read from the rotated file ([#52](https://github.com/passsy/chirp/pull/52))
+  Records written right before a rotation are read from the rotated file, as long as it exists ([#52](https://github.com/passsy/chirp/pull/52))
 
 - **Fix** `RotatingFileReader.tail` waits for the rest of an incomplete record or character instead of emitting it in two parts ([#52](https://github.com/passsy/chirp/pull/52))
 
@@ -18,7 +18,7 @@
 
 - **Fix** `RotatingFileReader` reads a rotated file once while it is compressed, when both it and its `.gz` exist ([#52](https://github.com/passsy/chirp/pull/52))
 
-- **Fix** `RotatingFileWriter` keeps counting the suffix of rotated files within one second.
+- **Fix** `RotatingFileWriter` counts the suffix of rotated files within one second on from the highest one that still exists.
   It reused the name of a deleted or compressed file, which put the files out of order and could overwrite a compressed one ([#52](https://github.com/passsy/chirp/pull/52))
 
 - **Fix** `RotatingFileReader.read` reads the `.gz` of a rotated file that is compressed after it was listed, instead of failing ([#52](https://github.com/passsy/chirp/pull/52))

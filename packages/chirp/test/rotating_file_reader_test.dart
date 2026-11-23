@@ -594,7 +594,7 @@ void main() {
 
     for (final last in [-1, 0, 1, 5]) {
       test(
-          'follows a file that is rotated in between the first looks (last: $last)',
+          'looks again when the file is rotated between its first looks (last: $last)',
           () async {
         final dir = createTempDir();
 
@@ -612,13 +612,21 @@ void main() {
         await IOOverrides.runWithIOOverrides(() async {
           final reader =
               RotatingFileReader(baseFilePathProvider: () => base.path);
-          final lines = StreamIterator(reader.tail(last: last));
+          // Appended when the reader has read the new file, so it is not
+          // history anymore.
+          final encoding = _HookedUtf8.afterReading('new1', () {
+            base.writeAsStringSync('end\n', mode: FileMode.append, flush: true);
+          });
+          final lines =
+              StreamIterator(reader.tail(last: last, encoding: encoding));
           addTearDown(lines.cancel);
 
-          final history = last > 0 ? ['before'] : <String>[];
+          // Written while the tail started, so it is history.
+          const all = ['before', 'new1', 'new2'];
+          final history = all.sublist(all.length - last.clamp(0, 3));
           expect(
-            await _nextLines(lines, history.length + 2),
-            [...history, 'new1', 'new2'],
+            await _nextLines(lines, history.length + 1),
+            [...history, 'end'],
           );
         }, hooks);
       });
@@ -647,7 +655,7 @@ void main() {
       await IOOverrides.runWithIOOverrides(() async {
         final reader =
             RotatingFileReader(baseFilePathProvider: () => base.path);
-        final lines = StreamIterator(reader.tail(last: 1));
+        final lines = StreamIterator(reader.tail(last: 5));
         addTearDown(lines.cancel);
         expect(
           await _nextLines(lines, 3),
@@ -743,7 +751,9 @@ void main() {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
-      File('${dir.path}/app.2024-01-01_10-00-00.log.gz')
+      File('${dir.path}/app.2024-01-01_10-00-00.log')
+          .writeAsStringSync('older\n');
+      File('${dir.path}/app.2024-01-02_10-00-00.log.gz')
           .writeAsBytesSync([1, 2, 3]);
       base.writeAsStringSync('current\n');
 
@@ -753,7 +763,7 @@ void main() {
           StreamIterator(reader.tail(last: 5).handleError(error.complete));
       addTearDown(lines.cancel);
 
-      expect(await _nextLines(lines, 1), ['current']);
+      expect(await _nextLines(lines, 2), ['older', 'current']);
       expect(await error.future, isA<FormatException>());
     });
 
