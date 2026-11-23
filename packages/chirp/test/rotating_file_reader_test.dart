@@ -976,8 +976,10 @@ void main() {
       final base = File('${dir.path}/app.log');
       base.writeAsStringSync('current\n');
 
-      var chunks = 0;
-      final encoding = _HookedUtf8(onChunkDecoded: (_) => chunks++);
+      var decoded = 0;
+      final encoding = _HookedUtf8(onChunkDecoded: (bytes) {
+        decoded += bytes.length;
+      });
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
 
       final received = <String>[];
@@ -1000,8 +1002,9 @@ void main() {
       await paused.future;
       // Time to read on, if the reader ignored the pause.
       await Future<void>.delayed(const Duration(milliseconds: 100));
-      // The read that was running when the listener paused is the last.
-      expect(chunks, lessThanOrEqualTo(2));
+      // The read of 64 KiB that was running when the listener paused is the
+      // last.
+      expect(decoded, lessThanOrEqualTo(2 * 64 * 1024));
 
       subscription.resume();
       await done.future;
@@ -1158,7 +1161,7 @@ void main() {
       }
     }
 
-    test('reports undecodable bytes and continues behind them', () async {
+    test('reports an undecodable record and keeps the others', () async {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
@@ -1170,12 +1173,48 @@ void main() {
       addTearDown(lines.cancel);
       expect(await _nextLines(lines, 1), ['first']);
 
-      final next = _nextLines(lines, 1);
-      base.writeAsBytesSync([0xff, 0x0a], mode: FileMode.append, flush: true);
+      // One write, so that all of it is read as one chunk.
+      final next = _nextLines(lines, 3);
+      base.writeAsBytesSync(
+        [...utf8.encode('before\n'), 0xff, ...utf8.encode('\nafter\n')],
+        mode: FileMode.append,
+        flush: true,
+      );
       expect(await error.future, isA<FormatException>());
 
-      base.writeAsStringSync('after\n', mode: FileMode.append, flush: true);
-      expect(await next, ['after']);
+      base.writeAsStringSync('end\n', mode: FileMode.append, flush: true);
+      expect(await next, ['before', 'after', 'end']);
+    });
+
+    test('reads the history again when a rotation reuses a name meanwhile',
+        () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      final oldest = File('${dir.path}/app.2024-01-01_10-00-00.log');
+      final newer = File('${dir.path}/app.2024-01-02_10-00-00.log');
+      oldest.writeAsStringSync('a\n');
+      newer.writeAsStringSync('b\n');
+      base.writeAsStringSync('c\n');
+
+      // While the history reads `b`, retention deletes the oldest file and a
+      // rotation reuses its name.
+      final encoding = _HookedUtf8.afterReading('b', () {
+        oldest.deleteSync();
+        base.renameSync(oldest.path);
+        base.writeAsStringSync('d\n', flush: true);
+      });
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail(last: 10, encoding: encoding));
+      addTearDown(lines.cancel);
+
+      // `a` is gone. The reused name orders `c` before `b`.
+      expect(await _nextLines(lines, 3), ['c', 'b', 'd']);
+
+      // The next line proves that nothing was emitted twice.
+      base.writeAsStringSync('end\n', mode: FileMode.append, flush: true);
+      expect(await _nextLines(lines, 1), ['end']);
     });
 
     test('emits lines after truncation', () async {
@@ -1747,7 +1786,11 @@ class _HookedUtf8Decoder extends Converter<List<int>, String> {
   _HookedUtf8Decoder(this.onChunkDecoded);
 
   @override
-  String convert(List<int> input) => utf8.decode(input);
+  String convert(List<int> input) {
+    final text = utf8.decode(input);
+    onChunkDecoded(input);
+    return text;
+  }
 
   @override
   Sink<List<int>> startChunkedConversion(Sink<String> sink) {

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader.dart';
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.dart'
@@ -178,6 +180,10 @@ class _Tail {
   final File _file;
   final int? _last;
   final Encoding _encoding;
+
+  /// The encoded record separator. Records are split before they are
+  /// decoded, so that a malformed record does not take others with it.
+  final List<int> _separator;
   final _controller = StreamController<String>();
 
   /// The generations of the last pass, oldest first.
@@ -198,6 +204,7 @@ class _Tail {
   Stopwatch? _failing;
   bool _failureReported = false;
 
+  Timer? _retry;
   bool _cancelled = false;
   bool _polling = false;
   bool _pollAgain = false;
@@ -212,7 +219,8 @@ class _Tail {
   })  : _reader = reader,
         _file = file,
         _last = last,
-        _encoding = encoding {
+        _encoding = encoding,
+        _separator = encoding.encode(reader._recordSeparator) {
     _controller.onListen = () {
       unawaited(_run());
     };
@@ -221,6 +229,7 @@ class _Tail {
     };
     _controller.onCancel = () {
       _cancelled = true;
+      _retry?.cancel();
       _timer?.cancel();
       _watcher?.cancel();
     };
@@ -269,21 +278,30 @@ class _Tail {
   Future<void> _emitLastWithRetry(int count) async {
     while (!_cancelled) {
       try {
-        await _emitLast(count);
-        _failing = null;
-        return;
+        if (await _emitLast(count)) {
+          _failing = null;
+          return;
+        }
+        // A rotated name holds another file since the history was listed.
+        _generations.clear();
+        _known.clear();
       } on FileSystemException catch (e, stack) {
         _failed(e, stack);
         _generations.clear();
         _known.clear();
-        await Future<void>.delayed(_reader._pollInterval);
+        final retry = Completer<void>();
+        _retry = Timer(_reader._pollInterval, retry.complete);
+        await retry.future;
       }
     }
   }
 
   /// Emits the last [count] records of the files as they are when the first
   /// pass ends. Everything written later is followed.
-  Future<void> _emitLast(int count) async {
+  ///
+  /// Returns false without emitting anything when a rotated name holds
+  /// another file since it was listed, as the history may have read it.
+  Future<bool> _emitLast(int count) async {
     final ring = ListQueue<String>();
     _ring = ring;
     _ringSize = count;
@@ -294,7 +312,7 @@ class _Tail {
       _ring = null;
     }
     if (rotated == null) {
-      return;
+      return true;
     }
 
     // Only read as far as their records are needed.
@@ -319,7 +337,10 @@ class _Tail {
       }
     }
     if (_cancelled) {
-      return;
+      return true;
+    }
+    if (_replacedSince(rotated)) {
+      return false;
     }
 
     final history = [...chunks.reversed.expand((it) => it), ...ring];
@@ -327,6 +348,7 @@ class _Tail {
     for (final record in history.skip(skip)) {
       _controller.add(record);
     }
+    return true;
   }
 
   Future<void> _poll() async {
@@ -339,8 +361,10 @@ class _Tail {
     do {
       _pollAgain = false;
       try {
-        await _pass();
-        _failing = null;
+        final rotated = await _pass();
+        if (rotated != null) {
+          _failing = null;
+        }
       } on FileSystemException catch (e, stack) {
         // The next poll continues where this one stopped.
         _failed(e, stack);
@@ -633,41 +657,47 @@ class _Tail {
 
   void _decode(_Generation generation, List<int> bytes) {
     generation.offset += bytes.length;
-    try {
-      final decoder = generation.decoder ??=
-          _encoding.decoder.startChunkedConversion(_CallbackSink((text) {
-        final parts =
-            (generation.partial + text).split(_reader._recordSeparator);
-        generation.partial = parts.removeLast();
-        for (final record in parts) {
-          _emit(record);
-        }
-      }));
-      decoder.add(bytes);
-    } catch (e, stack) {
-      // Undecodable bytes. Continues behind this chunk with a new decoder.
-      _controller.addError(e, stack);
-      generation.decoder = null;
-      generation.partial = '';
+    final partial = generation.partial;
+    final data = Uint8List(partial.length + bytes.length)
+      ..setAll(0, partial)
+      ..setAll(partial.length, bytes);
+
+    // The partial record has no separator, but one may end in [bytes].
+    var from = max(0, partial.length - _separator.length + 1);
+    var start = 0;
+    while (true) {
+      final end = _indexOf(data, _separator, from);
+      if (end < 0) {
+        break;
+      }
+      _emitBytes(Uint8List.sublistView(data, start, end));
+      start = end + _separator.length;
+      from = start;
     }
+    generation.partial = Uint8List.sublistView(data, start);
   }
 
   /// Ends a generation that was read to its last byte. A record without
   /// separator at its end is complete then.
   void _end(_Generation generation) {
-    try {
-      generation.decoder?.close();
-    } catch (e, stack) {
-      // Ends within a character.
-      _controller.addError(e, stack);
-    }
     if (generation.partial.isNotEmpty) {
-      _emit(generation.partial);
+      _emitBytes(generation.partial);
     }
     generation
-      ..decoder = null
-      ..partial = ''
+      ..partial = Uint8List(0)
       ..done = true;
+  }
+
+  void _emitBytes(List<int> bytes) {
+    final String record;
+    try {
+      record = _encoding.decode(bytes);
+    } on FormatException catch (e, stack) {
+      // Only this record is lost.
+      _controller.addError(e, stack);
+      return;
+    }
+    _emit(record);
   }
 
   void _emit(String record) {
@@ -697,6 +727,19 @@ class _Tail {
         return true;
       }
       // Compressed since, or unchanged.
+      return listed.compressed == now.compressed && listed.state != now.state;
+    });
+  }
+
+  /// Whether a file of [before] changed since it was listed, other than by
+  /// its compression or deletion. Then a rotation reused its name.
+  bool _replacedSince(List<_RotatedFile> before) {
+    final byGeneration = {for (final it in _listRotated()) it.generation: it};
+    return before.any((listed) {
+      final now = byGeneration[listed.generation];
+      if (now == null) {
+        return false;
+      }
       return listed.compressed == now.compressed && listed.state != now.state;
     });
   }
@@ -805,8 +848,8 @@ class _Generation {
   /// The number of bytes read, decompressed.
   int offset = 0;
 
-  Sink<List<int>>? decoder;
-  String partial = '';
+  /// The bytes of the record that is not complete yet.
+  Uint8List partial = Uint8List(0);
 
   /// Read to its last byte. Only a rotated file ends.
   bool done = false;
@@ -865,19 +908,21 @@ Future<void> _close(RandomAccessFile file) async {
   }
 }
 
-/// Passes every decoded chunk to [onAdd].
-class _CallbackSink implements Sink<String> {
-  final void Function(String chunk) onAdd;
-
-  _CallbackSink(this.onAdd);
-
-  @override
-  void add(String data) {
-    onAdd(data);
+/// The index of [pattern] in [data] from [from] on, or -1.
+int _indexOf(List<int> data, List<int> pattern, int from) {
+  for (var i = from; i <= data.length - pattern.length; i++) {
+    var matches = true;
+    for (var j = 0; j < pattern.length; j++) {
+      if (data[i + j] != pattern[j]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) {
+      return i;
+    }
   }
-
-  @override
-  void close() {}
+  return -1;
 }
 
 /// Whether [path] is a rotated file of the log at [currentPath] that was
