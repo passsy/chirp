@@ -120,6 +120,10 @@ void main() {
       // These should NOT match
       File('${dir.path}/app.log.bak').writeAsStringSync('backup\n');
       File('${dir.path}/application.log').writeAsStringSync('other\n');
+      File('${dir.path}/app.2024-01-01_10-00-00.backup')
+          .writeAsStringSync('other extension\n');
+      File('${dir.path}/app.2024-01-01_10-00-00.log.old')
+          .writeAsStringSync('other suffix\n');
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
       final files = await reader.listFiles();
@@ -390,9 +394,9 @@ void main() {
       final lines = StreamIterator(reader.tail(last: 10));
       addTearDown(lines.cancel);
 
-      expect(await nextLines(lines, 1), ['first']);
+      expect(await _nextLines(lines, 1), ['first']);
       base.writeAsStringSync('second\n', mode: FileMode.append, flush: true);
-      expect(await nextLines(lines, 1), ['second']);
+      expect(await _nextLines(lines, 1), ['second']);
     });
 
     test('emits historical lines then new lines', () async {
@@ -413,41 +417,210 @@ void main() {
 
       // Append only after the history arrived, or `last: 2` would rightly
       // count the appended line as history.
-      final received = await nextLines(lines, 2);
+      final received = await _nextLines(lines, 2);
       base.writeAsStringSync('appended\n', mode: FileMode.append, flush: true);
-      received.addAll(await nextLines(lines, 1));
+      received.addAll(await _nextLines(lines, 1));
       expect(received, ['old2', 'current', 'appended']);
     });
 
-    test('emits a line appended right after the history was read', () async {
+    for (final last in [null, 2]) {
+      test('emits a line appended while the history is read (last: $last)',
+          () async {
+        final dir = createTempDir();
+
+        final base = File('${dir.path}/app.log');
+        final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+
+        rotated.writeAsStringSync('old1\nold2\n');
+        base.writeAsStringSync('current\n');
+
+        rotated.setLastModifiedSync(DateTime(2024, 1, 1, 10));
+        base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
+
+        final encoding = _HookedUtf8.afterReading('current', () {
+          base.writeAsStringSync('appended\n',
+              mode: FileMode.append, flush: true);
+        });
+
+        final reader =
+            RotatingFileReader(baseFilePathProvider: () => base.path);
+        final lines =
+            StreamIterator(reader.tail(last: last, encoding: encoding));
+        addTearDown(lines.cancel);
+
+        final history = last == null ? ['old1', 'old2'] : ['old2'];
+        expect(
+          await _nextLines(lines, history.length + 2),
+          [...history, 'current', 'appended'],
+        );
+
+        // The next line proves that nothing was emitted twice.
+        base.writeAsStringSync('end\n', mode: FileMode.append, flush: true);
+        expect(await _nextLines(lines, 1), ['end']);
+      });
+
+      test(
+          'emits each line once when the file rotates while the history is read (last: $last)',
+          () async {
+        final dir = createTempDir();
+
+        final base = File('${dir.path}/app.log');
+        final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+
+        rotated.writeAsStringSync('old1\nold2\n');
+        base.writeAsStringSync('current\n');
+
+        rotated.setLastModifiedSync(DateTime(2024, 1, 1, 10));
+        base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
+
+        final encoding = _HookedUtf8.afterReading('current', () {
+          base.renameSync('${dir.path}/app.2024-01-02_10-00-00.log');
+          base.writeAsStringSync('fresh1\nfresh2\n', flush: true);
+        });
+
+        final reader =
+            RotatingFileReader(baseFilePathProvider: () => base.path);
+        final lines = StreamIterator(
+          reader.tail(last: last == null ? null : 10, encoding: encoding),
+        );
+        addTearDown(lines.cancel);
+
+        expect(
+          await _nextLines(lines, 5),
+          ['old1', 'old2', 'current', 'fresh1', 'fresh2'],
+        );
+
+        base.writeAsStringSync('end\n', mode: FileMode.append, flush: true);
+        expect(await _nextLines(lines, 1), ['end']);
+      });
+
+      test(
+          'emits each line once when the file is replaced while the history is read (last: $last)',
+          () async {
+        final dir = createTempDir();
+
+        final base = File('${dir.path}/app.log');
+        final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+
+        rotated.writeAsStringSync('old1\nold2\n');
+        base.writeAsStringSync('before\n');
+
+        rotated.setLastModifiedSync(DateTime(2024, 1, 1, 10));
+        base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
+
+        // Longer than the replaced content, so the size alone looks like an
+        // append.
+        final encoding = _HookedUtf8.afterReading('old1', () {
+          base.writeAsStringSync('new1\nnew2\nnew3\n', flush: true);
+        });
+
+        final reader =
+            RotatingFileReader(baseFilePathProvider: () => base.path);
+        final lines = StreamIterator(
+          reader.tail(last: last == null ? null : 10, encoding: encoding),
+        );
+        addTearDown(lines.cancel);
+
+        // With `last`, the current file is read before the rotated one, so
+        // its old content is part of the history.
+        final history = last == null ? <String>[] : ['before'];
+        expect(
+          await _nextLines(lines, history.length + 5),
+          ['old1', 'old2', ...history, 'new1', 'new2', 'new3'],
+        );
+
+        base.writeAsStringSync('end\n', mode: FileMode.append, flush: true);
+        expect(await _nextLines(lines, 1), ['end']);
+      });
+    }
+
+    test('emits lines of a new file that grew past the old one', () async {
       final dir = createTempDir();
 
       final base = File('${dir.path}/app.log');
-      final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
-
-      rotated.writeAsStringSync('old1\nold2\n');
-      base.writeAsStringSync('current\n');
-
-      rotated.setLastModifiedSync(DateTime(2024, 1, 1, 10));
-      base.setLastModifiedSync(DateTime(2024, 1, 2, 10));
-
-      // Appends in the window between reading the history of the current
-      // file and following it.
-      var appended = false;
-      final encoding = _NotifyingUtf8(onDecoded: () {
-        if (appended) {
-          return;
-        }
-        appended = true;
-        base.writeAsStringSync('appended\n',
-            mode: FileMode.append, flush: true);
-      });
+      base.writeAsStringSync('first\n');
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
-      final lines = StreamIterator(reader.tail(last: 2, encoding: encoding));
+      final lines = StreamIterator(reader.tail());
       addTearDown(lines.cancel);
+      expect(await _nextLines(lines, 1), ['first']);
 
-      expect(await nextLines(lines, 3), ['old2', 'current', 'appended']);
+      // Rotation, and the new file is already longer when the reader looks.
+      base.renameSync('${dir.path}/app.2024-01-01_10-00-00.log');
+      base.writeAsStringSync('second\nthird\n', flush: true);
+      expect(await _nextLines(lines, 2), ['second', 'third']);
+    });
+
+    final incompleteRecords = [
+      (
+        name: 'record',
+        separator: '\n',
+        start: utf8.encode('first\nhel'),
+        rest: utf8.encode('lo\n'),
+        record: 'hello',
+      ),
+      (
+        name: 'record separator',
+        separator: '\r\n',
+        start: utf8.encode('first\r\nhello\r'),
+        rest: utf8.encode('\n'),
+        record: 'hello',
+      ),
+      (
+        name: 'character',
+        separator: '\n',
+        start: [...utf8.encode('first\n'), ...utf8.encode('€').take(2)],
+        rest: [...utf8.encode('€').skip(2), ...utf8.encode('\n')],
+        record: '€',
+      ),
+    ];
+    for (final incomplete in incompleteRecords) {
+      for (final last in [null, 0, 5]) {
+        test(
+            'waits for the rest of an incomplete ${incomplete.name} (last: $last)',
+            () async {
+          final dir = createTempDir();
+
+          final base = File('${dir.path}/app.log');
+          base.writeAsBytesSync(incomplete.start);
+
+          final reader = RotatingFileReader(
+            baseFilePathProvider: () => base.path,
+            recordSeparator: incomplete.separator,
+          );
+          // Appends the rest right after the incomplete part was read.
+          final encoding = _HookedUtf8.afterReading('first', () {
+            base.writeAsBytesSync(incomplete.rest,
+                mode: FileMode.append, flush: true);
+          });
+          final lines =
+              StreamIterator(reader.tail(last: last, encoding: encoding));
+          addTearDown(lines.cancel);
+
+          final expected = [if (last != 0) 'first', incomplete.record];
+          expect(await _nextLines(lines, expected.length), expected);
+        });
+      }
+    }
+
+    test('reports undecodable bytes and continues behind them', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('first\n');
+
+      final error = Completer<Object>();
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail().handleError(error.complete));
+      addTearDown(lines.cancel);
+      expect(await _nextLines(lines, 1), ['first']);
+
+      final next = _nextLines(lines, 1);
+      base.writeAsBytesSync([0xff, 0x0a], mode: FileMode.append, flush: true);
+      expect(await error.future, isA<FormatException>());
+
+      base.writeAsStringSync('after\n', mode: FileMode.append, flush: true);
+      expect(await next, ['after']);
     });
 
     test('emits lines after truncation', () async {
@@ -464,26 +637,47 @@ void main() {
       addTearDown(lines.cancel);
 
       // The history proves the reader is past the old content.
-      expect(await nextLines(lines, 2), ['first', 'second']);
+      expect(await _nextLines(lines, 2), ['first', 'second']);
 
       // Truncate file to simulate rotation/truncation, then append.
       base.writeAsStringSync('', flush: true);
       base.writeAsStringSync('after\n', mode: FileMode.append, flush: true);
-      expect(await nextLines(lines, 1), ['after']);
+      expect(await _nextLines(lines, 1), ['after']);
     });
 
     test('works when file does not exist yet', () async {
       final dir = createTempDir();
       final base = File('${dir.path}/app.log');
+      final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+      rotated.writeAsStringSync('old\n');
 
       final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail(last: 5));
+      addTearDown(lines.cancel);
+
+      // The history is emitted after the reader looked for the current file,
+      // so it proves that the file was missing then.
+      expect(await _nextLines(lines, 1), ['old']);
+
+      base.writeAsStringSync('appeared\n');
+      expect(await _nextLines(lines, 1), ['appeared']);
+    });
+
+    test('works when directory does not exist yet', () async {
+      final dir = Directory('${createTempDir().path}/logs');
+      final base = File('${dir.path}/app.log');
+
+      final reader = RotatingFileReader(
+        baseFilePathProvider: () => base.path,
+        pollInterval: const Duration(milliseconds: 30),
+      );
       final lines = StreamIterator(reader.tail());
       addTearDown(lines.cancel);
-      final next = nextLines(lines, 1);
+      final next = _nextLines(lines, 1);
 
-      // Gives tail the time to start without the file. The line arrives
-      // either way, so this delay cannot fail the test.
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      // The line arrives whether or not tail started before the directory
+      // exists, so the order of the two cannot fail the test.
+      dir.createSync();
       base.writeAsStringSync('appeared\n');
 
       expect(await next, ['appeared']);
@@ -648,20 +842,43 @@ void main() {
 }
 
 /// Awaits the next [count] lines of a tail, which never ends by itself.
-Future<List<String>> nextLines(StreamIterator<String> lines, int count) async {
+Future<List<String>> _nextLines(StreamIterator<String> lines, int count) async {
   final result = <String>[];
-  while (result.length < count && await lines.moveNext()) {
+  while (result.length < count) {
+    final hasNext = await lines.moveNext().timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        fail('Expected $count lines, but after 15s only got $result');
+      },
+    );
+    if (!hasNext) {
+      break;
+    }
     result.add(lines.current);
   }
   return result;
 }
 
-/// UTF-8 that calls [onDecoded] each time a byte stream was decoded to its
-/// end, which is when a file was read completely.
-class _NotifyingUtf8 extends Encoding {
-  final void Function() onDecoded;
+/// UTF-8 that calls [onChunkDecoded] with every chunk of bytes it decoded,
+/// which is the moment the reader has read that part of a file.
+class _HookedUtf8 extends Encoding {
+  final void Function(List<int> bytes) onChunkDecoded;
 
-  _NotifyingUtf8({required this.onDecoded});
+  _HookedUtf8({required this.onChunkDecoded});
+
+  /// Runs [action] once, right after a chunk containing [text] was read.
+  factory _HookedUtf8.afterReading(String text, void Function() action) {
+    var done = false;
+    return _HookedUtf8(onChunkDecoded: (bytes) {
+      if (done) {
+        return;
+      }
+      if (utf8.decode(bytes, allowMalformed: true).contains(text)) {
+        done = true;
+        action();
+      }
+    });
+  }
 
   @override
   String get name => utf8.name;
@@ -670,26 +887,39 @@ class _NotifyingUtf8 extends Encoding {
   Converter<String, List<int>> get encoder => utf8.encoder;
 
   @override
-  Converter<List<int>, String> get decoder => _NotifyingUtf8Decoder(onDecoded);
+  Converter<List<int>, String> get decoder {
+    return _HookedUtf8Decoder(onChunkDecoded);
+  }
 }
 
-class _NotifyingUtf8Decoder extends Converter<List<int>, String> {
-  final void Function() onDecoded;
+class _HookedUtf8Decoder extends Converter<List<int>, String> {
+  final void Function(List<int> bytes) onChunkDecoded;
 
-  _NotifyingUtf8Decoder(this.onDecoded);
+  _HookedUtf8Decoder(this.onChunkDecoded);
 
   @override
   String convert(List<int> input) => utf8.decode(input);
 
   @override
-  Stream<String> bind(Stream<List<int>> stream) {
-    return utf8.decoder.bind(stream).transform(
-      StreamTransformer.fromHandlers(
-        handleDone: (sink) {
-          onDecoded();
-          sink.close();
-        },
-      ),
-    );
+  Sink<List<int>> startChunkedConversion(Sink<String> sink) {
+    return _HookedSink(utf8.decoder.startChunkedConversion(sink), this);
+  }
+}
+
+class _HookedSink implements Sink<List<int>> {
+  final Sink<List<int>> _utf8;
+  final _HookedUtf8Decoder _decoder;
+
+  _HookedSink(this._utf8, this._decoder);
+
+  @override
+  void add(List<int> data) {
+    _utf8.add(data);
+    _decoder.onChunkDecoded(data);
+  }
+
+  @override
+  void close() {
+    _utf8.close();
   }
 }

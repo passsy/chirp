@@ -55,6 +55,7 @@ class RotatingFileReaderIo implements RotatingFileReader {
 
     final dotIndex = name.lastIndexOf('.');
     final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
+    final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
 
     final entries = dir
         .listSync()
@@ -64,7 +65,11 @@ class RotatingFileReaderIo implements RotatingFileReader {
           if (fileName == name) {
             return includeCurrent;
           }
-          return isRotatedLogFile(fileName, baseName: baseName);
+          return isRotatedLogFile(
+            fileName,
+            baseName: baseName,
+            extension: extension,
+          );
         })
         .map((it) => (path: it.path, modified: it.statSync().modified))
         .toList()
@@ -77,24 +82,8 @@ class RotatingFileReaderIo implements RotatingFileReader {
   Stream<String> read({
     int? last,
     Encoding encoding = utf8,
-  }) {
-    return _read(last: last, encoding: encoding);
-  }
-
-  /// Like [read], but reads only the first [currentFileEnd] bytes of the
-  /// current file, so that [tail] can follow from exactly that offset.
-  Stream<String> _read({
-    required int? last,
-    required Encoding encoding,
-    int? currentFileEnd,
   }) async* {
     final files = await listFiles();
-    final currentPath = await _resolveBaseFilePath();
-    final currentName = File(currentPath).uri.pathSegments.last;
-    int? endOf(String path) {
-      final isCurrent = File(path).uri.pathSegments.last == currentName;
-      return isCurrent ? currentFileEnd : null;
-    }
 
     // When last is requested, we need to materialize to compute the tail.
     if (last != null) {
@@ -107,12 +96,8 @@ class RotatingFileReaderIo implements RotatingFileReader {
       for (final path in files.reversed) {
         if (remaining <= 0) break;
 
-        final lines = await _readAllLinesFromFile(
-          path,
-          encoding,
-          _recordSeparator,
-          end: endOf(path),
-        );
+        final lines =
+            await _readAllLinesFromFile(path, encoding, _recordSeparator);
         if (lines.isEmpty) continue;
 
         if (lines.length > remaining) {
@@ -143,7 +128,7 @@ class RotatingFileReaderIo implements RotatingFileReader {
         yield* Stream<String>.fromIterable(records);
       } else {
         yield* File(path)
-            .openRead(0, endOf(path))
+            .openRead()
             .transform(encoding.decoder)
             .transform(_RecordSplitter(_recordSeparator));
       }
@@ -160,92 +145,231 @@ class RotatingFileReaderIo implements RotatingFileReader {
     final dir = file.parent;
     final fileName = file.uri.pathSegments.last;
 
-    // The history ends and the follow starts at this offset. Taking it after
-    // the history read would lose lines appended in between.
-    var offset = file.existsSync() ? file.lengthSync() : 0;
-    yield* _read(last: last, encoding: encoding, currentFileEnd: offset);
+    // One decoder reads the current file from its first byte on, for the
+    // history and for the follow. The follow continues where the history
+    // stopped, so no record is lost, emitted twice or cut in two.
+    var offset = 0;
+    var partial = '';
+    final records = <String>[];
+    FileStat? lastStat;
+    // The last bytes read before offset, to recognize a replaced file.
+    final lastBytes = <int>[];
+
+    Sink<List<int>> newDecoder() {
+      return encoding.decoder.startChunkedConversion(
+        _CallbackSink((chunk) {
+          final parts = (partial + chunk).split(_recordSeparator);
+          partial = parts.removeLast();
+          records.addAll(parts);
+        }),
+      );
+    }
+
+    var decoder = newDecoder();
+
+    // Starts over at the first byte of a new or replaced current file.
+    void restart() {
+      offset = 0;
+      partial = '';
+      decoder = newDecoder();
+      lastStat = null;
+      lastBytes.clear();
+    }
+
+    // Whether the file still holds the bytes that were read before offset.
+    // A new file that already grew past offset looks like an append otherwise.
+    Future<bool> isSameFile(int length) async {
+      if (length < offset) {
+        // File got rotated/truncated.
+        return false;
+      }
+      final start = offset - lastBytes.length;
+      final chunks = await file.openRead(start, offset).toList();
+      final bytes = chunks.expand((it) => it).toList();
+      if (bytes.length != lastBytes.length) {
+        return false;
+      }
+      for (var i = 0; i < bytes.length; i++) {
+        if (bytes[i] != lastBytes[i]) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // Decodes what the current file gained since the last call into records.
+    // An incomplete record or character waits for the rest of it.
+    Future<void> readCurrent() async {
+      final stat = file.statSync();
+      if (stat.type == FileSystemEntityType.notFound) {
+        restart();
+        return;
+      }
+
+      final previous = lastStat;
+      if (previous != null && _statsEqual(previous, stat)) {
+        return;
+      }
+
+      final length = stat.size;
+      try {
+        if (!await isSameFile(length)) {
+          restart();
+        }
+        await for (final bytes in file.openRead(offset, length)) {
+          // Counts the bytes that were really read, the file may have been
+          // replaced by a shorter one since the stat.
+          offset += bytes.length;
+          lastBytes.addAll(bytes);
+          if (lastBytes.length > _fingerprintLength) {
+            lastBytes.removeRange(0, lastBytes.length - _fingerprintLength);
+          }
+          decoder.add(bytes);
+        }
+      } on FileSystemException {
+        // Deleted between the stat and the read.
+        restart();
+        return;
+      } catch (_) {
+        // Undecodable bytes. Continue behind this chunk with a fresh decoder.
+        partial = '';
+        decoder = newDecoder();
+        rethrow;
+      }
+      lastStat = stat;
+    }
+
+    // While a rotated file is compressed, both it and its .gz exist.
+    Future<List<String>> rotatedFiles() async {
+      final files = await listFiles(includeCurrent: false);
+      final all = files.toSet();
+      return files.where((it) {
+        return !it.endsWith('.gz') || !all.contains(_withoutGz(it));
+      }).toList();
+    }
+
+    Future<List<String>> readRotated(String path) async {
+      try {
+        return await _readAllLinesFromFile(path, encoding, _recordSeparator);
+      } on FileSystemException {
+        if (path.endsWith('.gz')) {
+          // Deleted by the retention policy.
+          return const [];
+        }
+        // Compressed since it was listed.
+        return readRotated('$path.gz');
+      }
+    }
+
+    // A rotation moves the records of the current file into a new rotated
+    // file. The history is only complete and free of duplicates when no
+    // rotated file appeared while it was read, so it is read again until
+    // that holds.
+    final seen = <String>{};
+    Future<bool> rotatedSince() async {
+      final files = await rotatedFiles();
+      return files.any((it) => !seen.contains(_withoutGz(it)));
+    }
+
+    if (last == null) {
+      // Streams the rotated files, and after a rotation only the new ones.
+      while (true) {
+        for (final path in await rotatedFiles()) {
+          if (seen.add(_withoutGz(path))) {
+            yield* Stream.fromIterable(await readRotated(path));
+          }
+        }
+        restart();
+        records.clear();
+        await readCurrent();
+        if (!await rotatedSince()) {
+          break;
+        }
+      }
+    } else {
+      final count = last < 0 ? 0 : last;
+      while (true) {
+        final rotated = await rotatedFiles();
+        seen
+          ..clear()
+          ..addAll(rotated.map(_withoutGz));
+        restart();
+        records.clear();
+        await readCurrent();
+
+        final older = <List<String>>[];
+        var missing = count - records.length;
+        for (final path in rotated.reversed) {
+          if (missing <= 0) {
+            break;
+          }
+          final lines = await readRotated(path);
+          older.add(lines);
+          missing -= lines.length;
+        }
+        if (await rotatedSince()) {
+          continue;
+        }
+
+        final history = [...older.reversed.expand((it) => it), ...records];
+        final skip = history.length > count ? history.length - count : 0;
+        records
+          ..clear()
+          ..addAll(history.skip(skip));
+        break;
+      }
+    }
+
+    final history = [...records];
+    records.clear();
+    yield* Stream.fromIterable(history);
 
     // Follow current file (baseFilePath) for new lines.
     //
     // Implementation note: This primarily reacts to file-system events and
     // uses a lightweight periodic poll as a fallback for filesystems that
     // don't reliably emit change events.
-    FileStat? lastStat;
-    var unchangedIterations = 0;
-
     final controller = StreamController<String>();
     StreamSubscription<FileSystemEvent>? sub;
 
-    String partial = '';
     var polling = false;
+    var pollAgain = false;
 
-    Future<void> poll() async {
-      if (polling) return;
-      polling = true;
-      try {
-        if (!file.existsSync()) {
-          offset = 0;
-          partial = '';
-          lastStat = null;
-          unchangedIterations = 0;
-          return;
-        }
-
-        final stat = file.statSync();
-        final length = stat.size;
-
-        if (length < offset) {
-          // File got rotated/truncated.
-          offset = 0;
-          partial = '';
-        }
-
-        final hasNewBytes = length > offset;
-        final statChanged = lastStat != null &&
-            !_statsEqual(lastStat!, stat) &&
-            length <= offset;
-
-        if (!hasNewBytes) {
-          unchangedIterations++;
-          if (statChanged && unchangedIterations >= _maxUnchangedStats) {
-            // Follow-by-name fallback: treat as replaced and re-read.
-            offset = 0;
-            partial = '';
-            unchangedIterations = 0;
-          } else {
-            lastStat = stat;
-            return;
-          }
-        } else {
-          unchangedIterations = 0;
-        }
-
-        final stream =
-            file.openRead(offset, length).transform(encoding.decoder);
-        await for (final chunk in stream) {
-          final text = partial + chunk;
-          final parts = text.split(_recordSeparator);
-          partial = parts.removeLast();
-          for (final part in parts) {
-            controller.add(part);
-          }
-        }
-
-        offset = length;
-        lastStat = stat;
-      } finally {
-        polling = false;
+    void emitRecords() {
+      for (final record in records) {
+        controller.add(record);
       }
+      records.clear();
     }
 
-    // Initial read if there is already content.
-    await poll();
+    Future<void> poll() async {
+      if (polling) {
+        // The running poll may already be past the new bytes.
+        pollAgain = true;
+        return;
+      }
+      polling = true;
+      do {
+        pollAgain = false;
+        try {
+          await readCurrent();
+        } catch (e, stack) {
+          emitRecords();
+          controller.addError(e, stack);
+        }
+        emitRecords();
+      } while (pollAgain);
+      polling = false;
+    }
 
-    final pollingTimer = Timer.periodic(_pollInterval, (_) {
-      unawaited(poll());
-    });
-
-    if (FileSystemEntity.isWatchSupported) {
+    // The directory may not exist yet, or may be replaced later.
+    void watch() {
+      if (sub != null) {
+        return;
+      }
+      if (!FileSystemEntity.isWatchSupported || !dir.existsSync()) {
+        return;
+      }
       final normalizedDirPath = _normalizeDirPath(dir.path);
 
       bool shouldPoll(FileSystemEvent event) {
@@ -253,11 +377,29 @@ class RotatingFileReaderIo implements RotatingFileReader {
         return _normalizeDirPath(event.path) == normalizedDirPath;
       }
 
-      sub = dir.watch().where(shouldPoll).listen((_) {
-        // Fire and forget.
-        unawaited(poll());
-      });
+      sub = dir.watch().where(shouldPoll).listen(
+        (_) {
+          // Fire and forget.
+          unawaited(poll());
+        },
+        onError: (Object _) {
+          // The periodic poll takes over until the directory is back.
+          sub?.cancel();
+          sub = null;
+        },
+        onDone: () {
+          sub = null;
+        },
+      );
     }
+
+    watch();
+    await poll();
+
+    final pollingTimer = Timer.periodic(_pollInterval, (_) {
+      watch();
+      unawaited(poll());
+    });
 
     controller.onCancel = () {
       sub?.cancel();
@@ -266,6 +408,28 @@ class RotatingFileReaderIo implements RotatingFileReader {
 
     yield* controller.stream;
   }
+}
+
+String _withoutGz(String path) {
+  if (!path.endsWith('.gz')) {
+    return path;
+  }
+  return path.substring(0, path.length - '.gz'.length);
+}
+
+/// Passes every decoded chunk to [onAdd].
+class _CallbackSink implements Sink<String> {
+  final void Function(String chunk) onAdd;
+
+  _CallbackSink(this.onAdd);
+
+  @override
+  void add(String data) {
+    onAdd(data);
+  }
+
+  @override
+  void close() {}
 }
 
 String _normalizeDirPath(String path) {
@@ -286,9 +450,8 @@ bool _statsEqual(FileStat previous, FileStat current) {
 Future<List<String>> _readAllLinesFromFile(
   String path,
   Encoding encoding,
-  String recordSeparator, {
-  int? end,
-}) async {
+  String recordSeparator,
+) async {
   if (path.endsWith('.gz')) {
     final bytes = await File(path).readAsBytes();
     final decompressed = gzip.decode(bytes);
@@ -297,7 +460,7 @@ Future<List<String>> _readAllLinesFromFile(
   }
 
   return File(path)
-      .openRead(0, end)
+      .openRead()
       .transform(encoding.decoder)
       .transform(_RecordSplitter(recordSeparator))
       .toList();
@@ -314,7 +477,7 @@ List<String> _splitRecords(String text, String separator) {
   return parts;
 }
 
-const int _maxUnchangedStats = 5;
+const int _fingerprintLength = 64;
 const Duration _defaultPollInterval = Duration(milliseconds: 1000);
 
 RotatingFileReader createRotatingFileReader({

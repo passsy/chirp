@@ -867,12 +867,20 @@ class _RotatingFileSink {
     // Extract base name for matching rotated files
     final dotIndex = name.lastIndexOf('.');
     final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
+    final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
 
     if (!dir.existsSync()) return [];
 
     return dir.listSync().whereType<File>().where((file) {
       final fileName = file.uri.pathSegments.last;
-      return fileName != name && isRotatedLogFile(fileName, baseName: baseName);
+      if (fileName == name) {
+        return false;
+      }
+      return isRotatedLogFile(
+        fileName,
+        baseName: baseName,
+        extension: extension,
+      );
     }).map((file) {
       final stat = file.statSync();
       return (path: file.path, modified: stat.modified);
@@ -1104,20 +1112,30 @@ void _compressFileSync(String path) {
 
 typedef _FileEntry = ({String path, DateTime modified});
 
-// Matches baseName.YYYY-MM-DD_HH-MM-SS[_N].ext[.gz] after stripping
-// the "baseName." prefix.
+// Matches the YYYY-MM-DD_HH-MM-SS[_N] part of a rotated file name.
 final _rotatedTimestampPattern =
-    RegExp(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_\d+)?');
+    RegExp(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_\d+)?$');
 
-/// Returns `true` if [fileName] (without directory path) matches the
-/// rotation pattern for [baseName] (without extension).
+/// Returns `true` if [fileName] (without directory path) is a rotated file
+/// of the log file `baseName` + [extension], which is named
+/// `baseName.YYYY-MM-DD_HH-MM-SS[_N]` + [extension] + optional `.gz`.
 ///
 /// ```dart
-/// isRotatedLogFile('app.2024-01-15_10-30-45.log', baseName: 'app') // true
-/// isRotatedLogFile('app.log', baseName: 'app') // false
+/// isRotatedLogFile('app.2024-01-15_10-30-45.log',
+///     baseName: 'app', extension: '.log') // true
+/// isRotatedLogFile('app.log', baseName: 'app', extension: '.log') // false
 /// ```
-bool isRotatedLogFile(String fileName, {required String baseName}) {
+bool isRotatedLogFile(
+  String fileName, {
+  required String baseName,
+  required String extension,
+}) {
   if (!fileName.startsWith('$baseName.')) return false;
-  final rest = fileName.substring(baseName.length + 1); // skip "baseName."
-  return _rotatedTimestampPattern.hasMatch(rest);
+  var rest = fileName.substring(baseName.length + 1); // skip "baseName."
+  if (rest.endsWith('.gz')) {
+    rest = rest.substring(0, rest.length - '.gz'.length);
+  }
+  if (!rest.endsWith(extension)) return false;
+  final timestamp = rest.substring(0, rest.length - extension.length);
+  return _rotatedTimestampPattern.hasMatch(timestamp);
 }

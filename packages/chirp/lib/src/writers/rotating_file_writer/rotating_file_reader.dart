@@ -73,6 +73,10 @@ abstract class RotatingFileReader {
   /// If [last] is provided, it first emits the last N records (same semantics
   /// as [read]) and then continues streaming newly appended records.
   ///
+  /// Every record is emitted exactly once, also when the file is appended
+  /// to, rotated or truncated while the history is read. A record of the
+  /// current file is emitted once its separator is written.
+  ///
   /// The [pollInterval] passed to the factory controls how often the reader
   /// checks for changes when file system events are missing or unreliable.
   Stream<String> tail({
