@@ -91,6 +91,11 @@ abstract class RotatingFileReader {
   /// A record of the current file is emitted once its separator is written,
   /// unlike [read], which also emits an unterminated last record.
   ///
+  /// When the files can not be read, the tail keeps trying. A failure that
+  /// lasts a whole poll interval is emitted as an error, once until the
+  /// files can be read again. An error ends an `await for` loop, so listen
+  /// with `onError` to keep following.
+  ///
   /// The [pollInterval] passed to the factory controls how often the reader
   /// checks for changes when file system events are missing or unreliable.
   Stream<String> tail({

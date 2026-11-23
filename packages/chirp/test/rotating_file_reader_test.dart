@@ -691,6 +691,49 @@ void main() {
       }, hooks);
     });
 
+    test('reports once that the files can not be read for a while', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('before\n');
+
+      final hooks = _IoHooks(dir.path);
+      await IOOverrides.runWithIOOverrides(() async {
+        final reader = RotatingFileReader(
+          baseFilePathProvider: () => base.path,
+          pollInterval: const Duration(milliseconds: 30),
+        );
+        final lines = <String>[];
+        final errors = <Object>[];
+        // A StreamIterator would end at the first error.
+        final subscription =
+            reader.tail().listen(lines.add, onError: errors.add);
+        addTearDown(subscription.cancel);
+
+        Future<void> until(bool Function() condition) async {
+          final waited = Stopwatch()..start();
+          while (!condition()) {
+            if (waited.elapsed > const Duration(seconds: 15)) {
+              fail('Timed out with lines $lines and errors $errors');
+            }
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+          }
+        }
+
+        await until(() => lines.isNotEmpty);
+        hooks.failListing = true;
+        base.writeAsStringSync('after\n', mode: FileMode.append, flush: true);
+        await until(() => errors.isNotEmpty);
+        // Many polls fail meanwhile.
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        hooks.failListing = false;
+
+        await until(() => lines.length == 2);
+        expect(lines, ['before', 'after']);
+        expect(errors, [isA<FileSystemException>()]);
+      }, hooks);
+    });
+
     test('starts again when the current file could not be opened', () async {
       final dir = createTempDir();
 

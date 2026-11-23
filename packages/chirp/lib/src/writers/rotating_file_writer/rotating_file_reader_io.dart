@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_reader.dart';
 import 'package:chirp/src/writers/rotating_file_writer/rotating_file_writer_io.dart'
     show compareRotatedLogFiles, isRotatedLogFile;
+import 'package:clock/clock.dart';
 
 /// `dart:io`-based implementation of [RotatingFileReader].
 ///
@@ -192,6 +193,11 @@ class _Tail {
   ListQueue<String>? _ring;
   int _ringSize = 0;
 
+  /// Runs while the files can not be read, so that a failure that lasts is
+  /// reported, once.
+  Stopwatch? _failing;
+  bool _failureReported = false;
+
   bool _cancelled = false;
   bool _polling = false;
   bool _pollAgain = false;
@@ -264,8 +270,10 @@ class _Tail {
     while (!_cancelled) {
       try {
         await _emitLast(count);
+        _failing = null;
         return;
-      } on FileSystemException {
+      } on FileSystemException catch (e, stack) {
+        _failed(e, stack);
         _generations.clear();
         _known.clear();
         await Future<void>.delayed(_reader._pollInterval);
@@ -332,14 +340,35 @@ class _Tail {
       _pollAgain = false;
       try {
         await _pass();
-      } on FileSystemException {
-        // A file can not be read for a moment. The next poll continues where
-        // this one stopped.
+        _failing = null;
+      } on FileSystemException catch (e, stack) {
+        // The next poll continues where this one stopped.
+        _failed(e, stack);
       } catch (e, stack) {
         _controller.addError(e, stack);
       }
     } while (_pollAgain && !_cancelled);
     _polling = false;
+  }
+
+  /// A file that can not be read for a moment, like one that is locked while
+  /// it is rotated, is not reported. One that can not be read for a whole
+  /// poll interval is, but only once until a poll succeeds.
+  void _failed(FileSystemException error, StackTrace stack) {
+    final failing = _failing;
+    if (failing == null) {
+      _failing = clock.stopwatch()..start();
+      _failureReported = false;
+      return;
+    }
+    if (_failureReported) {
+      return;
+    }
+    if (failing.elapsed < _reader._pollInterval) {
+      return;
+    }
+    _failureReported = true;
+    _controller.addError(error, stack);
   }
 
   /// Reads everything that was written since the last pass.
@@ -580,7 +609,7 @@ class _Tail {
         return true;
       }
       final start = await _readBytes(current, 0, generation.start.length);
-      if (!_equalBytes(start, generation.start)) {
+      if (!generation.isStartOf(start)) {
         return false;
       }
       final bytes = await _readBytes(
@@ -849,18 +878,6 @@ class _CallbackSink implements Sink<String> {
 
   @override
   void close() {}
-}
-
-bool _equalBytes(List<int> a, List<int> b) {
-  if (a.length != b.length) {
-    return false;
-  }
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) {
-      return false;
-    }
-  }
-  return true;
 }
 
 /// Whether [path] is a rotated file of the log at [currentPath] that was
