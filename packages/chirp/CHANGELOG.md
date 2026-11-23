@@ -1,5 +1,9 @@
 # Chirp Changelog
 
+## 0.10.1
+
+- **Docs** README covers every API with up-to-date examples ([#55](https://github.com/passsy/chirp/pull/55))
+
 ## 0.10.0
 
 - **Breaking** `RotatingFileReader.tail` throws an `ArgumentError` for an empty `recordSeparator` ([#52](https://github.com/passsy/chirp/pull/52))
