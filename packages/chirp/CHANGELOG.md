@@ -1,6 +1,8 @@
 # Chirp Changelog
 
-## Unreleased
+## 0.10.0
+
+- **Breaking** `RotatingFileReader.tail` emits an `ArgumentError` for an empty `recordSeparator` instead of a record per character ([#52](https://github.com/passsy/chirp/pull/52))
 
 - **New** Bundle the `chirp-logging` AI agent skill for consumers to install with `dart run skills@ get --package chirp`.
 
@@ -15,8 +17,6 @@
 - **Fix** `RotatingFileReader.tail` waits for the rest of an incomplete record or character instead of emitting it in two parts ([#52](https://github.com/passsy/chirp/pull/52))
 
 - **Fix** `RotatingFileReader.tail` reports undecodable bytes and broken archives as stream errors and continues behind them ([#52](https://github.com/passsy/chirp/pull/52))
-
-- **Breaking** `RotatingFileReader.tail` emits an `ArgumentError` for an empty `recordSeparator` instead of a record per character ([#52](https://github.com/passsy/chirp/pull/52))
 
 - **Fix** `RotatingFileReader` orders rotated files by the time and counter in their names.
   Compressing a file changed its modification time and could move it behind newer files ([#52](https://github.com/passsy/chirp/pull/52))
