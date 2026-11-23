@@ -2,610 +2,120 @@
 
 [![Pub](https://img.shields.io/pub/v/chirp)](https://pub.dev/packages/chirp)
 [![Pub Likes](https://img.shields.io/pub/likes/chirp)](https://pub.dev/packages/chirp/score)
-![License](https://img.shields.io/github/license/passsy/chirp?link=https%3A%2F%2Fgithub.com%2Fpasssy%2Fchirp%2Fblob%2Fmain%2FLICENSE)
+[![License](https://img.shields.io/github/license/passsy/chirp)](https://github.com/passsy/chirp/blob/main/LICENSE)
 [![style: lint](https://img.shields.io/badge/style-lint-4BC0F5.svg)](https://pub.dev/packages/lint)
 
-A lightweight, flexible logging library for Dart with instance tracking, child loggers, and multiple output formats.
+**Logging for Dart and Flutter that feels right from line one.**
 
-## Features
+Birds chirp to signal everything from danger to delight — your app chirps through its logs. Start with a single `Chirp.info('Hello!')` with zero setup. As your app grows, Chirp grows right along with you: per-instance `.chirp` loggers, structured data, inherited request context, rotating log files with live tailing, cloud-native JSON for GCP and AWS, and a widget-like span system for custom formats.
 
-- **Zero Configuration**: Works out of the box - just call `Chirp.info('hello')`
-- **Custom Log Levels**: 9 built-in levels plus support for your own
-- **Automatic Caller Info**: File, line, and class info included when available (configurable for performance)
-- **Object loggers**: Each object, automatically has its own `.chirp` logger (prints object hash)
-- **Structured Logging**: Cloud Json formatters, perfect for your dart backend (AWS, GCP)
-- **Multiple Writers**: Send logs to console, files, or custom destinations with different formats
-- **Custom Writers**: Creating your own writer is as easy as writing your own Widget
-- **File-writer**: Write logs to files with automatic rotation and size limits
-- **Child Loggers**: Hierarchical loggers with inherited writers and merged context
-- **Map Support**: Pass in key-value pairs as `data: {"key": value, ...moreData}` instead of building long log strings manually
+```dart
+import 'package:chirp/chirp.dart';
 
-`chirp` is extremely extensible:
-- **Extensible Writer**: Want to change the look of your logs? Change the output with transformers and the span-based formatting system
-- **Interceptors**: Transform or filter logs before output (redaction, sampling, enrichment)
-- **Designed for Packages**: Ship loggers with your packages that apps can adopt, to gain access to more fine-grained logs
+class OrderService {
+  void placeOrder(String orderId) {
+    chirp.info('Placing order', data: {'orderId': orderId, 'items': 3});
+    chirp.success('Order confirmed');
+  }
+}
 
-## Installation
+void main() {
+  Chirp.info('App started'); // Works immediately, no setup required
+  OrderService().placeOrder('ORD-42');
+}
+```
 
-Add `chirp` to your `pubspec.yaml`:
+```text
+14:32:05.120 [info] main:11 main App started
+14:32:05.123 [info] main:5 OrderService@6de4 placeOrder Placing order (orderId: "ORD-42", items: 3)
+14:32:05.124 [success] main:6 OrderService@6de4 placeOrder Order confirmed
+```
+
+Colors, timestamps, caller file and line, unique instance hash (`@6de4`), and structured data — all out of the box.
+
+## Install
+
+```bash
+dart pub add chirp
+# or in a Flutter project:
+flutter pub add chirp
+```
+
+Or add it to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  chirp: ^0.8.0
+  chirp: ^0.10.0
 ```
 
-Then run:
-```bash
-dart pub get
-```
+## Why Chirp
+
+- **Zero setup to start**: Call `Chirp.info('hello')` anywhere and get readable, color-coded console logs right away.
+- **Every object gets `.chirp`**: Log from inside any class with `chirp.info(...)` to tag each message with `ClassName@hash`, making it easy to tell multiple instances apart.
+- **Structured data, not string glue**: Pass maps and nested objects via `data: {...}` — formatted nicely in development and emitted as clean JSON in production.
+- **Child loggers with shared context**: Attach `requestId` or `userId` once and carry it through every log in an operation.
+- **9 semantic levels + custom levels**: From `trace` to `wtf`, including `notice` and `success`, plus your own `ChirpLogLevel`s.
+- **Dev beauty, cloud JSON**: `RainbowMessageFormatter` and `CompactChirpMessageFormatter` for humans; `GcpMessageFormatter`, `AwsMessageFormatter`, and `JsonLogFormatter` for servers.
+- **Rotating files & live tailing**: Write size- or time-rotated (and gzipped) logs with `RotatingFileWriter`, and stream history + new lines across rotations with `writer.reader.tail()`.
+- **Widget-like span formatting**: Compose custom console formats from spans, or tweak built-in formatters in place with `spanTransformers`.
+- **Lazy logging with accurate callers**: Defer expensive message or `data` construction until a log actually passes the level filter — while still reporting the real call site.
+- **Built for packages too**: Ship silent named loggers in reusable libraries that apps can opt into with one call to `adopt()`.
+- **Bundled AI agent skill**: Install the `chirp-logging` skill with `dart run skills@ get --package chirp` so coding agents configure Chirp idiomatically.
 
 ## Quick Start
 
-**Flutter app:**
+Skip configuration completely if you just want to log — `Chirp.info()` works out of the box with `PrintConsoleWriter` and `RainbowMessageFormatter`. When you are ready to customize, replace `Chirp.root` once at startup:
+
+### Flutter & CLI apps
+
 ```dart
 import 'package:chirp/chirp.dart';
 
 void main() {
-  Chirp.root = ChirpLogger()
-    .addConsoleWriter(formatter: RainbowMessageFormatter());
+  Chirp.root = ChirpLogger().addConsoleWriter(
+    formatter: RainbowMessageFormatter(
+      options: const RainbowFormatOptions(data: DataPresentation.multiline),
+    ),
+  );
 
   try {
     login();
     Chirp.success('User logged in', data: {'userId': 'abc123'});
   } catch (e, stack) {
-    Chirp.error('Error occurred', error: e, stackTrace: stack);
+    Chirp.error('Login failed', error: e, stackTrace: stack);
   }
 
-  runApp(MyApp());
+  runApp(const MyApp());
 }
-
-// Output:
-// 14:32:05.123 [success] User logged in (userId: "abc123")
-// 14:32:05.456 [error] Error occurred
-// Exception: Connection timeout
-// #0 login (auth.dart:42)
 ```
 
-**Backend (Shelf, etc.):**
+### Dart backends (Shelf, Dart Frog, CLI servers)
+
 ```dart
 import 'package:chirp/chirp.dart';
 
 void main() {
   Chirp.root = ChirpLogger()
-    .addConsoleWriter(formatter: JsonLogFormatter());
+      .addConsoleWriter(formatter: const JsonLogFormatter());
 
-  final handler = (Request request) {
-    final logger = Chirp.root.child(context: {'requestId': request.headers['x-request-id']});
-    logger.info('Request received');
-    // ...
-  };
-}
-
-// Output:
-// {"timestamp":"2025-01-15T14:32:05.123","level":"info","message":"Request received","requestId":"req-abc"}
-```
-
-> **Zero-config:** Skip the setup - `Chirp.info()` works out of the box with sensible defaults.
-
-## Why "Chirp"?
-
-Birds chirp to express everything from danger to delight, your app chirps through its logs.
-The name celebrates Dart and Flutter's feathered identity.
-
-## Usage
-
-### AI agent skill
-
-Chirp ships a `chirp-logging` skill with separate setups for Flutter apps, server-side backends, and reusable packages, plus guidance for structured context, writers, and lazy logging.
-After upgrading to a release that includes it, install the skill from your app's root:
-
-```bash
-dart run skills@ get --package chirp
-```
-
-See [package skills](https://dart.dev/ai/package-skills) for CLI setup and supported agents.
-
-### Named Loggers
-
-Create named loggers for different parts of your application:
-
-```dart
-final logger = ChirpLogger(name: 'MyApp');
-logger.info('Application started');
-logger.error('Error occurred', error: Exception('Something went wrong'));
-```
-
-### Extension-Based Logging
-
-Every object has a `chirp` logger that tracks which instance logged:
-
-```dart
-class UserService {
-  void fetchUser(String userId) {
-    chirp.info('Fetching user: $userId');
-  }
-}
-
-final service1 = UserService();
-final service2 = UserService();
-service1.chirp.info('From service 1');
-service2.chirp.info('From service 2');
-
-// Output - different instances have different hashes:
-// 14:32:05.123 UserService@a1b2 [info] From service 1
-// 14:32:05.124 UserService@c3d4 [info] From service 2
-```
-
-### When to Use `Chirp` vs `chirp`
-
-| Use Case | Method | Why |
-|----------|--------|-----|
-| Instance methods | `chirp.info()` | Tracks which instance logged (shows `@a1b2` hash) |
-| Static methods | `Chirp.info()` | No instance to track |
-| Top-level functions | `Chirp.info()` | No instance to track |
-
-```dart
-class PaymentProcessor {
-  static void validateConfig() {
-    Chirp.info('Validating config');  // Static method → Chirp
-  }
-
-  void processPayment(double amount) {
-    chirp.info('Processing payment');  // Instance method → chirp (shows @hash)
-  }
-}
-```
-
-### Child Loggers
-
-Create child loggers that inherit their parent's writers configuration but add their own context. Perfect for per-request or per-transaction logging:
-
-```dart
-// Configure root logger once
-Chirp.root = ChirpLogger()
-  .addConsoleWriter(formatter: RainbowMessageFormatter());
-
-// Create child logger with context
-final requestLogger = Chirp.root.child(context: {
-  'requestId': 'REQ-123',
-  'userId': 'user_456',
-});
-
-// All logs automatically include requestId and userId
-requestLogger.info('Request received');
-requestLogger.info('Processing payment');
-requestLogger.info('Request completed');
-
-// Nest children for deeper context
-final transactionLogger = requestLogger.child(context: {
-  'transactionId': 'TXN-789',
-});
-
-// Includes requestId, userId, AND transactionId
-transactionLogger.info('Transaction started');
-```
-
-**Child Logger Features:**
-- **Inherit writers**: Child loggers use their parent's (eventually root's) writers
-- **Merge context**: Parent context + child context + log call data
-- **Set name**: `logger.child(name: 'PaymentService')`
-- **Set instance**: `logger.child(instance: this)`
-- **Combine all**: `logger.child(name: 'API', instance: this, context: {...})`
-
-### Structured Logging
-
-Attach key-value data to your logs for better searchability and analysis. Data can be deeply nested - maps, lists, and complex objects are fully supported:
-
-```dart
-Chirp.info(
-  'User logged in',
-  data: {
-    'userId': 'user_123',
-    'email': 'user@example.com',
-    'loginMethod': 'oauth',
-  },
-);
-
-// Deeply nested data is supported
-Chirp.info('Order placed', data: {
-  'order': {
-    'id': 'ORD-123',
-    'items': [
-      {'sku': 'WIDGET-1', 'qty': 2},
-      {'sku': 'GADGET-5', 'qty': 1},
-    ],
-    'shipping': {'method': 'express', 'address': {'city': 'Berlin'}},
-  },
-});
-
-// Data is merged with context
-final logger = Chirp.root.child(context: {'app': 'myapp'});
-logger.info('Event', data: {'event': 'click'});
-// Output includes: app=myapp, event=click
-```
-
-### Mutable Context Pattern
-
-Add context to a logger as information becomes available:
-
-```dart
-// Start with minimal context
-final logger = Chirp.root.child(
-  name: 'API',
-  context: {'requestId': 'REQ-123'},
-);
-
-logger.info('Request received');
-
-// Add userId when user authenticates
-logger.context['userId'] = 'user_456';
-logger.info('User authenticated');
-
-// Add more context as needed
-logger.context.addAll({
-  'endpoint': '/api/orders',
-  'method': 'POST',
-});
-logger.info('Processing request');
-```
-
-### Log Levels
-
-Chirp provides 9 semantic log levels with comprehensive documentation:
-
-| Level | Severity | Use For | Example |
-|-------|----------|---------|---------|
-| **trace** | 0 | Most detailed execution flow | Loop iterations, variable values |
-| **debug** | 100 | Diagnostic information | Function parameters, state changes |
-| **info** | 200 | Routine operational messages (DEFAULT) | App started, request completed |
-| **notice** | 300 | Normal but significant events | Security events, configuration changes |
-| **success** | 310 | Positive outcome confirmation | Deployment succeeded, tests passed |
-| **warning** | 400 | Potentially problematic situations | Deprecated usage, resource limits |
-| **error** | 500 | Errors that prevent specific operations | API failures, validation errors |
-| **critical** | 600 | Severe errors affecting core functionality | Database connection lost |
-| **wtf** | 1000 | Impossible situations that should never happen | Invariant violations |
-
-```dart
-Chirp.trace('Entering loop iteration', data: {'i': 42});
-Chirp.debug('Cache miss for key: $key');
-Chirp.info('User logged in', data: {'userId': 'user_123'});
-Chirp.notice('User role changed', data: {'userId': 'user_123', 'oldRole': 'user', 'newRole': 'admin'});
-Chirp.success('Deployment completed', data: {'version': '1.2.0'});
-Chirp.warning('API rate limit approaching', data: {'used': 950, 'limit': 1000});
-Chirp.error('Payment failed', error: e, stackTrace: st);
-Chirp.critical('Database connection lost', data: {'attempt': 3});
-Chirp.wtf('User has negative age', data: {'age': -5}); // Should be impossible!
-```
-
-**Note:** Every log method accepts optional `error` and `stackTrace` parameters - not just `error()`. This is useful for logging exceptions at any severity level:
-
-```dart
-Chirp.warning('Retrying operation', error: e, stackTrace: st);
-Chirp.info('Recovered from error', error: previousError);
-```
-
-**Custom Log Levels:**
-```dart
-// Create your own levels
-const verbose = ChirpLogLevel('verbose', 50);
-const fatal = ChirpLogLevel('fatal', 700);
-
-Chirp.log('Custom message', level: verbose);
-```
-
-### Multiple Writers with Different Formats
-
-Each writer can have its own formatter, perfect for multi-environment setups:
-
-```dart
-Chirp.root = ChirpLogger()
-  // Colorful console logs for development
-  .addConsoleWriter(formatter: CompactChirpMessageFormatter())
-  // JSON logs to file for production
-  .addConsoleWriter(
-    formatter: JsonLogFormatter(),
-    output: (msg) => writeToFile('app.log', msg),
+  // Inside your request handler:
+  final logger = Chirp.root.child(
+    context: {'requestId': request.headers['x-request-id']},
   );
+  logger.info('Request received');
+}
 ```
 
-### Console Writers
-
-| Writer | Output | Best For |
-|--------|--------|----------|
-| `PrintConsoleWriter` | `print()` → logcat/os_log | Production, CI/CD, release builds |
-| `DeveloperLogConsoleWriter` | `developer.log()` | Development (unlimited length, requires debugger) |
-
-`PrintConsoleWriter` is the default (used by `addConsoleWriter()`). It auto-chunks long messages to handle Android's 1024-char limit.
-
-```dart
-// Use both for maximum flexibility
-Chirp.root = ChirpLogger()
-  .addConsoleWriter()  // PrintConsoleWriter - always works
-  .addWriter(DeveloperLogConsoleWriter());  // Unlimited when debugging
-```
-
-### File Writers
-
-`RotatingFileWriter` writes logs to files with automatic rotation. Always configure rotation to prevent unbounded disk usage.
-
-```dart
-// Size-based: rotate at 100 MB, keep 10 files, compress old logs
-final writer = RotatingFileWriter(
-  baseFilePathProvider: () => '/var/log/app.jsonl',
-  formatter: const JsonLogFormatter(),
-  rotationConfig: FileRotationConfig.size(
-    maxSize: 100 * 1024 * 1024,
-    maxFiles: 10,
-    compress: true,
-  ),
-);
-
-Chirp.root = ChirpLogger()
-  .addConsoleWriter()
-  .addWriter(writer);
-```
-
-```dart
-// Time-based: rotate daily, keep 30 days
-final writer = RotatingFileWriter(
-  baseFilePathProvider: () => '/var/log/app.jsonl',
-  formatter: const JsonLogFormatter(),
-  rotationConfig: FileRotationConfig.daily(
-    maxAge: Duration(days: 30),
-    compress: true,
-  ),
-);
-```
-
-Call `await writer.close()` on shutdown to flush buffers. See [`examples/simple/bin/file_writer.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/file_writer.dart) for a complete example.
-
-### Available Formatters
-
-**CompactChirpMessageFormatter** - Colorful, human-readable format for development
-```
-08:30:45.123 UserService@a1b2 User logged in
-```
-
-**JsonLogFormatter** - Machine-readable JSON format
 ```json
-{"timestamp":"2025-11-11T08:30:45.123","level":"info","class":"UserService","hash":"a1b2","message":"User logged in"}
+{"timestamp":"2025-01-15T14:32:05.123Z","level":"info","message":"Request received","requestId":"req-abc"}
 ```
 
-**RainbowMessageFormatter** - Colorful, categorized format with class name colors
-```
-08:30:45.123 UserService@a1b2 [info] User logged in (userId: "user_123", email: "user@example.com")
-```
+### Reusable Dart packages
 
-## Span-Based Formatting (Advanced)
-
-For custom console formatters, Chirp uses a **span-based system** similar to Flutter widgets.
-Spans are composable, nestable, and support ANSI colors.
+Expose a standalone named logger with no writers. It stays completely silent until the host app chooses to adopt it:
 
 ```dart
-class MyMessageFormatter extends SpanBasedFormatter {
-  MyMessageFormatter({super.spanTransformers});
-
-  @override
-  LogSpan buildSpan(LogRecord record) {
-    return SpanSequence(children: [
-      Timestamp(record.timestamp), // 14:32:05.123
-      Whitespace(),
-      BracketedLogLevel(record.level), // [INFO]
-      Surrounded(prefix: Whitespace(), child: ClassName.fromRecord(record)), // UserService@a1b2
-      Whitespace(),
-      LogMessage(record.message),    // User logged in
-    ]);
-  }
-}
-```
-
-Spans are composable building blocks for log output.
-Each span knows its parent and can be manipulated in place with a `SpanTransformer` (replaced, removed, wrapped).
-The usage is similar to DOM elements in HTML.
-
-This allows changing exiting log formats depending on your needs!
-
-```dart
-// Add emoji prefix using span transformers
-final formatter = RainbowMessageFormatter(
-  spanTransformers: [
-    (tree, record) {
-      final emoji = record.level.severity >= 500 ? '🔴 ' : '🟢 ';
-      tree.findFirst<LogMessage>()?.wrap(
-        (child) => SpanSequence(children: [PlainText(emoji), child]),
-      );
-    },
-  ],
-);
-```
-
-See [docs/SPANS.md](https://github.com/passsy/chirp/blob/main/docs/SPANS.md) for the full span API documentation.
-
-## Configuration
-
-### Color Support
-
-Chirp auto-detects terminal color support. Override via environment or code:
-
-```bash
-NO_COLOR=1 dart run           # Disable colors (https://no-color.org/)
-FORCE_COLOR=3 dart run        # Force truecolor (0=off, 1=16, 2=256, 3=truecolor)
-```
-
-```dart
-// Programmatic override
-Chirp.root = ChirpLogger()
-  .addConsoleWriter(
-    capabilities: const TerminalCapabilities(colorSupport: TerminalColorSupport.none),
-  );
-```
-
-### Root Logger
-
-#### Default Behavior (Zero Configuration)
-
-Chirp works immediately without any setup. When you call `Chirp.info()` or use the `.chirp` extension, logs are automatically printed to the console with colorful formatting:
-
-```dart
-// No setup needed - this just works!
-Chirp.info('Hello, Chirp!');
-```
-
-The default logger uses `PrintConsoleWriter` with `RainbowMessageFormatter`, which outputs colorful logs to the console via `print()`.
-
-#### Custom Configuration
-
-Configure the global root logger that all child loggers and extensions inherit from:
-
-```dart
-void main() {
-  // Configure once at app startup
-  Chirp.root = ChirpLogger()
-    .addConsoleWriter(formatter: RainbowMessageFormatter());
-
-  // All loggers now use the configured formatter
-  runApp();
-}
-```
-
-**Important:** Always **replace** `Chirp.root` entirely rather than modifying it:
-
-```dart
-// ✅ Correct - replaces the logger
-Chirp.root = ChirpLogger().addConsoleWriter();
-
-// ❌ Wrong - throws StateError (by design, to prevent test pollution)
-Chirp.root.addWriter(myWriter);
-```
-
-### Lazy Logging
-
-Defer expensive log construction until the logger has decided to actually emit.
-Two flavors, picked by what's expensive.
-
-#### Lazy Messages
-
-Pass a lambda instead of a string to defer expensive message construction.
-The lambda is only called when the log level passes the filter — avoiding unnecessary allocations when the logger is "off":
-
-```dart
-// Always builds the string, even if trace is filtered out
-logger.trace('User data: ${jsonEncode(hugeMap)}');
-
-// Lambda only called when trace level is active
-logger.trace(() => 'User data: ${jsonEncode(hugeMap)}');
-```
-
-This is especially useful for `trace` and `debug` messages that are typically disabled in production but contain expensive-to-build strings.
-
-#### Lazy Builders
-
-When the expensive work lives in `data`, `error`, `stackTrace`, or any other named argument — not just the message — use the `xxxLazy` variant.
-The builder is invoked only when the level passes, so every argument it constructs is paid for only on records that will actually be emitted.
-
-```dart
-// Defers EVERY argument (message, data, error, ...) until the logger emits
-Chirp.warningLazy(
-  (log) => log('snapshot', data: {'state': renderState(), 'metrics': dump()}),
-);
-
-// Works for every level
-Chirp.errorLazy((log) => log('failed', error: e, stackTrace: st));
-
-// logLazy takes a level: argument
-Chirp.logLazy(
-  (log) => log('msg', data: {'state': render()}),
-  level: ChirpLogLevel.debug,
-);
-```
-
-The inner `log` callback has the same shape as the eager method (typedef `ChirpLogFn`), so call sites read identically — minus the wasted work when the log will be discarded.
-
-Caller resolution is handled automatically: the `xxxLazy(...)` invocation line is reported, not the inner `(log) => ...` lambda body, so source locations look the same whether the call is eager or lazy.
-
-Available variants: `traceLazy`, `debugLazy`, `infoLazy`, `noticeLazy`, `successLazy`, `warningLazy`, `errorLazy`, `criticalLazy`, `wtfLazy`, plus the generic `logLazy` on both `ChirpLogger` instances and the global `Chirp` static API.
-
-Lazy builders cost one closure allocation per call when the level passes; the level-filtered hot path stays as cheap as the eager methods.
-Reach for `xxxLazy` when constructing `data` (or other arguments) is expensive; reach for the lazy-message form when only the message is.
-
-### Filtering
-
-Chirp provides two ways to filter logs:
-
-1. **Log Level Filtering** - Drop logs below a severity threshold (fast, simple)
-2. **Interceptors** - Programmatic filtering with custom logic (see [Interceptors](#interceptors))
-
-#### Logger-Level Filtering
-
-Set a minimum log level for an entire logger hierarchy:
-
-```dart
-final logger = ChirpLogger(name: 'verbose-lib')
-  .setMinLogLevel(ChirpLogLevel.warning)  // Only warning and above
-  .addConsoleWriter();
-
-logger.debug('Ignored');  // Below threshold
-logger.warning('Logged'); // At threshold
-```
-
-#### Writer-Level Filtering
-
-Different writers can have different minimum levels:
-
-```dart
-Chirp.root = ChirpLogger()
-  // Console shows everything
-  .addConsoleWriter()
-  // File only gets errors
-  .addConsoleWriter(
-    minLogLevel: ChirpLogLevel.error,
-    output: (msg) => errorLog.writeAsStringSync('$msg\n', mode: FileMode.append),
-  );
-```
-
-### Interceptors
-
-Interceptors transform or filter log records before they reach writers.
-Return `null` from `intercept()` to drop a log record.
-
-**Filtering** - Drop logs based on custom criteria:
-
-```dart
-/// Filters out high-frequency health check logs.
-class HealthCheckFilter implements ChirpInterceptor {
-  @override
-  bool get requiresCallerInfo => false;
-
-  @override
-  LogRecord? intercept(LogRecord record) {
-    // Return null to drop the log record
-    if (record.message.contains('/health')) return null;
-    return record;
-  }
-}
-
-final logger = ChirpLogger()
-  .addInterceptor(HealthCheckFilter())
-  .addConsoleWriter();
-
-logger.info('GET /health');        // Dropped
-logger.info('GET /api/users');     // Logged
-```
-
-Other use cases:
-
-- **Redaction**: Remove sensitive data from logs
-- **Enrichment**: Add fields like request IDs or user context
-- **Sampling**: Only log a percentage of high-volume events
-
-See [`examples/simple/bin/interceptors.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/interceptors.dart) for more examples.
-
-### Library Logger Adoption
-
-Libraries can expose loggers that app developers can optionally adopt to see internal logs:
-
-```dart
-// library.dart - Library exposes a silent logger
+// In your package:
 final httpLogger = ChirpLogger(name: 'http_client');
 
 void get(String url) {
@@ -614,72 +124,351 @@ void get(String url) {
 ```
 
 ```dart
-// app.dart - App adopts the library logger
+// In the consuming app:
 void main() {
   Chirp.root = ChirpLogger().addConsoleWriter();
-  Chirp.root.adopt(httpLogger);  // Library logs now visible!
+  Chirp.root.adopt(httpLogger); // Package logs now flow through your root!
 
   get('https://api.example.com');
 }
-
-// Output:
-// 14:32:05.123 http_client [debug] GET https://api.example.com
 ```
 
-See [`examples/simple/bin/library.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/library.dart) and [`examples/simple/bin/app.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/app.dart) for a complete example.
+See [`examples/simple/bin/library.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/library.dart) and [`examples/simple/bin/app.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/app.dart) for a runnable example.
 
-### Custom Formatters
+## Core Concepts
 
-Create your own formatter by extending `ChirpFormatter`:
+### Instance Tracking (`chirp` vs `Chirp`)
+
+Every Dart object has a `.chirp` extension that returns a cached logger tied to that specific instance. When you have multiple controllers, sockets, or services alive at once, each instance gets its own short hash in the logs:
 
 ```dart
-class MyCustomFormatter extends ChirpFormatter {
+class PaymentProcessor {
+  static void validateConfig() {
+    Chirp.info('Validating config'); // Static method → Chirp
+  }
+
+  void processPayment(double amount) {
+    chirp.info('Processing payment', data: {'amount': amount}); // Instance → chirp
+  }
+}
+
+final p1 = PaymentProcessor();
+final p2 = PaymentProcessor();
+p1.processPayment(49.0);
+p2.processPayment(19.5);
+```
+
+```text
+14:32:05.123 [info] payment:7 PaymentProcessor@a1b2 processPayment Processing payment (amount: 49.0)
+14:32:05.124 [info] payment:7 PaymentProcessor@c3d4 processPayment Processing payment (amount: 19.5)
+```
+
+| Where you are | Use | Why |
+| --- | --- | --- |
+| Instance methods | `chirp.info(...)` | Tags the log with `ClassName@hash` for that instance |
+| Static methods & top-level functions | `Chirp.info(...)` | No instance to track |
+| Inside a reusable package | `myPackageLogger.info(...)` | Stays silent unless the host app adopts it |
+
+### Structured Data & Child Loggers
+
+Attach key-value maps to any log call — nested maps, lists, and custom objects all work:
+
+```dart
+Chirp.info('Order placed', data: {
+  'order': {
+    'id': 'ORD-123',
+    'items': [
+      {'sku': 'WIDGET-1', 'qty': 2},
+      {'sku': 'GADGET-5', 'qty': 1},
+    ],
+    'shipping': {'method': 'express', 'city': 'Berlin'},
+  },
+});
+```
+
+When multiple logs share the same metadata (like a request, job, or screen), create a child logger with `child()`. Children inherit their parent's writers and merge parent context, child context, and per-call `data`:
+
+```dart
+final requestLogger = Chirp.root.child(
+  name: 'API',
+  context: {'requestId': 'REQ-123'},
+);
+requestLogger.info('Request received');
+
+// Add context as you learn more
+requestLogger.context['userId'] = 'user_456';
+requestLogger.info('User authenticated');
+
+// Nest children for sub-operations
+final txnLogger = requestLogger.child(context: {'transactionId': 'TXN-789'});
+txnLogger.info('Charging card'); // Includes requestId, userId, and transactionId
+```
+
+You can also pass `instance:` to `child(name: 'API', instance: this, context: {...})`.
+
+### Log Levels
+
+Chirp ships with 9 semantic levels, ordered by severity:
+
+| Level | Severity | When to reach for it |
+| --- | --- | --- |
+| `trace` | 0 | Fine-grained execution flow (loop iterations, raw payloads) |
+| `debug` | 100 | Diagnostic details (cache misses, state transitions) |
+| `info` | 200 | Normal milestones (app started, request completed) |
+| `notice` | 300 | Normal but notable events (role changes, config updates) |
+| `success` | 310 | Positive outcomes (login succeeded, deploy finished) |
+| `warning` | 400 | Something looks off (rate limit nearing, fallback used) |
+| `error` | 500 | An operation failed (API error, failed payment) |
+| `critical` | 600 | Core functionality is broken (database unreachable) |
+| `wtf` | 1000 | Should never happen (broken invariants) |
+
+Every level method accepts optional `error:` and `stackTrace:` parameters — handy for logging retries as `warning` or recovered failures as `info`:
+
+```dart
+Chirp.warning('Retrying request', error: e, stackTrace: st, data: {'attempt': 2});
+Chirp.success('Deployment completed', data: {'version': '1.2.0'});
+```
+
+Need your own levels? Construct a `ChirpLogLevel` with any name and severity:
+
+```dart
+const verbose = ChirpLogLevel('verbose', 50);
+const fatal = ChirpLogLevel('fatal', 700);
+
+Chirp.log('Starting worker', level: verbose);
+```
+
+### Lazy Logging
+
+Avoid paying for expensive string formatting or `data` serialization when a log level is filtered out.
+
+Pass a closure when only the **message** is expensive:
+
+```dart
+// Only runs jsonEncode when trace is enabled
+logger.trace(() => 'Payload: ${jsonEncode(hugeMap)}');
+```
+
+Use the `...Lazy` variant when **`data`, `error`, or other arguments** are expensive too:
+
+```dart
+// Defers every argument until the logger decides to emit
+Chirp.debugLazy(
+  (log) => log('State snapshot', data: {'state': renderState(), 'metrics': dump()}),
+);
+
+Chirp.logLazy(
+  (log) => log('Custom level snapshot', data: {'size': computeSize()}),
+  level: ChirpLogLevel.trace,
+);
+```
+
+Every built-in level has a matching `...Lazy` method (`traceLazy`, `debugLazy`, `infoLazy`, `noticeLazy`, `successLazy`, `warningLazy`, `errorLazy`, `criticalLazy`, `wtfLazy`, plus `logLazy`) on both `Chirp` and `ChirpLogger`. Caller info still points to the `...Lazy(...)` call site, not inside the closure.
+
+## Formatters & Writers
+
+### Built-in Formatters
+
+| Formatter | Best for | Highlights |
+| --- | --- | --- |
+| `RainbowMessageFormatter` | Local development (default) | Color-coded levels, unique color per class, inline or multiline YAML-like data |
+| `CompactChirpMessageFormatter` | Dense terminal output | Single-line format with caller location and inline data |
+| `SimpleConsoleMessageFormatter` | Full-detail debugging | Toggles for caller, method, instance, logger name, and data |
+| `JsonLogFormatter` | Generic JSON log collectors | Single-line UTF-8 JSON with UTC timestamps and root-level data |
+| `GcpMessageFormatter` | Google Cloud Run / GKE / Functions | GCP `severity`, `sourceLocation`, labels, and Error Reporting support |
+| `AwsMessageFormatter` | AWS Lambda / ECS / CloudWatch | CloudWatch levels (`TRACE`..`FATAL`) and structured JSON |
+
+### Console Writers & Terminal Colors
+
+| Writer | Mechanism | Best for |
+| --- | --- | --- |
+| `PrintConsoleWriter` | `print()` → stdout / logcat / os_log | Production, CI/CD, release builds (default for `addConsoleWriter()`) |
+| `DeveloperLogConsoleWriter` | `dart:developer` `log()` | Flutter DevTools Logging view (unlimited length, requires debugger) |
+
+`PrintConsoleWriter` automatically chunks long messages to work around Android's and iOS's ~1024-character print limits. Note that `DeveloperLogConsoleWriter` strips ANSI colors and only emits while a debugger is attached.
+
+Chirp auto-detects terminal color capabilities. You can override them via environment variables or code:
+
+```bash
+NO_COLOR=1 dart run      # Disable colors (https://no-color.org/)
+FORCE_COLOR=3 dart run   # 0=off, 1=16 colors, 2=256 colors, 3=truecolor
+```
+
+```dart
+Chirp.root = ChirpLogger().addConsoleWriter(
+  capabilities: const TerminalCapabilities(
+    colorSupport: TerminalColorSupport.none,
+  ),
+);
+```
+
+### Rotating File Logging & Live Tailing
+
+Write logs to disk with size- or time-based rotation, automatic retention cleanup, and background gzip compression (in an isolate) using `RotatingFileWriter`:
+
+```dart
+final fileWriter = RotatingFileWriter(
+  baseFilePathProvider: () => '/var/log/app.jsonl',
+  formatter: const JsonLogFormatter(),
+  rotationConfig: FileRotationConfig.size(
+    maxSize: 50 * 1024 * 1024, // Rotate at 50 MB
+    maxFiles: 10,
+    compress: true,
+  ),
+);
+
+// Or rotate daily and keep 30 days:
+// rotationConfig: FileRotationConfig.daily(maxAge: Duration(days: 30), compress: true)
+
+Chirp.root = ChirpLogger()
+    .addConsoleWriter()
+    .addWriter(fileWriter);
+
+// On shutdown:
+await fileWriter.close();
+```
+
+Need to inspect or stream logs from those rotating files (for an in-app debug console, CLI `tail -f`, or support bundle)? Every `RotatingFileWriter` exposes a `RotatingFileReader` via `writer.reader` that reads across active, rotated, and gzipped files without dropping or duplicating records:
+
+```dart
+// Emit the last 50 records, then keep streaming new ones live across rotations
+final sub = fileWriter.reader.tail(last: 50).listen(stdout.writeln);
+
+// Or read history once:
+await for (final entry in fileWriter.reader.read(last: 100)) {
+  stdout.writeln(entry);
+}
+```
+
+See [`examples/simple/bin/file_writer.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/file_writer.dart) and [`examples/simple/bin/file_reader.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/file_reader.dart).
+
+### Multiple Writers & Level Filtering
+
+Combine as many writers as you want, each with its own formatter and minimum log level:
+
+```dart
+Chirp.root = ChirpLogger()
+    .setMinLogLevel(ChirpLogLevel.debug) // Logger-wide floor (skips trace early)
+    .addConsoleWriter(formatter: CompactChirpMessageFormatter())
+    .addWriter(
+      RotatingFileWriter(
+        baseFilePathProvider: () => 'errors.jsonl',
+        formatter: const JsonLogFormatter(),
+        rotationConfig: FileRotationConfig.daily(maxAge: const Duration(days: 14)),
+      )..setMinLogLevel(ChirpLogLevel.error), // File only receives error+
+    );
+```
+
+Logger-level `setMinLogLevel()` short-circuits before records or lazy builders are evaluated; writer-level filtering controls each individual destination.
+
+### Interceptors
+
+Transform, enrich, sample, or drop records before they reach writers. Return `null` to drop a record.
+
+For quick one-liners, use `DelegatedChirpInterceptor`:
+
+```dart
+final logger = ChirpLogger()
+    .addInterceptor(
+      DelegatedChirpInterceptor((record) {
+        if (record.message.toString().contains('/health')) return null;
+        return record;
+      }),
+    )
+    .addConsoleWriter();
+```
+
+For reusable or stateful logic (redaction, rate limiting, enrichment), extend or implement `ChirpInterceptor`:
+
+```dart
+class RedactTokensInterceptor extends ChirpInterceptor {
+  @override
+  LogRecord? intercept(LogRecord record) {
+    if (!record.data.containsKey('token')) return record;
+    return record.copyWith(data: {...record.data, 'token': '***'});
+  }
+}
+```
+
+Interceptors can be attached to either a logger or a specific writer. See [`examples/simple/bin/interceptors.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/interceptors.dart) for more.
+
+## Make It Yours
+
+### Span-Based Formatting
+
+Chirp's console formatters are built on a **composable span tree** — if you have ever built a Flutter widget tree, this will feel right at home.
+
+Build a custom formatter by assembling spans:
+
+```dart
+import 'package:chirp/chirp.dart';
+import 'package:chirp/chirp_spans.dart';
+
+class MyFormatter extends SpanBasedFormatter {
+  MyFormatter({super.spanTransformers});
+
+  @override
+  LogSpan buildSpan(LogRecord record) {
+    return SpanSequence(children: [
+      Timestamp(record.timestamp),
+      Whitespace(),
+      BracketedLogLevel(record.level),
+      Surrounded(prefix: Whitespace(), child: ClassName.fromRecord(record)),
+      Whitespace(),
+      LogMessage(record.message),
+    ]);
+  }
+}
+```
+
+Even better, you don't have to write a formatter from scratch just to tweak one detail. Pass `spanTransformers` to any `SpanBasedFormatter` to wrap, replace, or remove spans in place:
+
+```dart
+final formatter = RainbowMessageFormatter(
+  spanTransformers: [
+    (tree, record) {
+      final badge = record.level >= ChirpLogLevel.error ? '🔴 ' : '🟢 ';
+      tree.findFirst<LogMessage>()?.wrap(
+        (child) => SpanSequence(children: [PlainText(badge), child]),
+      );
+    },
+  ],
+);
+```
+
+See [docs/SPANS.md](https://github.com/passsy/chirp/blob/main/docs/SPANS.md) for the full span reference.
+
+### Custom Writers & Formatters
+
+Need to ship logs to Sentry, Datadog, a database, or an in-app overlay? Use `DelegatedChirpWriter` inline:
+
+```dart
+Chirp.root = ChirpLogger()
+    .addConsoleWriter()
+    .addWriter(
+      DelegatedChirpWriter((record) {
+        if (record.level >= ChirpLogLevel.error) {
+          crashReporter.recordError(record.error, record.stackTrace);
+        }
+      }),
+    );
+```
+
+Or extend `ChirpWriter` (and optionally `ChirpFormatter`) when you need configuration or lifecycle hooks:
+
+```dart
+class SimpleTextFormatter extends ChirpFormatter {
   @override
   void format(LogRecord record, MessageBuffer buffer) {
     buffer.write('[${record.level.name.toUpperCase()}] ${record.message}');
   }
 }
-```
 
-### Custom Writers
+class WebhookWriter extends ChirpWriter {
+  WebhookWriter(this.endpoint, {this.formatter = const JsonLogFormatter()});
 
-Writers control where logs are sent. Extend `ChirpWriter` to send logs to any destination.
-
-#### Simple Writer (Plain Text)
-
-For basic use cases, format the `LogRecord` directly:
-
-```dart
-class FileWriter extends ChirpWriter {
-  final File file;
-
-  FileWriter(this.file);
-
-  @override
-  void write(LogRecord record) {
-    final line = '${record.timestamp} [${record.level.name}] ${record.message}';
-    file.writeAsStringSync('$line\n', mode: FileMode.append);
-  }
-}
-
-// Usage
-Chirp.root = ChirpLogger()
-  ..addWriter(FileWriter(File('app.log')));
-```
-
-#### Writer with Formatter
-
-For rich formatting with colors and structure, use a `ChirpFormatter`:
-
-```dart
-class NetworkWriter extends ChirpWriter {
+  final Uri endpoint;
   final ChirpFormatter formatter;
-  final HttpClient client;
-
-  NetworkWriter({
-    required this.client,
-    this.formatter = const JsonLogFormatter(),
-  });
 
   @override
   bool get requiresCallerInfo => formatter.requiresCallerInfo;
@@ -692,120 +481,48 @@ class NetworkWriter extends ChirpWriter {
       ),
     );
     formatter.format(record, buffer);
-
-    // Send to logging service
-    client.post(Uri.parse('https://logs.example.com'), body: buffer.toString());
+    // Queue buffer.toString() for async delivery to endpoint
   }
 }
-
-// Usage
-Chirp.root = ChirpLogger()
-  ..addWriter(NetworkWriter(client: HttpClient()));
 ```
 
-#### Writer Options
+Setting `requiresCallerInfo => false` (the default on `ChirpWriter`) skips `StackTrace.current` capture entirely when no writer or interceptor needs caller locations.
 
-| Property | Description |
-|----------|-------------|
-| `requiresCallerInfo` | Return `true` if your writer needs file/line/class info (expensive) |
-| `minLogLevel` | Filter logs below this level via `setMinLogLevel()` |
-| `interceptors` | Add transforms/filters via `addInterceptor()` |
+## Cloud & Backend Logging
 
-## Backend / Server-Side Logging
-
-For backend projects (Shelf, Dart Frog, etc.), Chirp provides structured JSON formatters optimized for cloud logging services.
-
-### Basic Setup
-
-Use `JsonLogFormatter` for platform-agnostic JSON logs:
+Switch between colorful local output and cloud-native structured JSON based on environment:
 
 ```dart
-import 'package:chirp/chirp.dart';
-
 void main() {
-  Chirp.root = ChirpLogger()
-    .addConsoleWriter(formatter: JsonLogFormatter());
+  final isProduction = Platform.environment.containsKey('PORT');
 
-  // Start your server...
-}
-
-// Output:
-// {"timestamp":"2025-01-15T10:30:45.123Z","level":"info","message":"Server started","port":8080}
-```
-
-### Cloud Platform Formatters
-
-For cloud deployments, use platform-specific formatters that integrate with your logging service:
-
-| Formatter | Platform | Log Levels | Special Features |
-|-----------|----------|------------|------------------|
-| `JsonLogFormatter` | Any | Chirp levels (lowercase) | Platform-agnostic |
-| `GcpMessageFormatter` | Google Cloud | GCP LogSeverity | sourceLocation, labels, Error Reporting |
-| `AwsMessageFormatter` | AWS CloudWatch | TRACE/DEBUG/INFO/WARN/ERROR/FATAL | CloudWatch log level filtering |
-
-#### Google Cloud Platform (Cloud Run, Cloud Functions, GKE)
-
-```dart
-Chirp.root = ChirpLogger()
-  .addConsoleWriter(
-    formatter: GcpMessageFormatter(
-      serviceName: 'my-api-service',  // For Error Reporting grouping
-      serviceVersion: '1.0.0',
-    ),
+  Chirp.root = ChirpLogger().addConsoleWriter(
+    formatter: isProduction
+        ? GcpMessageFormatter(
+            serviceName: Platform.environment['K_SERVICE'],
+            serviceVersion: '1.0.0',
+          )
+        : RainbowMessageFormatter(),
   );
-
-// Output is automatically parsed by Cloud Logging:
-// {
-//   "severity": "INFO",
-//   "message": "Request received",
-//   "timestamp": "2025-01-15T10:30:45.123Z",
-//   "logging.googleapis.com/sourceLocation": {"file": "...", "line": "42", "function": "..."},
-//   "logging.googleapis.com/labels": {"class": "UserService", "instance": "UserService@a1b2c3d4"}
-// }
+}
 ```
 
-GCP-specific features:
-- Trace correlation via `logging.googleapis.com/trace` (set via data)
-- Automatic Error Reporting integration for errors
-- sourceLocation for click-to-source in Cloud Console
+- **Google Cloud (`GcpMessageFormatter`)**: Maps levels to GCP `LogSeverity`, populates `logging.googleapis.com/sourceLocation` for click-to-source in Cloud Console, supports trace correlation via `projectId`, and formats errors for Google Error Reporting.
+- **AWS (`AwsMessageFormatter`)**: Emits CloudWatch-compatible levels (`TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `FATAL`) with UTC timestamps and optional source locations.
+- **Any other collector (`JsonLogFormatter`)**: Single-line JSON with Chirp's level names and merged data fields.
 
-#### AWS (Lambda, ECS, CloudWatch)
-
-```dart
-Chirp.root = ChirpLogger()
-  .addConsoleWriter(formatter: AwsMessageFormatter());
-
-// Output uses CloudWatch-compatible log levels:
-// {"timestamp":"2025-01-15T10:30:45.123Z","level":"INFO","message":"Request received"}
-```
-
-AWS log level mapping:
-- `trace` → `TRACE`
-- `debug` → `DEBUG`
-- `info`, `notice`, `success` → `INFO`
-- `warning` → `WARN`
-- `error` → `ERROR`
-- `critical`, `wtf` → `FATAL`
-
-### Request-Scoped Logging
-
-Create child loggers with request context for correlated logs:
+Combine this with request-scoped child loggers in middleware (Shelf, Dart Frog, etc.) so every log emitted while handling a request shares its `requestId`, `method`, and `path`:
 
 ```dart
 Handler requestLoggingMiddleware(Handler innerHandler) {
   return (Request request) async {
-    final requestId = generateRequestId();
-
-    // Create request-scoped logger
     final logger = Chirp.root.child(context: {
-      'requestId': requestId,
-    });
-
-    logger.info('Request started', data: {
+      'requestId': request.headers['x-request-id'] ?? generateRequestId(),
       'method': request.method,
       'path': request.requestedUri.path,
     });
 
+    logger.info('Request started');
     try {
       final response = await innerHandler(request);
       logger.info('Request completed', data: {'statusCode': response.statusCode});
@@ -818,169 +535,79 @@ Handler requestLoggingMiddleware(Handler innerHandler) {
 }
 ```
 
-### Environment-Based Configuration
-
-Switch formatters based on environment:
-
-```dart
-void main() {
-  final isProduction = Platform.environment.containsKey('PORT'); // Cloud Run
-
-  if (isProduction) {
-    Chirp.root = ChirpLogger()
-      .addConsoleWriter(formatter: GcpMessageFormatter(
-        serviceName: Platform.environment['K_SERVICE'],
-      ));
-  } else {
-    Chirp.root = ChirpLogger()
-      .addConsoleWriter(formatter: RainbowMessageFormatter());
-  }
-}
-```
-
-See [`examples/simple/bin/gcp_shelf_server.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/gcp_shelf_server.dart) for a complete Shelf server example.
-
-## Real-World Example
-
-```dart
-// Setup (once at app startup)
-void main() {
-  Chirp.root = ChirpLogger()
-    .addConsoleWriter(formatter: RainbowMessageFormatter());
-
-  runApp();
-}
-
-// Per-request handler
-Future<void> handleRequest(Request req) async {
-  // Create request-scoped logger with context
-  final logger = Chirp.root.child(context: {
-    'requestId': req.id,
-    'method': req.method,
-    'path': req.path,
-  });
-
-  logger.info('Request received');
-
-  try {
-    // Add user context when available
-    final user = await authenticate(req);
-    logger.context['userId'] = user.id;
-    logger.info('User authenticated');
-
-    // Process with full context
-    final result = await processRequest(req, user);
-
-    logger.info('Request completed', data: {'statusCode': 200});
-    return result;
-  } catch (e, stackTrace) {
-    logger.error('Request failed', error: e, stackTrace: stackTrace);
-    rethrow;
-  }
-}
-```
-
-All logs from this request will include `requestId`, `method`, `path`, and (after auth) `userId` automatically.
+See [`examples/simple/bin/shelf_server.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/shelf_server.dart) for a complete Shelf server example.
 
 ## Testing
 
-Capture logs in tests by providing a custom output function:
+Always **replace** `Chirp.root` rather than mutating it (reading `Chirp.root` before assignment throws a `StateError` by design, preventing accidental writer accumulation across tests), and reset `Chirp.root = null` in `tearDown`:
 
 ```dart
 import 'package:chirp/chirp.dart';
 import 'package:test/test.dart';
 
 void main() {
-  late List<String> capturedLogs;
+  late List<String> logs;
 
   setUp(() {
-    capturedLogs = [];
-    // Replace root logger for each test
-    Chirp.root = ChirpLogger().addConsoleWriter(output: capturedLogs.add);
+    logs = [];
+    Chirp.root = ChirpLogger().addConsoleWriter(output: logs.add);
   });
 
-  tearDown(() {
-    // Reset to default behavior
-    Chirp.root = null;
-  });
+  tearDown(() => Chirp.root = null);
 
   test('logs user login', () {
     myLoginFunction();
 
-    expect(capturedLogs, hasLength(1));
-    expect(capturedLogs.first, contains('User logged in'));
+    expect(logs, hasLength(1));
+    expect(logs.single, contains('User logged in'));
   });
 }
 ```
 
-For testing with specific formatters or to verify structured data:
+To assert on structured fields directly without parsing formatted strings, attach a `DelegatedChirpWriter`:
 
 ```dart
-test('logs structured data correctly', () {
+test('logs structured payment data', () {
   final records = <LogRecord>[];
-
-  // Use a custom writer that captures LogRecords directly
-  Chirp.root = ChirpLogger()
-    ..addWriter(_CapturingWriter(records));
+  Chirp.root = ChirpLogger().addWriter(DelegatedChirpWriter(records.add));
 
   Chirp.info('Payment processed', data: {'amount': 99.99});
 
   expect(records.single.data, {'amount': 99.99});
 });
-
-class _CapturingWriter implements ChirpWriter {
-  final List<LogRecord> records;
-  _CapturingWriter(this.records);
-
-  @override
-  void write(LogRecord record) => records.add(record);
-
-  @override
-  bool get requiresCallerInfo => false;
-
-  // ... other required overrides
-}
 ```
+
+## AI Agent Skill
+
+Chirp bundles a `chirp-logging` skill with ready-to-use setups for Flutter apps, server backends, and reusable packages, plus guidance on structured context, writers, and lazy logging. Install it from your project root:
+
+```bash
+dart run skills@ get --package chirp
+```
+
+See [Dart package skills](https://dart.dev/ai/package-skills) for CLI setup and supported agents.
 
 ## Examples
 
-See [`examples/simple/bin/`](https://github.com/passsy/chirp/tree/main/examples/simple/bin) for runnable examples:
+Runnable examples live in [`examples/simple/bin/`](https://github.com/passsy/chirp/tree/main/examples/simple/bin):
 
-| File | Description |
-|------|-------------|
+| File | What it shows |
+| --- | --- |
 | [`basic.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/basic.dart) | Zero-config logging |
 | [`log_levels.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/log_levels.dart) | All 9 log levels + custom levels |
-| [`child_loggers.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/child_loggers.dart) | Context inheritance |
-| [`instance_tracking.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/instance_tracking.dart) | The `.chirp` extension |
+| [`instance_tracking.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/instance_tracking.dart) | The `.chirp` instance extension |
+| [`child_loggers.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/child_loggers.dart) | Context inheritance & mutable context |
 | [`multiple_writers.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/multiple_writers.dart) | Console + JSON output |
 | [`file_writer.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/file_writer.dart) | File logging with rotation |
-| [`lazy_messages.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/lazy_messages.dart) | Lazy message construction for performance |
-| [`interceptors.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/interceptors.dart) | Filtering and transforming logs |
+| [`file_reader.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/file_reader.dart) | Live tailing rotating log files |
+| [`lazy_messages.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/lazy_messages.dart) | Lazy message construction |
+| [`interceptors.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/interceptors.dart) | Filtering, redaction, and enrichment |
 | [`library.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/library.dart) / [`app.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/app.dart) | Library logger adoption |
+| [`shelf_server.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/shelf_server.dart) | Shelf HTTP server with GCP/AWS/JSON logging |
+| [`color_support.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/color_support.dart) | Terminal color detection & overrides |
+| [`time_display.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/time_display.dart) | Clock vs wall-clock timestamps |
 | [`main.dart`](https://github.com/passsy/chirp/blob/main/examples/simple/bin/main.dart) | Span transformers (advanced) |
 
 ## License
 
-```
-MIT License
-
-Copyright (c) 2025 Pascal Welsch
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+MIT License — see [LICENSE](https://github.com/passsy/chirp/blob/main/LICENSE) for details.
