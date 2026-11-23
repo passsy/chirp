@@ -75,8 +75,11 @@ abstract class RotatingFileReader {
   ///
   /// Follows the log by name, across rotations. Records written right
   /// before a rotation are read from the rotated file, unless the retention
-  /// policy already deleted it. A truncated or rewritten file is read again
-  /// from its start.
+  /// policy already deleted it.
+  ///
+  /// The log has to be append-only. A file that got shorter or whose
+  /// beginning changed is read again from its start, other rewrites in place
+  /// are not noticed.
   ///
   /// A record of the current file is emitted once its separator is written.
   ///

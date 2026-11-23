@@ -50,33 +50,22 @@ class RotatingFileReaderIo implements RotatingFileReader {
     final resolvedPath = await _resolveBaseFilePath();
     final current = File(resolvedPath);
     final dir = current.parent;
-    final name = current.uri.pathSegments.last;
 
     if (!dir.existsSync()) return const [];
 
-    final dotIndex = name.lastIndexOf('.');
-    final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
-    final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
-
-    final entries = dir
-        .listSync()
-        .whereType<File>()
-        .where((it) {
-          final fileName = it.uri.pathSegments.last;
-          if (fileName == name) {
-            return includeCurrent;
-          }
-          return isRotatedLogFile(
-            fileName,
-            baseName: baseName,
-            extension: extension,
-          );
-        })
-        .map((it) => (path: it.path, modified: it.statSync().modified))
+    final files = dir.listSync().whereType<File>().map((it) => it.path);
+    final rotated = files
+        .where((it) => _isRotatedLog(it, currentPath: resolvedPath))
         .toList()
-      ..sort((a, b) => a.modified.compareTo(b.modified));
+      ..sort((a, b) {
+        return _compareRotatedLogs(a, b, currentPath: resolvedPath);
+      });
 
-    return entries.map((e) => e.path).toList(growable: false);
+    final name = current.uri.pathSegments.last;
+    final currentPaths = files.where((it) {
+      return File(it).uri.pathSegments.last == name;
+    });
+    return [...rotated, if (includeCurrent) ...currentPaths];
   }
 
   @override
@@ -164,15 +153,18 @@ class RotatingFileReaderIo implements RotatingFileReader {
 /// generation is read once, from its first byte to its last, by a decoder
 /// that keeps an incomplete record or character until the rest arrives.
 ///
-/// A file is checked and read through one open handle, which keeps pointing
-/// to the same file when it is renamed in between. When the current file is
-/// not the followed generation anymore, the rest of that generation is read
-/// from its rotated file before the new current file is read from its start.
+/// A rotation shows as a new rotated file. The followed generation is then
+/// finished from its rotated file, and the generations after it are read
+/// from their start, oldest first. Without a new rotated file, the current
+/// file is the followed generation as long as it has not shrunk and still
+/// holds the first and the last bytes that were read.
 ///
-/// Limits: a rotated file that the retention policy deleted before it was
-/// read is gone. A file rewritten in place is only recognized when it got
-/// shorter, or when its first or its last read [_fingerprintLength] bytes
-/// changed.
+/// Limits:
+/// - The log must only be appended to. A file rewritten in place is read
+///   again from its start when it got shorter or when the first or the last
+///   read [_fingerprintLength] bytes changed, and not otherwise.
+/// - A rotated file that the retention policy deleted before it was read is
+///   gone.
 class _Tail {
   final RotatingFileReaderIo _reader;
   final File _file;
@@ -188,11 +180,11 @@ class _Tail {
   int _offset = 0;
   String _partial = '';
   Sink<List<int>>? _decoder;
-  final _firstBytes = <int>[];
-  final _lastBytes = <int>[];
+  List<int> _firstBytes = [];
+  List<int> _lastBytes = [];
 
-  /// The rotated files that are read or older than the start of the tail.
-  final _seen = <String>{};
+  /// The rotated files that are read, by [_RotatedFile.generation].
+  final _seen = <String, _RotatedFile>{};
 
   bool _cancelled = false;
   bool _polling = false;
@@ -228,6 +220,8 @@ class _Tail {
   /// buffered in memory.
   bool get _paused => _ring == null && _controller.isPaused;
 
+  bool get _stopped => _cancelled || _paused;
+
   Future<void> _run() async {
     final last = _last;
     if (last != null) {
@@ -258,29 +252,47 @@ class _Tail {
     });
   }
 
-  /// Emits the last [count] records that exist right now.
+  /// Emits the last [count] records of the files that exist right now.
+  /// Everything written or rotated in later is followed.
   Future<void> _emitLast(int count) async {
-    // Listed before the current file is opened, so these are all older.
-    // They are only read as far as their records are needed.
-    final older = await _unseenRotated();
-    _seen.addAll(older.map(_generation));
-
     final ring = ListQueue<String>();
     _ring = ring;
     _ringSize = count;
+    var older = <_RotatedFile>[];
     try {
-      await _step();
+      while (!_cancelled) {
+        older = _listRotated();
+        final current = await _openCurrent();
+        try {
+          // A rotation in between leaves it open whether the opened file is
+          // the current file or already one of the rotated files.
+          if (!_sameFiles(older, _listRotated())) {
+            continue;
+          }
+          if (current != null) {
+            final intact = await _read(current, canPause: false);
+            if (!intact) {
+              _restart();
+            }
+          }
+          break;
+        } finally {
+          await current?.close();
+        }
+      }
     } finally {
       _ring = null;
     }
 
+    // Only read as far as their records are needed.
     final chunks = <List<String>>[];
     var missing = count - ring.length;
-    for (final path in older.reversed) {
-      if (missing <= 0) {
-        break;
+    for (final rotated in older.reversed) {
+      _seen[rotated.generation] = rotated;
+      if (missing <= 0 || _cancelled) {
+        continue;
       }
-      final lines = await _readRotatedRecords(path);
+      final lines = await _readRotatedRecords(rotated.path);
       chunks.add(lines);
       missing -= lines.length;
     }
@@ -304,7 +316,8 @@ class _Tail {
       try {
         await _step();
       } on FileSystemException {
-        // A file vanished while it was read. The next poll continues.
+        // A file vanished while it was read. The next poll continues where
+        // this one stopped.
       } catch (e, stack) {
         _controller.addError(e, stack);
       }
@@ -314,103 +327,164 @@ class _Tail {
 
   /// Reads everything that was written since the last call.
   Future<void> _step() async {
-    while (!_cancelled && !_paused) {
+    while (!_stopped) {
+      final List<_RotatedFile> unseen;
+      var currentContinues = false;
       final current = await _openCurrent();
       try {
-        if (_offset > 0) {
-          if (current != null && await _continues(current)) {
-            await _read(current, canPause: true);
+        // Listed after the current file was opened. A rotation after this
+        // moves the opened file, which is read to its end through its
+        // handle, and shows as a rotated file with the next call.
+        unseen = _unseenRotated();
+        if (_offset > 0 && current != null) {
+          currentContinues = await _continues(current);
+        }
+        if (unseen.isEmpty) {
+          if (_offset > 0 && !currentContinues) {
+            // Deleted, truncated or rewritten in place.
+            _restart();
+          }
+          if (current == null) {
             return;
           }
-          // The followed file was rotated away, truncated or replaced.
-          await _readRestFromRotated();
-          continue;
-        }
-
-        // Listed after the current file was opened: a rotated file that
-        // appears later than this holds the opened file itself.
-        final rotatedCurrent = await _readOlderGenerations(current);
-        if (rotatedCurrent) {
-          continue;
-        }
-        if (current != null) {
-          await _read(current, canPause: true);
-        }
-        return;
-      } finally {
-        await current?.close();
-      }
-    }
-  }
-
-  /// Finishes the followed generation, which is not the current file anymore.
-  Future<void> _readRestFromRotated() async {
-    for (final path in await _unseenRotated()) {
-      final rotated = await _openRotated(path);
-      if (rotated == null) {
-        continue;
-      }
-      try {
-        if (await _continues(rotated)) {
-          _seen.add(_generation(path));
-          await _read(rotated, canPause: false);
-          _finishGeneration();
+          final intact = await _read(current, canPause: true);
+          if (!intact) {
+            // Rewritten while it was read.
+            _restart();
+            continue;
+          }
           return;
         }
       } finally {
-        await rotated.close();
+        // Not kept open while rotated files are read, an open file can not
+        // be renamed on Windows.
+        await current?.close();
+      }
+      await _readRotated(unseen, currentContinues: currentContinues);
+    }
+  }
+
+  /// Reads the next generation of [unseen], which is not empty.
+  Future<void> _readRotated(
+    List<_RotatedFile> unseen, {
+    required bool currentContinues,
+  }) async {
+    if (_offset == 0) {
+      // The oldest generation that is not read yet, from its start.
+      await _readGeneration(
+        unseen.first,
+        mustContinue: false,
+        canPause: true,
+      );
+      return;
+    }
+
+    // The followed generation was rotated. Finishes it from its rotated
+    // file, also when the new current file starts with the same bytes.
+    for (final rotated in unseen) {
+      final found = await _readGeneration(
+        rotated,
+        mustContinue: true,
+        canPause: true,
+      );
+      if (found) {
+        return;
       }
     }
-    // Truncated or rewritten in place, or the rotated file is deleted.
+    if (currentContinues) {
+      // A rotated file that appeared late, like a repaired archive. Reads
+      // it on its own and continues with the current file where it was.
+      final offset = _offset;
+      final partial = _partial;
+      final decoder = _decoder;
+      final firstBytes = _firstBytes;
+      final lastBytes = _lastBytes;
+      _restart();
+      await _readGeneration(
+        unseen.first,
+        mustContinue: false,
+        canPause: false,
+      );
+      _offset = offset;
+      _partial = partial;
+      _decoder = decoder;
+      _firstBytes = firstBytes;
+      _lastBytes = lastBytes;
+      return;
+    }
+    // The followed generation is deleted.
     _restart();
   }
 
-  /// Reads the rotated files that are not read yet, before [current] is read
-  /// from its start.
+  /// Reads [rotated] from [_offset] to its end.
   ///
-  /// Returns true when [current] was rotated since it was opened. It is read
-  /// to its end then, and the new current file has to be opened.
-  Future<bool> _readOlderGenerations(_Bytes? current) async {
-    for (final path in await _unseenRotated()) {
-      if (_cancelled || _paused) {
+  /// With [mustContinue], returns false without reading when [rotated] is
+  /// not the followed generation.
+  Future<bool> _readGeneration(
+    _RotatedFile rotated, {
+    required bool mustContinue,
+    required bool canPause,
+  }) async {
+    final _Bytes? source;
+    try {
+      source = await _openRotated(rotated);
+    } on FormatException catch (e, stack) {
+      // A broken archive. Read again when the file changes.
+      _controller.addError(e, stack);
+      _seen[rotated.generation] = rotated;
+      return false;
+    }
+    if (source == null) {
+      // Deleted since it was listed.
+      _seen[rotated.generation] = rotated;
+      return false;
+    }
+    try {
+      if (mustContinue && !await _continues(source)) {
         return false;
       }
-      _seen.add(_generation(path));
-      final rotated = await _openRotated(path);
-      if (rotated == null) {
-        continue;
+      final intact = await _read(source, canPause: canPause);
+      if (!intact) {
+        _restart();
+        return true;
       }
-      try {
-        if (current != null && await _isSame(current, rotated)) {
-          await _read(current, canPause: false);
-          _finishGeneration();
-          return true;
-        }
-        await _read(rotated, canPause: false);
-        _finishGeneration();
-      } finally {
-        await rotated.close();
+      if (_cancelled) {
+        return true;
       }
+      if (canPause && _paused) {
+        // Continues with the next poll.
+        return true;
+      }
+      _finishGeneration();
+      _seen[rotated.generation] = rotated;
+      return true;
+    } finally {
+      await source.close();
     }
-    return false;
   }
 
-  /// Decodes [source] from [_offset] to its end.
-  Future<void> _read(_Bytes source, {required bool canPause}) async {
+  /// Decodes [source] from [_offset] to its end, or until the listener
+  /// pauses or cancels.
+  ///
+  /// Returns false when [source] turns out to be rewritten.
+  Future<bool> _read(_Bytes source, {required bool canPause}) async {
     final length = await source.length();
     while (_offset < length) {
       if (_cancelled) {
-        return;
+        return true;
       }
       if (canPause && _paused) {
-        return;
+        return true;
+      }
+      if (_offset > 0 && !await _continues(source)) {
+        return false;
       }
       final remaining = length - _offset;
       final count = remaining > _chunkSize ? _chunkSize : remaining;
       final bytes = await source.read(_offset, _offset + count);
       if (bytes.isEmpty) {
         // Shorter than its length said, it was truncated meanwhile.
-        return;
+        return false;
       }
 
       final missingFirst = _fingerprintLength - _firstBytes.length;
@@ -434,6 +508,7 @@ class _Tail {
         _partial = '';
       }
     }
+    return true;
   }
 
   void _addText(String text) {
@@ -476,8 +551,8 @@ class _Tail {
     _offset = 0;
     _partial = '';
     _decoder = null;
-    _firstBytes.clear();
-    _lastBytes.clear();
+    _firstBytes = [];
+    _lastBytes = [];
   }
 
   /// Whether [source] is the followed generation, which may have grown.
@@ -493,23 +568,6 @@ class _Tail {
     return _equalBytes(last, _lastBytes);
   }
 
-  /// Whether [a] and [b] are the same file, judged by its size and the
-  /// bytes at its start and its end.
-  Future<bool> _isSame(_Bytes a, _Bytes b) async {
-    final length = await a.length();
-    if (length == 0 || length != await b.length()) {
-      return false;
-    }
-    final count = length > _fingerprintLength ? _fingerprintLength : length;
-    if (!_equalBytes(await a.read(0, count), await b.read(0, count))) {
-      return false;
-    }
-    return _equalBytes(
-      await a.read(length - count, length),
-      await b.read(length - count, length),
-    );
-  }
-
   Future<_Bytes?> _openCurrent() async {
     try {
       return _FileBytes(await _file.open());
@@ -519,19 +577,25 @@ class _Tail {
   }
 
   /// Returns null when the file is deleted.
-  Future<_Bytes?> _openRotated(String path) async {
+  Future<_Bytes?> _openRotated(_RotatedFile rotated) async {
     try {
-      if (_isCompressed(path)) {
-        return _MemoryBytes(gzip.decode(await File(path).readAsBytes()));
+      if (rotated.compressed) {
+        final bytes = await File(rotated.path).readAsBytes();
+        return _MemoryBytes(gzip.decode(bytes));
       }
-      return _FileBytes(await File(path).open());
+      return _FileBytes(await File(rotated.path).open());
     } on FileSystemException {
-      if (_isCompressed(path)) {
+      if (rotated.compressed) {
         // Deleted by the retention policy.
         return null;
       }
-      // Compressed since it was listed.
-      return _openRotated('$path.gz');
+    }
+    // Compressed since it was listed.
+    try {
+      final bytes = await File('${rotated.path}.gz').readAsBytes();
+      return _MemoryBytes(gzip.decode(bytes));
+    } on FileSystemException {
+      return null;
     }
   }
 
@@ -541,10 +605,10 @@ class _Tail {
         path,
         _encoding,
         _reader._recordSeparator,
-        compressed: _isCompressed(path),
+        compressed: _isCompressedLog(path, currentPath: _file.path),
       );
     } on FileSystemException {
-      if (_isCompressed(path)) {
+      if (_isCompressedLog(path, currentPath: _file.path)) {
         // Deleted by the retention policy.
         return const [];
       }
@@ -554,28 +618,89 @@ class _Tail {
   }
 
   /// The rotated files that are not read yet, oldest first.
-  Future<List<String>> _unseenRotated() async {
-    final files = await _reader.listFiles(includeCurrent: false);
-    final all = files.toSet();
-    return files.where((it) {
-      if (_seen.contains(_generation(it))) {
-        return false;
+  List<_RotatedFile> _unseenRotated() {
+    final rotated = _listRotated();
+    // Forgets deleted files, their names can be used again.
+    final generations = rotated.map((it) => it.generation).toSet();
+    _seen.removeWhere((generation, _) => !generations.contains(generation));
+
+    return rotated.where((it) {
+      final seen = _seen[it.generation];
+      if (seen == null) {
+        return true;
       }
-      // While a rotated file is compressed, both it and its .gz exist.
-      return !_isCompressed(it) || !all.contains(_generation(it));
+      if (seen.compressed != it.compressed) {
+        // Compressed after it was read. A plain file in place of a
+        // compressed one is a new file with a reused name.
+        if (it.compressed) {
+          _seen[it.generation] = it;
+        }
+        return !it.compressed;
+      }
+      // Changed size or time: a new file with a reused name.
+      return seen.size != it.size || seen.modified != it.modified;
     }).toList();
   }
 
-  bool _isCompressed(String path) {
-    return _isCompressedLog(path, currentPath: _file.path);
+  /// The rotated files, oldest first.
+  List<_RotatedFile> _listRotated() {
+    final dir = _file.parent;
+    if (!dir.existsSync()) {
+      return const [];
+    }
+    final paths = dir
+        .listSync()
+        .whereType<File>()
+        .map((it) => it.path)
+        .where((it) => _isRotatedLog(it, currentPath: _file.path))
+        .toSet();
+
+    final rotated = <_RotatedFile>[];
+    for (final path in paths) {
+      final compressed = _isCompressedLog(path, currentPath: _file.path);
+      final generation =
+          compressed ? path.substring(0, path.length - '.gz'.length) : path;
+      if (compressed && paths.contains(generation)) {
+        // While a rotated file is compressed, both it and its .gz exist.
+        continue;
+      }
+      final stat = File(path).statSync();
+      if (stat.type == FileSystemEntityType.notFound) {
+        continue;
+      }
+      rotated.add(
+        _RotatedFile(
+          path: path,
+          generation: generation,
+          compressed: compressed,
+          size: stat.size,
+          modified: stat.modified,
+        ),
+      );
+    }
+    rotated.sort((a, b) {
+      return _compareRotatedLogs(
+        a.generation,
+        b.generation,
+        currentPath: _file.path,
+      );
+    });
+    return rotated;
   }
 
-  /// The name of a rotated file before it was compressed.
-  String _generation(String path) {
-    if (!_isCompressed(path)) {
-      return path;
+  bool _sameFiles(List<_RotatedFile> a, List<_RotatedFile> b) {
+    if (a.length != b.length) {
+      return false;
     }
-    return path.substring(0, path.length - '.gz'.length);
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].path != b[i].path) {
+        return false;
+      }
+      if (a[i].size != b[i].size || a[i].modified != b[i].modified) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Watches the directory. It may not exist yet or be replaced later, the
@@ -588,17 +713,9 @@ class _Tail {
     if (!FileSystemEntity.isWatchSupported || !dir.existsSync()) {
       return;
     }
-    final fileName = _file.uri.pathSegments.last;
-    final normalizedDirPath = _normalizeDirPath(dir.path);
 
-    bool shouldPoll(FileSystemEvent event) {
-      if (event.path.endsWith(fileName)) {
-        return true;
-      }
-      return _normalizeDirPath(event.path) == normalizedDirPath;
-    }
-
-    _watcher = dir.watch().where(shouldPoll).listen(
+    // Every change in the directory can be a write or a rotation.
+    _watcher = dir.watch().listen(
       (_) {
         // Fire and forget.
         unawaited(_poll());
@@ -612,6 +729,25 @@ class _Tail {
       },
     );
   }
+}
+
+/// A rotated file as it was listed.
+class _RotatedFile {
+  final String path;
+
+  /// The path before it was compressed.
+  final String generation;
+  final bool compressed;
+  final int size;
+  final DateTime modified;
+
+  _RotatedFile({
+    required this.path,
+    required this.generation,
+    required this.compressed,
+    required this.size,
+    required this.modified,
+  });
 }
 
 /// Random access to the bytes of a log file.
@@ -695,17 +831,77 @@ bool _equalBytes(List<int> a, List<int> b) {
 /// Whether [path] is a rotated file of the log at [currentPath] that was
 /// compressed. A log file may itself be named `*.gz`.
 bool _isCompressedLog(String path, {required String currentPath}) {
-  final currentName = File(currentPath).uri.pathSegments.last;
-  final dotIndex = currentName.lastIndexOf('.');
-  final extension = dotIndex > 0 ? currentName.substring(dotIndex) : '';
+  final current = _LogName(currentPath);
   final name = File(path).uri.pathSegments.last;
-  return name != currentName && name.endsWith('$extension.gz');
+  return name != current.name && name.endsWith('${current.extension}.gz');
 }
 
-String _normalizeDirPath(String path) {
-  final separator = Platform.pathSeparator;
-  if (!path.endsWith(separator)) return path;
-  return path.substring(0, path.length - separator.length);
+/// Whether [path] is a rotated file of the log at [currentPath].
+bool _isRotatedLog(String path, {required String currentPath}) {
+  final current = _LogName(currentPath);
+  final name = File(path).uri.pathSegments.last;
+  if (name == current.name) {
+    return false;
+  }
+  return isRotatedLogFile(
+    name,
+    baseName: current.baseName,
+    extension: current.extension,
+  );
+}
+
+final _rotationPattern =
+    RegExp(r'^(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})(?:_(\d+))?');
+
+/// Orders rotated files of the log at [currentPath] from old to new, by the
+/// time and the counter in their names. The modification time does not say
+/// it, compressing a file changes it.
+int _compareRotatedLogs(String a, String b, {required String currentPath}) {
+  final current = _LogName(currentPath);
+
+  ({String time, int counter}) rotation(String path) {
+    final name = File(path).uri.pathSegments.last;
+    final rest = name.substring(current.baseName.length + 1);
+    final match = _rotationPattern.firstMatch(rest);
+    if (match == null) {
+      return (time: '', counter: 0);
+    }
+    return (
+      time: match.group(1) ?? '',
+      counter: int.parse(match.group(2) ?? '0'),
+    );
+  }
+
+  final rotationA = rotation(a);
+  final rotationB = rotation(b);
+  final byTime = rotationA.time.compareTo(rotationB.time);
+  if (byTime != 0) {
+    return byTime;
+  }
+  return rotationA.counter.compareTo(rotationB.counter);
+}
+
+/// The parts of the name of a log file.
+class _LogName {
+  final String name;
+  final String baseName;
+  final String extension;
+
+  factory _LogName(String path) {
+    final name = File(path).uri.pathSegments.last;
+    final dotIndex = name.lastIndexOf('.');
+    return _LogName._(
+      name: name,
+      baseName: dotIndex > 0 ? name.substring(0, dotIndex) : name,
+      extension: dotIndex > 0 ? name.substring(dotIndex) : '',
+    );
+  }
+
+  _LogName._({
+    required this.name,
+    required this.baseName,
+    required this.extension,
+  });
 }
 
 Future<List<String>> _readAllLinesFromFile(

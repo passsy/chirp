@@ -534,7 +534,7 @@ void main() {
       });
     }
 
-    for (final last in [0, -1]) {
+    for (final last in [0, -1, 1]) {
       test('emits the lines of a file rotated in while it starts (last: $last)',
           () async {
         final dir = createTempDir();
@@ -553,7 +553,11 @@ void main() {
             StreamIterator(reader.tail(last: last, encoding: encoding));
         addTearDown(lines.cancel);
 
-        expect(await _nextLines(lines, 2), ['new1', 'new2']);
+        final history = last > 0 ? ['current'] : <String>[];
+        expect(
+          await _nextLines(lines, history.length + 2),
+          [...history, 'new1', 'new2'],
+        );
       });
     }
 
@@ -586,6 +590,175 @@ void main() {
         expect(await _nextLines(lines, 2), ['missed', 'fresh']);
       });
     }
+
+    test('emits lines of a rotated file whose successor starts the same',
+        () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('same\n');
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail());
+      addTearDown(lines.cancel);
+      expect(await _nextLines(lines, 1), ['same']);
+
+      base.writeAsStringSync('unread\n', mode: FileMode.append, flush: true);
+      base.renameSync('${dir.path}/app.2024-01-01_10-00-00.log');
+      base.writeAsStringSync('same\nnew\n', flush: true);
+
+      expect(await _nextLines(lines, 3), ['unread', 'same', 'new']);
+    });
+
+    test('emits lines of a rotated file that reuses a name', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+      base.writeAsStringSync('a1\n');
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail());
+      addTearDown(lines.cancel);
+      expect(await _nextLines(lines, 1), ['a1']);
+
+      base.writeAsStringSync('a2\n', mode: FileMode.append, flush: true);
+      base.renameSync(rotated.path);
+      base.writeAsStringSync('b1\n', flush: true);
+      expect(await _nextLines(lines, 2), ['a2', 'b1']);
+
+      // The retention policy deletes the rotated file, and the next
+      // rotation of the same second gets its name.
+      rotated.deleteSync();
+      base.writeAsStringSync('b2\n', mode: FileMode.append, flush: true);
+      base.renameSync(rotated.path);
+      base.writeAsStringSync('c1\n', flush: true);
+      expect(await _nextLines(lines, 2), ['b2', 'c1']);
+    });
+
+    test('reads a broken archive again when it is replaced', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
+      rotated.writeAsBytesSync([1, 2, 3]);
+      base.writeAsStringSync('current\n');
+
+      final error = Completer<Object>();
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail().handleError(error.complete));
+      addTearDown(lines.cancel);
+      expect(await _nextLines(lines, 1), ['current']);
+      expect(await error.future, isA<FormatException>());
+
+      rotated.writeAsBytesSync(gzip.encode(utf8.encode('recovered\n')));
+      expect(await _nextLines(lines, 1), ['recovered']);
+    });
+
+    test('orders rotated files by their names, compression changes the time',
+        () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      final rotated1 = File('${dir.path}/app.2024-01-01_10-00-00.log.gz');
+      final rotated2 = File('${dir.path}/app.2024-01-02_10-00-00.log');
+      final rotated3 = File('${dir.path}/app.2024-01-02_10-00-00_2.log');
+      final rotated4 = File('${dir.path}/app.2024-01-02_10-00-00_10.log');
+
+      rotated1.writeAsBytesSync(gzip.encode(utf8.encode('first\n')));
+      rotated2.writeAsStringSync('second\n');
+      rotated3.writeAsStringSync('third\n');
+      rotated4.writeAsStringSync('fourth\n');
+      base.writeAsStringSync('current\n');
+
+      rotated4.setLastModifiedSync(DateTime(2024, 1, 1, 10));
+      rotated3.setLastModifiedSync(DateTime(2024, 1, 2, 10));
+      rotated2.setLastModifiedSync(DateTime(2024, 1, 3, 10));
+      rotated1.setLastModifiedSync(DateTime(2024, 1, 4, 10));
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      const all = ['first', 'second', 'third', 'fourth', 'current'];
+      expect(await reader.read().toList(), all);
+      expect(await reader.read(last: 4).toList(), all.sublist(1));
+
+      for (final last in [null, 4]) {
+        final lines = StreamIterator(reader.tail(last: last));
+        addTearDown(lines.cancel);
+        final expected = last == null ? all : all.sublist(1);
+        expect(await _nextLines(lines, expected.length), expected);
+      }
+    });
+
+    test('never joins the old and the new content of a rewritten file',
+        () async {
+      final dir = createTempDir();
+
+      // Longer than one read, so the rewrite happens within the file.
+      final oldRecords = [for (var i = 0; i < 20000; i++) 'old-$i'.padRight(9)];
+      final newRecords = [for (var i = 0; i < 20000; i++) 'new-$i'.padRight(9)];
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('${oldRecords.join('\n')}\n');
+
+      final encoding = _HookedUtf8.afterReading(oldRecords.first, () {
+        base.writeAsStringSync('${newRecords.join('\n')}\n', flush: true);
+      });
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail(encoding: encoding));
+      addTearDown(lines.cancel);
+
+      final received = <String>[];
+      while (received.isEmpty || received.last != newRecords.last) {
+        received.addAll(await _nextLines(lines, 1));
+      }
+
+      final known = {...oldRecords, ...newRecords};
+      expect(received.where((it) => !known.contains(it)), isEmpty);
+      expect(received.where(newRecords.contains), newRecords);
+    });
+
+    test('stops reading a rotated file while the listener is paused', () async {
+      final dir = createTempDir();
+
+      // Several reads long.
+      final records = [for (var i = 0; i < 50000; i++) 'record-$i'];
+      File('${dir.path}/app.2024-01-01_10-00-00.log')
+          .writeAsStringSync('${records.join('\n')}\n');
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('current\n');
+
+      var chunks = 0;
+      final encoding = _HookedUtf8(onChunkDecoded: (_) => chunks++);
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+
+      final received = <String>[];
+      final paused = Completer<void>();
+      final done = Completer<void>();
+      // ignore: cancel_subscriptions
+      StreamSubscription<String>? subscription;
+      subscription = reader.tail(encoding: encoding).listen((record) {
+        received.add(record);
+        if (!paused.isCompleted) {
+          subscription?.pause();
+          paused.complete();
+        }
+        if (record == 'current') {
+          done.complete();
+        }
+      });
+      addTearDown(subscription.cancel);
+
+      await paused.future;
+      // Time to read on, if the reader ignored the pause.
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // The read that was running when the listener paused is the last.
+      expect(chunks, lessThanOrEqualTo(2));
+
+      subscription.resume();
+      await done.future;
+      expect(received, [...records, 'current']);
+    });
 
     test('emits lines of two rotations between two looks', () async {
       final dir = createTempDir();
