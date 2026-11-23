@@ -1266,6 +1266,32 @@ void main() {
       final records = await writer.reader.read().toList();
       expect(records, [contains('newer'), contains('current')]);
     });
+    test('reports a failing retention after a compression', () async {
+      final dir = createTempDir();
+      final errors = <Object>[];
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => '${dir.path}/app.log',
+        rotationConfig: FileRotationConfig.size(
+          maxSize: 100 * 1024 * 1024,
+          maxFiles: 2,
+          compress: true,
+        ),
+        onError: (error, stackTrace, record) => errors.add(error),
+      );
+
+      writer.write(testRecord(message: 'first ${'x' * 1024 * 1024}'));
+      await writer.forceRotate();
+      writer.write(testRecord(message: 'second'));
+      await writer.forceRotate();
+
+      // The directory can not be listed when the compressions are done.
+      Process.runSync('chmod', ['a-r', dir.path]);
+      addTearDown(() => Process.runSync('chmod', ['u+rwx', dir.path]));
+      await writer.close();
+
+      expect(errors, isNotEmpty);
+      expect(errors, everyElement(isA<FileSystemException>()));
+    }, testOn: 'mac-os || linux');
   });
 
   group('rotated file names', () {

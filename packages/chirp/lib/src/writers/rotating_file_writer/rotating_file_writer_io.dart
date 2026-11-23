@@ -1064,14 +1064,18 @@ class _RotatingFileSink {
       onError: (Object e, StackTrace stackTrace) {
         errorHandler(e, stackTrace, null);
       },
-    );
-    _pendingCompressions.add(future);
-    future.whenComplete(() {
-      _pendingCompressions.remove(future);
+    ).whenComplete(() {
       _compressing.remove(path);
-      // Deletes what was kept while it was compressed.
-      _applyRetentionPolicy(null);
+      // Deletes what was kept while it was compressed. Part of the tracked
+      // future, so that close() waits for it.
+      try {
+        _applyRetentionPolicy(null);
+      } catch (e, stackTrace) {
+        errorHandler(e, stackTrace, null);
+      }
     });
+    _pendingCompressions.add(future);
+    future.whenComplete(() => _pendingCompressions.remove(future));
   }
 
   /// Applies retention policy to remove old log files.
