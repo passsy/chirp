@@ -142,6 +142,13 @@ class RotatingFileReaderIo implements RotatingFileReader {
     int? last,
     Encoding encoding = utf8,
   }) async* {
+    if (_recordSeparator.isEmpty) {
+      throw ArgumentError.value(
+        _recordSeparator,
+        'recordSeparator',
+        'tail needs a separator to find where a record ends',
+      );
+    }
     final path = await _resolveBaseFilePath();
     final tail = _Tail(
       reader: this,
@@ -195,8 +202,10 @@ class _Tail {
   /// The broken archives that were reported, so each is reported once.
   final _reported = <String>{};
 
-  /// Collects the records of the history when only the last ones are wanted.
-  ListQueue<String>? _ring;
+  /// Collects the records of the history when only the last ones are wanted,
+  /// as the emission of each, so that an undecodable record is only
+  /// reported when it is wanted.
+  ListQueue<void Function()>? _ring;
   int _ringSize = 0;
 
   /// Runs while the files can not be read, so that a failure that lasts is
@@ -302,7 +311,7 @@ class _Tail {
   /// Returns false without emitting anything when a rotated name holds
   /// another file since it was listed, as the history may have read it.
   Future<bool> _emitLast(int count) async {
-    final ring = ListQueue<String>();
+    final ring = ListQueue<void Function()>();
     _ring = ring;
     _ringSize = count;
     final List<_RotatedFile>? rotated;
@@ -317,13 +326,13 @@ class _Tail {
 
     // Only read as far as their records are needed, and decoded like the
     // followed ones.
-    final chunks = <List<String>>[];
+    final chunks = <List<void Function()>>[];
     var missing = count - ring.length;
     for (final file in rotated.reversed) {
       if (missing <= 0 || _cancelled) {
         break;
       }
-      final records = ListQueue<String>();
+      final records = ListQueue<void Function()>();
       _ring = records;
       _ringSize = missing;
       try {
@@ -343,8 +352,8 @@ class _Tail {
 
     final history = [...chunks.reversed.expand((it) => it), ...ring];
     final skip = history.length > count ? history.length - count : 0;
-    for (final record in history.skip(skip)) {
-      _controller.add(record);
+    for (final emit in history.skip(skip)) {
+      emit();
     }
     return true;
   }
@@ -667,12 +676,16 @@ class _Tail {
     // The partial record has no separator, but one may end in [bytes].
     var from = max(0, partial.length - _separator.length + 1);
     var start = 0;
+    final dataOffset = generation.offset - data.length;
     while (true) {
       final end = _indexOf(data, _separator, from);
       if (end < 0) {
         break;
       }
-      _emitBytes(Uint8List.sublistView(data, start, end));
+      _emitRecord(
+        Uint8List.sublistView(data, start, end),
+        atFileStart: dataOffset + start == 0,
+      );
       start = end + _separator.length;
       from = start;
     }
@@ -682,36 +695,47 @@ class _Tail {
   /// Ends a generation that was read to its last byte. A record without
   /// separator at its end is complete then.
   void _end(_Generation generation) {
-    if (generation.partial.isNotEmpty) {
-      _emitBytes(generation.partial);
+    final partial = generation.partial;
+    if (partial.isNotEmpty) {
+      _emitRecord(
+        partial,
+        atFileStart: generation.offset == partial.length,
+      );
     }
     generation
       ..partial = Uint8List(0)
       ..done = true;
   }
 
-  void _emitBytes(List<int> bytes) {
-    final String record;
+  void _emitRecord(List<int> bytes, {required bool atFileStart}) {
+    void Function() emit;
     try {
-      record = _encoding.decode(bytes);
+      final record = _decodeRecord(bytes, atFileStart: atFileStart);
+      emit = () => _controller.add(record);
     } on FormatException catch (e, stack) {
       // Only this record is lost.
-      _controller.addError(e, stack);
-      return;
+      emit = () => _controller.addError(e, stack);
     }
-    _emit(record);
-  }
 
-  void _emit(String record) {
     final ring = _ring;
     if (ring == null) {
-      _controller.add(record);
+      emit();
       return;
     }
-    ring.addLast(record);
+    ring.addLast(emit);
     if (ring.length > _ringSize) {
       ring.removeFirst();
     }
+  }
+
+  /// Decodes a record like [RotatingFileReaderIo.read] decodes it as part of
+  /// its file: only the start of a file can hold a byte order mark.
+  String _decodeRecord(List<int> bytes, {required bool atFileStart}) {
+    if (atFileStart) {
+      return _encoding.decode(bytes);
+    }
+    final text = _encoding.decode([..._separator, ...bytes]);
+    return text.substring(_reader._recordSeparator.length);
   }
 
   void _reportBroken(_RotatedFile file, Object error, StackTrace stack) {

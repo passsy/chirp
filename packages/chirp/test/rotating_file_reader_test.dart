@@ -1206,6 +1206,50 @@ void main() {
       expect(await error.future, isA<FormatException>());
     });
 
+    test('skips an undecodable record of the history it does not emit',
+        () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsBytesSync([...utf8.encode('before\n'), 0xff, 0x0a]);
+
+      // Appended when the history was read, so it is followed.
+      final encoding = _HookedUtf8.afterReading('before', () {
+        base.writeAsStringSync('next\n', mode: FileMode.append, flush: true);
+      });
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail(last: 0, encoding: encoding));
+      addTearDown(lines.cancel);
+
+      expect(await _nextLines(lines, 1), ['next']);
+    });
+
+    test('keeps a byte order mark that starts a record', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      base.writeAsStringSync('first\n\uFEFFpayload\n');
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail(last: 2));
+      addTearDown(lines.cancel);
+
+      final expected = ['first', '\uFEFFpayload'];
+      expect(await _nextLines(lines, 2), expected);
+      expect(await reader.read(last: 2).toList(), expected);
+    });
+
+    test('rejects an empty record separator', () async {
+      final dir = createTempDir();
+      final reader = RotatingFileReader(
+        baseFilePathProvider: () => '${dir.path}/app.log',
+        recordSeparator: '',
+      );
+
+      await expectLater(reader.tail().first, throwsArgumentError);
+    });
+
     test('reads the history again when a rotation reuses a name meanwhile',
         () async {
       final dir = createTempDir();
