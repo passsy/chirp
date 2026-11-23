@@ -29,7 +29,11 @@ void main() async {
   final logger = ChirpLogger(name: 'HeartbeatService').addWriter(writer);
 
   // Reader: tail the same file, printing every line to stdout
-  final subscription = writer.reader.tail(last: 19).listen(stdout.writeln);
+  final subscription = writer.reader.tail(last: 19).listen(
+        stdout.writeln,
+        // A log that can not be read for a while. The tail keeps trying.
+        onError: (Object error) => stderr.writeln('Tail failed: $error'),
+      );
 
   // Write a log line every second
   var counter = 0;

@@ -12,6 +12,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:test/test.dart';
 
 import 'fake_async_with_drain.dart';
+import 'io_hooks.dart';
 import 'test_log_record.dart';
 
 void main() {
@@ -998,6 +999,10 @@ void main() {
         message: 'Message to compress',
         timestamp: DateTime(2024, 1, 15, 10),
       ));
+      await writer.flush();
+      // The age of the records, which maxAge goes by.
+      final modified = DateTime(2024, 1, 15, 10);
+      File(logPath).setLastModifiedSync(modified);
 
       // Write on Jan 16 (triggers rotation and compression)
       writer.write(testRecord(
@@ -1026,6 +1031,7 @@ void main() {
           reason: 'Decompressed content should contain the rotated message');
       expect(text, isNot(contains('New day message')),
           reason: 'Compressed file should not contain new day message');
+      expect(gzFiles.first.lastModifiedSync(), modified);
     });
   });
 
@@ -2595,6 +2601,93 @@ void main() {
 
       // In test (debug) mode, default should be synchronous
       expect(writer.flushStrategy, FlushStrategy.synchronous);
+    });
+  });
+
+  group('retention with compression', () {
+    test('keeps the newest files when a compression ends early', () async {
+      final dir = createTempDir();
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => '${dir.path}/app.log',
+        rotationConfig: FileRotationConfig.size(
+          maxSize: 100 * 1024 * 1024,
+          maxFiles: 2,
+          compress: true,
+        ),
+      );
+
+      // The older file takes longer to compress than the newer one.
+      writer.write(testRecord(message: 'older ${'x' * 4 * 1024 * 1024}'));
+      await writer.forceRotate();
+      writer.write(testRecord(message: 'newer'));
+      await writer.forceRotate();
+      writer.write(testRecord(message: 'current'));
+      await writer.close();
+
+      final records = await writer.reader.read().toList();
+      expect(records, [contains('newer'), contains('current')]);
+    });
+    test('reports a failing retention after a compression', () async {
+      final dir = createTempDir();
+      final errors = <Object>[];
+      final hooks = IoHooks(dir.path);
+
+      await IOOverrides.runWithIOOverrides(() async {
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => '${dir.path}/app.log',
+          rotationConfig: FileRotationConfig.size(
+            maxSize: 100 * 1024 * 1024,
+            maxFiles: 2,
+            compress: true,
+          ),
+          onError: (error, stackTrace, record) => errors.add(error),
+        );
+
+        writer.write(testRecord(message: 'first ${'x' * 1024 * 1024}'));
+        await writer.forceRotate();
+        writer.write(testRecord(message: 'second'));
+        await writer.forceRotate();
+
+        // The directory can not be listed when the compressions are done.
+        hooks.failListing = true;
+        await writer.close();
+      }, hooks);
+
+      expect(errors, isNotEmpty);
+      expect(errors, everyElement(isA<FileSystemException>()));
+    });
+  });
+
+  group('rotated file names', () {
+    test('are read in their order when older files are deleted', () async {
+      final dir = createTempDir();
+      final time = DateTime(2024, 1, 15, 10);
+
+      await withClock(Clock.fixed(time), () async {
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => '${dir.path}/app.log',
+          rotationConfig: FileRotationConfig.size(
+            maxSize: 1024 * 1024,
+            maxFiles: 3,
+          ),
+        );
+        addTearDown(() => writer.close());
+
+        for (var i = 1; i <= 5; i++) {
+          writer.write(testRecord(message: 'record $i', timestamp: time));
+          if (i < 5) {
+            await writer.forceRotate();
+          }
+        }
+        await writer.flush();
+
+        final records = await writer.reader.read().toList();
+        expect(records, [
+          contains('record 3'),
+          contains('record 4'),
+          contains('record 5'),
+        ]);
+      });
     });
   });
 }

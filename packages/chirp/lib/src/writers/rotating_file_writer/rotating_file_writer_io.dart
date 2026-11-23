@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:chirp/chirp.dart';
@@ -665,6 +666,9 @@ class _RotatingFileSink {
   /// Tracked so [close] can wait for all compressions to complete.
   final List<Future<void>> _pendingCompressions = [];
 
+  /// The rotated files that are compressed right now.
+  final Set<String> _compressing = {};
+
   /// `true` while [writeAsyncRecords] is executing. Prevents
   /// [writeSyncRecords] from rotating (which would close the file handle
   /// that the async write is using).
@@ -860,20 +864,16 @@ class _RotatingFileSink {
 
   /// Gets all rotated log files (not the current one).
   List<_FileEntry> getRotatedFiles() {
-    final currentFile = File(basePath);
-    final dir = currentFile.parent;
-    final name = currentFile.uri.pathSegments.last;
-
-    // Extract base name for matching rotated files
-    final dotIndex = name.lastIndexOf('.');
-    final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
+    final dir = File(basePath).parent;
+    final log = LogFileName(basePath);
 
     if (!dir.existsSync()) return [];
 
-    return dir.listSync().whereType<File>().where((file) {
-      final fileName = file.uri.pathSegments.last;
-      return fileName != name && isRotatedLogFile(fileName, baseName: baseName);
-    }).map((file) {
+    return dir
+        .listSync()
+        .whereType<File>()
+        .where((file) => log.isRotated(file.path))
+        .map((file) {
       final stat = file.statSync();
       return (path: file.path, modified: stat.modified);
     }).toList();
@@ -987,31 +987,51 @@ class _RotatingFileSink {
   /// If a file with the timestamp already exists (multiple rotations in the
   /// same second), appends a counter suffix: `app.2024-01-15_10-30-45_1.log`
   String _generateRotatedPath(DateTime timestamp) {
-    final file = File(basePath);
-    final dir = file.parent.path;
-    final name = file.uri.pathSegments.last;
-
-    // Split name into base and extension
-    final dotIndex = name.lastIndexOf('.');
-    final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
-    final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
+    final dir = File(basePath).parent.path;
+    final log = LogFileName(basePath);
+    final baseName = log.baseName;
+    final extension = log.extension;
 
     // Format timestamp for filename
-    final ts = timestamp
+    var ts = timestamp
         .toIso8601String()
         .replaceAll(':', '-')
         .replaceAll('T', '_')
         .split('.')[0];
 
-    // Check if file already exists, add counter suffix if needed
-    var path = '$dir/$baseName.$ts$extension';
-    var counter = 1;
-    while (File(path).existsSync()) {
-      path = '$dir/$baseName.${ts}_$counter$extension';
-      counter++;
+    // Readers order rotated files by their names. When the clock went back,
+    // the time of the newest rotated file is used, so that the names keep
+    // the order of the rotations.
+    final rotated = getRotatedFiles().map((it) => it.path).toList();
+    if (rotated.isNotEmpty) {
+      final newest = rotated.reduce((a, b) {
+        return log.compareRotated(a, b) > 0 ? a : b;
+      });
+      final candidate = '$dir/$baseName.$ts$extension';
+      if (log.compareRotated(candidate, newest) < 0) {
+        final newestName = File(newest).uri.pathSegments.last;
+        ts = _rotationPattern
+            .firstMatch(newestName.substring(baseName.length + 1))!
+            .group(1)!;
+      }
     }
 
-    return path;
+    // Several rotations within one second get a counter suffix. It counts
+    // on from the highest one that exists, plain or compressed, so that the
+    // names keep the order of the rotations when older files are deleted.
+    final prefix = '$baseName.$ts';
+    final counters = rotated
+        .map((it) => File(it).uri.pathSegments.last)
+        .where((it) => it.startsWith(prefix))
+        .map((it) {
+      final match = _counterPattern.firstMatch(it.substring(prefix.length));
+      return int.parse(match?.group(1) ?? '0');
+    }).toList();
+    if (counters.isEmpty) {
+      return '$dir/$prefix$extension';
+    }
+    final highest = counters.reduce((a, b) => a > b ? a : b);
+    return '$dir/${prefix}_${highest + 1}$extension';
   }
 
   /// Compresses a file using gzip in a separate isolate.
@@ -1022,12 +1042,22 @@ class _RotatingFileSink {
     // Capture error handler before async gap to avoid capturing 'this'
     // or any zone-bound objects in the isolate closure.
     final errorHandler = onError ?? defaultFileWriterErrorHandler;
+    _compressing.add(path);
     final future = _compressFileInIsolate(path).then(
       (_) {},
       onError: (Object e, StackTrace stackTrace) {
         errorHandler(e, stackTrace, null);
       },
-    );
+    ).whenComplete(() {
+      _compressing.remove(path);
+      // Deletes what was kept while it was compressed. Part of the tracked
+      // future, so that close() waits for it.
+      try {
+        _applyRetentionPolicy(null);
+      } catch (e, stackTrace) {
+        errorHandler(e, stackTrace, null);
+      }
+    });
     _pendingCompressions.add(future);
     future.whenComplete(() => _pendingCompressions.remove(future));
   }
@@ -1037,11 +1067,28 @@ class _RotatingFileSink {
     final config = rotationConfig;
     if (config == null) return;
 
-    final rotatedFiles = getRotatedFiles();
-    if (rotatedFiles.isEmpty) return;
+    final log = LogFileName(basePath);
 
-    // Sort by modification time (newest first)
-    rotatedFiles.sort((a, b) => b.modified.compareTo(a.modified));
+    // While a rotated file is compressed, both it and its .gz exist. They
+    // count as one file.
+    final byGeneration = <String, List<_FileEntry>>{};
+    for (final file in getRotatedFiles()) {
+      final generation = log.uncompressed(file.path);
+      byGeneration.putIfAbsent(generation, () => []).add(file);
+    }
+    if (byGeneration.isEmpty) {
+      return;
+    }
+
+    // Newest first, by the time and counter in the name. The modification
+    // time changes when a file is compressed.
+    final generations = byGeneration.keys.toList()
+      ..sort((a, b) {
+        return log.compareRotated(b, a);
+      });
+    final rotatedFiles = [
+      for (final generation in generations) ...byGeneration[generation]!,
+    ];
 
     final now = clock.now();
     final filesToDelete = <_FileEntry>[];
@@ -1050,8 +1097,10 @@ class _RotatingFileSink {
     if (config.maxFileCount != null) {
       // -1 because maxFileCount includes the current file
       final maxRotated = config.maxFileCount! - 1;
-      if (rotatedFiles.length > maxRotated) {
-        filesToDelete.addAll(rotatedFiles.sublist(maxRotated));
+      if (generations.length > maxRotated) {
+        for (final generation in generations.skip(max(maxRotated, 0))) {
+          filesToDelete.addAll(byGeneration[generation]!);
+        }
       }
     }
 
@@ -1065,6 +1114,12 @@ class _RotatingFileSink {
         }
       }
     }
+
+    // A file that is compressed right now is deleted when its compression
+    // is done. Deleted now, the compression would write its .gz afterwards.
+    filesToDelete.removeWhere((file) {
+      return _compressing.any((it) => file.path == it || file.path == '$it.gz');
+    });
 
     // Delete files
     for (final file in filesToDelete) {
@@ -1096,28 +1151,123 @@ void _compressFileSync(String path) {
   final file = File(path);
   if (!file.existsSync()) return;
 
+  final modified = file.lastModifiedSync();
   final bytes = file.readAsBytesSync();
   final compressed = gzip.encode(bytes);
-  File('$path.gz').writeAsBytesSync(compressed, flush: true);
+  final compressedFile = File('$path.gz');
+  compressedFile.writeAsBytesSync(compressed, flush: true);
+  // The age of the records, for the retention policy.
+  compressedFile.setLastModifiedSync(modified);
   file.deleteSync();
 }
 
 typedef _FileEntry = ({String path, DateTime modified});
 
-// Matches baseName.YYYY-MM-DD_HH-MM-SS[_N].ext[.gz] after stripping
-// the "baseName." prefix.
-final _rotatedTimestampPattern =
-    RegExp(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_\d+)?');
+final _counterPattern = RegExp(r'^_(\d+)');
 
-/// Returns `true` if [fileName] (without directory path) matches the
-/// rotation pattern for [baseName] (without extension).
+final _rotationPattern =
+    RegExp(r'^(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})(?:_(\d+))?');
+
+// Matches the YYYY-MM-DD_HH-MM-SS[_N] part of a rotated file name.
+final _rotatedTimestampPattern =
+    RegExp(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}(_\d+)?$');
+
+/// The name of a log file like `app.log`, and the names of its rotated
+/// files: `app.YYYY-MM-DD_HH-MM-SS[_N].log`, compressed with `.gz` appended.
 ///
-/// ```dart
-/// isRotatedLogFile('app.2024-01-15_10-30-45.log', baseName: 'app') // true
-/// isRotatedLogFile('app.log', baseName: 'app') // false
-/// ```
-bool isRotatedLogFile(String fileName, {required String baseName}) {
-  if (!fileName.startsWith('$baseName.')) return false;
-  final rest = fileName.substring(baseName.length + 1); // skip "baseName."
-  return _rotatedTimestampPattern.hasMatch(rest);
+/// The writer names and deletes rotated files by it, the reader finds and
+/// orders them by it.
+class LogFileName {
+  /// The name of the current log file, like `app.log`.
+  final String name;
+
+  /// The name without its extension, like `app`.
+  final String baseName;
+
+  /// The extension with its dot, like `.log`, or empty.
+  final String extension;
+
+  factory LogFileName(String path) {
+    final name = File(path).uri.pathSegments.last;
+    final dotIndex = name.lastIndexOf('.');
+    return LogFileName._(
+      name: name,
+      baseName: dotIndex > 0 ? name.substring(0, dotIndex) : name,
+      extension: dotIndex > 0 ? name.substring(dotIndex) : '',
+    );
+  }
+
+  LogFileName._({
+    required this.name,
+    required this.baseName,
+    required this.extension,
+  });
+
+  /// Whether [path] is a rotated file of this log, compressed or not.
+  ///
+  /// ```dart
+  /// LogFileName('app.log').isRotated('app.2024-01-15_10-30-45.log') // true
+  /// LogFileName('app.log').isRotated('app.log') // false
+  /// ```
+  bool isRotated(String path) {
+    final fileName = File(path).uri.pathSegments.last;
+    if (fileName == name) return false;
+    if (!fileName.startsWith('$baseName.')) return false;
+    final rest = fileName.substring(baseName.length + 1); // skip "baseName."
+
+    bool isRotated(String name) {
+      if (!name.endsWith(extension)) {
+        return false;
+      }
+      final timestamp = name.substring(0, name.length - extension.length);
+      return _rotatedTimestampPattern.hasMatch(timestamp);
+    }
+
+    if (isRotated(rest)) {
+      return true;
+    }
+    // The extension itself may be `.gz`, so this is checked second.
+    if (!rest.endsWith('.gz')) {
+      return false;
+    }
+    return isRotated(rest.substring(0, rest.length - '.gz'.length));
+  }
+
+  /// Whether the rotated file [path] is compressed. The log file may itself
+  /// be named `*.gz`.
+  bool isCompressed(String path) {
+    final fileName = File(path).uri.pathSegments.last;
+    return fileName != name && fileName.endsWith('$extension.gz');
+  }
+
+  /// The path of the rotated file [path] before it was compressed.
+  String uncompressed(String path) {
+    if (!isCompressed(path)) {
+      return path;
+    }
+    return path.substring(0, path.length - '.gz'.length);
+  }
+
+  /// Orders the rotated files [a] and [b] from old to new, by the time and
+  /// the counter in their names.
+  int compareRotated(String a, String b) {
+    ({String time, int counter}) rotation(String path) {
+      final fileName = File(path).uri.pathSegments.last;
+      final match = _rotationPattern.firstMatch(
+        fileName.substring(baseName.length + 1),
+      );
+      return (
+        time: match?.group(1) ?? '',
+        counter: int.parse(match?.group(2) ?? '0'),
+      );
+    }
+
+    final rotationA = rotation(a);
+    final rotationB = rotation(b);
+    final byTime = rotationA.time.compareTo(rotationB.time);
+    if (byTime != 0) {
+      return byTime;
+    }
+    return rotationA.counter.compareTo(rotationB.counter);
+  }
 }

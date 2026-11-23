@@ -324,6 +324,9 @@ class FileRotationConfig {
   /// Whether to compress rotated files using gzip.
   ///
   /// When `true`, rotated files are compressed to `*.gz` format.
+  /// A file that the retention policy would delete while it is compressed
+  /// is deleted when its compression is done, so for that moment there can
+  /// be more files than [maxFileCount].
   /// Reduces disk space but adds CPU overhead during rotation.
   final bool compress;
 

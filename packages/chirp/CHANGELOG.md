@@ -6,6 +6,34 @@
 
 - **Fix** `SimpleConsoleMessageFormatter` requests caller info again, restoring the missing source location ([#46](https://github.com/passsy/chirp/issues/46))
 
+- **Fix** `RotatingFileReader.tail` lost, repeated or split records when the file was appended to or rotated while it was read.
+  It identifies a file by its first 1024 bytes now, like Filebeat and Vector, and reads every file of the log once, in order, also when it was rotated or compressed in between.
+  Two files that start with the same bytes can still be taken for one.
+  Records written right before a rotation are read from the rotated file, as long as it exists.
+  When retention deletes a file with records the tail saw but did not read yet, the gap is a stream error ([#52](https://github.com/passsy/chirp/pull/52))
+
+- **Fix** `RotatingFileReader.tail` waits for the rest of an incomplete record or character instead of emitting it in two parts ([#52](https://github.com/passsy/chirp/pull/52))
+
+- **Fix** `RotatingFileReader.tail` reports undecodable bytes and broken archives as stream errors and continues behind them ([#52](https://github.com/passsy/chirp/pull/52))
+
+- **Breaking** `RotatingFileReader.tail` emits an `ArgumentError` for an empty `recordSeparator` instead of a record per character ([#52](https://github.com/passsy/chirp/pull/52))
+
+- **Fix** `RotatingFileReader` orders rotated files by the time and counter in their names.
+  Compressing a file changed its modification time and could move it behind newer files ([#52](https://github.com/passsy/chirp/pull/52))
+
+- **Fix** `RotatingFileReader.read` reads a rotated file once while it is compressed, and reads its `.gz` when it is compressed after it was listed ([#52](https://github.com/passsy/chirp/pull/52))
+
+- **Fix** `RotatingFileWriter` deletes the oldest rotated files by their names instead of their modification times, counts a file once while it is compressed, and deletes a file only after its compression is done.
+  A compressed file keeps the modification time of the original, for `maxAge`.
+  It could delete a newer file than intended, and a file deleted during its compression came back as `.gz` ([#52](https://github.com/passsy/chirp/pull/52))
+
+- **Fix** `RotatingFileWriter` names rotated files in the order of the rotations, also when the clock goes back: the suffix within one second counts on from the highest one that still exists.
+  It reused the name of a deleted or compressed file, which put the files out of order and could overwrite a compressed one ([#52](https://github.com/passsy/chirp/pull/52))
+
+- **Fix** Only files with the extension of the log file count as its rotated files.
+  `app.2024-01-01_10-00-00.backup` is no longer read as history of `app.log` or deleted by the retention policy.
+  A log file that is itself named `*.gz` is no longer taken for a compressed one ([#52](https://github.com/passsy/chirp/pull/52))
+
 ## 0.9.0
 
 - **New** Lazy message construction — pass `() => 'expensive $message'` to any log method.

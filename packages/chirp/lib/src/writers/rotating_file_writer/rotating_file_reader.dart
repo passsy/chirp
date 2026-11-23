@@ -70,8 +70,33 @@ abstract class RotatingFileReader {
 
   /// Tails logs (optionally with an initial snapshot).
   ///
-  /// If [last] is provided, it first emits the last N records (same semantics
-  /// as [read]) and then continues streaming newly appended records.
+  /// If [last] is provided, it first emits the last N records and then
+  /// continues streaming newly appended records; with `last <= 0` it only
+  /// follows. Without [last], it emits all existing records first. Records
+  /// that are written while the tail starts can count as existing ones.
+  ///
+  /// Follows the log by name, across rotations. Records written right
+  /// before a rotation are read from the rotated file, as long as it exists.
+  /// A rotated file that the retention policy deletes before it was read is
+  /// lost. When the tail had seen its unread bytes, which happens when the
+  /// listener pauses, the gap is emitted as a `FileSystemException` once the
+  /// tail notices it, which can be after records of newer rotated files.
+  ///
+  /// The log has to be append-only, with rotated files named as
+  /// [RotatingFileWriter] names them. Like Filebeat and Vector, the tail
+  /// knows a file by its first 1024 bytes, not by its name, so a renamed or
+  /// compressed file is read on where it stopped. A file whose first bytes
+  /// start like those of an older file that is gone is taken for its
+  /// continuation. Log records with timestamps make that practically
+  /// impossible.
+  ///
+  /// A record of the current file is emitted once its separator is written,
+  /// unlike [read], which also emits an unterminated last record.
+  ///
+  /// When the files can not be read, the tail keeps trying. A failure that
+  /// lasts a whole poll interval is emitted as an error, once until the
+  /// files can be read again. An error ends an `await for` loop, so listen
+  /// with `onError` to keep following.
   ///
   /// The [pollInterval] passed to the factory controls how often the reader
   /// checks for changes when file system events are missing or unreliable.
