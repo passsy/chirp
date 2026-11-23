@@ -1269,29 +1269,32 @@ void main() {
     test('reports a failing retention after a compression', () async {
       final dir = createTempDir();
       final errors = <Object>[];
-      final writer = RotatingFileWriter(
-        baseFilePathProvider: () => '${dir.path}/app.log',
-        rotationConfig: FileRotationConfig.size(
-          maxSize: 100 * 1024 * 1024,
-          maxFiles: 2,
-          compress: true,
-        ),
-        onError: (error, stackTrace, record) => errors.add(error),
-      );
+      final hooks = _IoHooks(dir.path);
 
-      writer.write(testRecord(message: 'first ${'x' * 1024 * 1024}'));
-      await writer.forceRotate();
-      writer.write(testRecord(message: 'second'));
-      await writer.forceRotate();
+      await IOOverrides.runWithIOOverrides(() async {
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => '${dir.path}/app.log',
+          rotationConfig: FileRotationConfig.size(
+            maxSize: 100 * 1024 * 1024,
+            maxFiles: 2,
+            compress: true,
+          ),
+          onError: (error, stackTrace, record) => errors.add(error),
+        );
 
-      // The directory can not be listed when the compressions are done.
-      Process.runSync('chmod', ['a-r', dir.path]);
-      addTearDown(() => Process.runSync('chmod', ['u+rwx', dir.path]));
-      await writer.close();
+        writer.write(testRecord(message: 'first ${'x' * 1024 * 1024}'));
+        await writer.forceRotate();
+        writer.write(testRecord(message: 'second'));
+        await writer.forceRotate();
+
+        // The directory can not be listed when the compressions are done.
+        hooks.failListing = true;
+        await writer.close();
+      }, hooks);
 
       expect(errors, isNotEmpty);
       expect(errors, everyElement(isA<FileSystemException>()));
-    }, testOn: 'mac-os || linux');
+    });
   });
 
   group('rotated file names', () {
@@ -1758,6 +1761,9 @@ final class _IoHooks extends IOOverrides {
   /// Paths of files whose next open fails although they exist.
   final failOpenOnce = <String>{};
 
+  /// Makes every listing fail.
+  bool failListing = false;
+
   int _listings = 0;
 
   _IoHooks(this.path);
@@ -1798,6 +1804,9 @@ class _HookedDirectory implements Directory {
     bool recursive = false,
     bool followLinks = true,
   }) {
+    if (_hooks.failListing) {
+      throw FileSystemException('Injected failure', path);
+    }
     _hooks._listings++;
     _hooks.beforeListing[_hooks._listings]?.call();
     final entities = [
