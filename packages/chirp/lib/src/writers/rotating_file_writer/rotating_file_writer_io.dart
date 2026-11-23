@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:chirp/chirp.dart';
@@ -665,6 +666,9 @@ class _RotatingFileSink {
   /// Tracked so [close] can wait for all compressions to complete.
   final List<Future<void>> _pendingCompressions = [];
 
+  /// The rotated files that are compressed right now.
+  final Set<String> _compressing = {};
+
   /// `true` while [writeAsyncRecords] is executing. Prevents
   /// [writeSyncRecords] from rotating (which would close the file handle
   /// that the async write is using).
@@ -1037,6 +1041,7 @@ class _RotatingFileSink {
     // Capture error handler before async gap to avoid capturing 'this'
     // or any zone-bound objects in the isolate closure.
     final errorHandler = onError ?? defaultFileWriterErrorHandler;
+    _compressing.add(path);
     final future = _compressFileInIsolate(path).then(
       (_) {},
       onError: (Object e, StackTrace stackTrace) {
@@ -1044,7 +1049,12 @@ class _RotatingFileSink {
       },
     );
     _pendingCompressions.add(future);
-    future.whenComplete(() => _pendingCompressions.remove(future));
+    future.whenComplete(() {
+      _pendingCompressions.remove(future);
+      _compressing.remove(path);
+      // Deletes what was kept while it was compressed.
+      _applyRetentionPolicy(null);
+    });
   }
 
   /// Applies retention policy to remove old log files.
@@ -1052,11 +1062,38 @@ class _RotatingFileSink {
     final config = rotationConfig;
     if (config == null) return;
 
-    final rotatedFiles = getRotatedFiles();
-    if (rotatedFiles.isEmpty) return;
+    final name = File(basePath).uri.pathSegments.last;
+    final dotIndex = name.lastIndexOf('.');
+    final baseName = dotIndex > 0 ? name.substring(0, dotIndex) : name;
+    final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
 
-    // Sort by modification time (newest first)
-    rotatedFiles.sort((a, b) => b.modified.compareTo(a.modified));
+    // While a rotated file is compressed, both it and its .gz exist. They
+    // count as one file. A file that is compressed right now is kept, the
+    // compression would write its .gz after it was deleted.
+    final byGeneration = <String, List<_FileEntry>>{};
+    for (final file in getRotatedFiles()) {
+      var generation = file.path;
+      if (generation.endsWith('$extension.gz')) {
+        generation = generation.substring(0, generation.length - 3);
+      }
+      byGeneration.putIfAbsent(generation, () => []).add(file);
+    }
+    for (final path in _compressing) {
+      byGeneration.remove(path);
+    }
+    if (byGeneration.isEmpty) {
+      return;
+    }
+
+    // Newest first, by the time and counter in the name. The modification
+    // time changes when a file is compressed.
+    final generations = byGeneration.keys.toList()
+      ..sort((a, b) {
+        return compareRotatedLogFiles(b, a, baseName: baseName);
+      });
+    final rotatedFiles = [
+      for (final generation in generations) ...byGeneration[generation]!,
+    ];
 
     final now = clock.now();
     final filesToDelete = <_FileEntry>[];
@@ -1064,9 +1101,11 @@ class _RotatingFileSink {
     // Apply max file count policy
     if (config.maxFileCount != null) {
       // -1 because maxFileCount includes the current file
-      final maxRotated = config.maxFileCount! - 1;
-      if (rotatedFiles.length > maxRotated) {
-        filesToDelete.addAll(rotatedFiles.sublist(maxRotated));
+      final maxRotated = config.maxFileCount! - 1 - _compressing.length;
+      if (generations.length > maxRotated) {
+        for (final generation in generations.skip(max(maxRotated, 0))) {
+          filesToDelete.addAll(byGeneration[generation]!);
+        }
       }
     }
 
@@ -1120,6 +1159,32 @@ void _compressFileSync(String path) {
 typedef _FileEntry = ({String path, DateTime modified});
 
 final _counterPattern = RegExp(r'^_(\d+)');
+
+final _rotationPattern =
+    RegExp(r'^(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})(?:_(\d+))?');
+
+/// Orders the rotated files [a] and [b] of the log `baseName` + extension
+/// from old to new, by the time and the counter in their names.
+int compareRotatedLogFiles(String a, String b, {required String baseName}) {
+  ({String time, int counter}) rotation(String path) {
+    final name = File(path).uri.pathSegments.last;
+    final match = _rotationPattern.firstMatch(
+      name.substring(baseName.length + 1),
+    );
+    return (
+      time: match?.group(1) ?? '',
+      counter: int.parse(match?.group(2) ?? '0'),
+    );
+  }
+
+  final rotationA = rotation(a);
+  final rotationB = rotation(b);
+  final byTime = rotationA.time.compareTo(rotationB.time);
+  if (byTime != 0) {
+    return byTime;
+  }
+  return rotationA.counter.compareTo(rotationB.counter);
+}
 
 // Matches the YYYY-MM-DD_HH-MM-SS[_N] part of a rotated file name.
 final _rotatedTimestampPattern =

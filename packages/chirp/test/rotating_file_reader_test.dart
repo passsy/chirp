@@ -767,6 +767,31 @@ void main() {
       expect(await error.future, isA<FormatException>());
     });
 
+    test('emits the rotated files that are kept when the start is rotated away',
+        () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      final rotated1 = File('${dir.path}/app.2024-01-01_10-00-00.log');
+      final rotated2 = File('${dir.path}/app.2024-01-01_10-00-00_1.log');
+      base.writeAsStringSync('seq0\n');
+
+      // Two rotations right after the start was read, and the retention
+      // policy deletes the first rotated file.
+      final encoding = _HookedUtf8.afterReading('seq0', () {
+        base.renameSync(rotated1.path);
+        base.writeAsStringSync('seq1\n', flush: true);
+        base.renameSync(rotated2.path);
+        rotated1.deleteSync();
+        base.writeAsStringSync('seq2\n', flush: true);
+      });
+
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines = StreamIterator(reader.tail(last: 0, encoding: encoding));
+      addTearDown(lines.cancel);
+      expect(await _nextLines(lines, 2), ['seq1', 'seq2']);
+    });
+
     test('emits lines of a rotated file whose successor starts the same',
         () async {
       final dir = createTempDir();
@@ -1248,6 +1273,105 @@ void main() {
           contains('record 5'),
         ]);
       });
+    });
+  });
+
+  group('tail of a RotatingFileWriter', () {
+    for (final compress in [false, true]) {
+      for (final last in [null, 1]) {
+        test(
+            'emits every record once and in order (compress: $compress, last: $last)',
+            () async {
+          final dir = createTempDir();
+          final writer = RotatingFileWriter(
+            baseFilePathProvider: () => '${dir.path}/app.log',
+            rotationConfig: FileRotationConfig.size(
+              maxSize: 1024 * 1024,
+              maxFiles: 100,
+              compress: compress,
+            ),
+          );
+          addTearDown(writer.close);
+          writer.write(testRecord(message: 'record 0.'));
+          await writer.flush();
+
+          final lines = StreamIterator(writer.reader.tail(last: last));
+          addTearDown(lines.cancel);
+          expect(await _nextLines(lines, 1), [contains('record 0.')]);
+
+          const count = 300;
+          for (var i = 1; i <= count; i++) {
+            writer.write(testRecord(message: 'record $i.'));
+            if (i % 10 == 0) {
+              await writer.forceRotate();
+            }
+            if (i % 7 == 0) {
+              // Lets the tail read in between.
+              await Future<void>.delayed(Duration.zero);
+            }
+          }
+          await writer.flush();
+
+          expect(
+            await _nextLines(lines, count),
+            [for (var i = 1; i <= count; i++) contains('record $i.')],
+          );
+        });
+      }
+    }
+
+    test('loses no record that the retention policy keeps', () async {
+      final dir = createTempDir();
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => '${dir.path}/app.log',
+        rotationConfig: FileRotationConfig.size(
+          maxSize: 1024 * 1024,
+          maxFiles: 3,
+          compress: true,
+        ),
+      );
+      addTearDown(writer.close);
+
+      final received = <int>[];
+      final done = Completer<void>();
+      final subscription = writer.reader.tail().listen((record) {
+        final match = RegExp(r'record (\d+)\.').firstMatch(record);
+        final number = int.parse(match!.group(1)!);
+        received.add(number);
+        if (number == 300) {
+          done.complete();
+        }
+      });
+      addTearDown(subscription.cancel);
+
+      for (var i = 1; i <= 300; i++) {
+        writer.write(testRecord(message: 'record $i.'));
+        if (i % 10 == 0) {
+          await writer.forceRotate();
+        }
+        if (i % 7 == 0) {
+          await Future<void>.delayed(Duration.zero);
+        }
+      }
+      await writer.flush();
+      await done.future.timeout(const Duration(seconds: 15));
+
+      // Records of rotated files that were deleted before the tail read them
+      // can be missing, but none is repeated or out of order.
+      for (var i = 1; i < received.length; i++) {
+        expect(received[i], greaterThan(received[i - 1]));
+      }
+      final kept = await writer.reader.read().toList();
+      final keptNumbers = [
+        for (final record in kept)
+          int.parse(RegExp(r'record (\d+)\.').firstMatch(record)!.group(1)!),
+      ];
+      expect(received, containsAllInOrder(keptNumbers),
+          reason:
+              'kept: $keptNumbers files: ${dir.listSync().map((it) => it.path.split('/').last).toList()..sort()}');
+      // The current file and the rotated files that are kept.
+      expect(
+          received, containsAllInOrder([for (var i = 281; i <= 300; i++) i]));
     });
   });
 

@@ -81,10 +81,12 @@ abstract class RotatingFileReader {
   /// lost.
   ///
   /// The log has to be append-only, with rotated files named as
-  /// [RotatingFileWriter] names them. Files are told apart by their name,
-  /// size and times, and the current file by its first bytes and the bytes
-  /// that were read last. A rewrite in place that changes none of them is
-  /// not noticed.
+  /// [RotatingFileWriter] names them. Like Filebeat and Vector, the tail
+  /// knows a file by its first bytes, not by its name, so a renamed or
+  /// compressed file is read on where it stopped. A file that starts like an
+  /// older one that is gone, as far as that one was read, is taken for its
+  /// continuation. Log records with timestamps make that practically
+  /// impossible.
   ///
   /// A record of the current file is emitted once its separator is written,
   /// unlike [read], which also emits an unterminated last record.
