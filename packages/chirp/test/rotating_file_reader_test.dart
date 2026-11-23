@@ -591,6 +591,87 @@ void main() {
       });
     }
 
+    for (final last in [-1, 0, 1, 5]) {
+      test(
+          'follows a file that is rotated in between the first looks (last: $last)',
+          () async {
+        final dir = createTempDir();
+
+        final base = File('${dir.path}/app.log');
+        base.writeAsStringSync('before\n');
+
+        // The reader has listed the rotated files and opened the current
+        // file when it lists a second time.
+        final hooks = _DirectoryHooks(dir.path);
+        hooks.beforeListing[2] = () {
+          base.renameSync('${dir.path}/app.2024-01-01_10-00-00.log');
+          base.writeAsStringSync('new1\nnew2\n', flush: true);
+        };
+
+        await IOOverrides.runWithIOOverrides(() async {
+          final reader =
+              RotatingFileReader(baseFilePathProvider: () => base.path);
+          final lines = StreamIterator(reader.tail(last: last));
+          addTearDown(lines.cancel);
+
+          final history = last > 0 ? ['before'] : <String>[];
+          expect(
+            await _nextLines(lines, history.length + 2),
+            [...history, 'new1', 'new2'],
+          );
+        }, hooks);
+      });
+    }
+
+    test('emits a rotated file once when it is compressed while listed',
+        () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      final rotated = File('${dir.path}/app.2024-01-01_10-00-00.log');
+      rotated.writeAsStringSync('old\n');
+      base.writeAsStringSync('current\n');
+
+      final hooks = _DirectoryHooks(dir.path);
+      await IOOverrides.runWithIOOverrides(() async {
+        final reader =
+            RotatingFileReader(baseFilePathProvider: () => base.path);
+        final lines = StreamIterator(reader.tail());
+        addTearDown(lines.cancel);
+        expect(await _nextLines(lines, 2), ['old', 'current']);
+
+        // The next listing still holds the plain file, which is deleted
+        // before the reader looks at it.
+        hooks.listedOnce.add(File(rotated.path));
+        File('${rotated.path}.gz')
+            .writeAsBytesSync(gzip.encode(rotated.readAsBytesSync()));
+        rotated.deleteSync();
+
+        base.writeAsStringSync('end1\n', mode: FileMode.append, flush: true);
+        expect(await _nextLines(lines, 1), ['end1']);
+        base.writeAsStringSync('end2\n', mode: FileMode.append, flush: true);
+        expect(await _nextLines(lines, 1), ['end2']);
+      }, hooks);
+    });
+
+    test('emits the history behind a broken archive', () async {
+      final dir = createTempDir();
+
+      final base = File('${dir.path}/app.log');
+      File('${dir.path}/app.2024-01-01_10-00-00.log.gz')
+          .writeAsBytesSync([1, 2, 3]);
+      base.writeAsStringSync('current\n');
+
+      final error = Completer<Object>();
+      final reader = RotatingFileReader(baseFilePathProvider: () => base.path);
+      final lines =
+          StreamIterator(reader.tail(last: 5).handleError(error.complete));
+      addTearDown(lines.cancel);
+
+      expect(await _nextLines(lines, 1), ['current']);
+      expect(await error.future, isA<FormatException>());
+    });
+
     test('emits lines of a rotated file whose successor starts the same',
         () async {
       final dir = createTempDir();
@@ -622,8 +703,11 @@ void main() {
       addTearDown(lines.cancel);
       expect(await _nextLines(lines, 1), ['a1']);
 
+      // Both files of that name get the same size and modification time.
+      final modified = DateTime(2024, 1, 1, 10);
       base.writeAsStringSync('a2\n', mode: FileMode.append, flush: true);
       base.renameSync(rotated.path);
+      rotated.setLastModifiedSync(modified);
       base.writeAsStringSync('b1\n', flush: true);
       expect(await _nextLines(lines, 2), ['a2', 'b1']);
 
@@ -632,6 +716,7 @@ void main() {
       rotated.deleteSync();
       base.writeAsStringSync('b2\n', mode: FileMode.append, flush: true);
       base.renameSync(rotated.path);
+      rotated.setLastModifiedSync(modified);
       base.writeAsStringSync('c1\n', flush: true);
       expect(await _nextLines(lines, 2), ['b2', 'c1']);
     });
@@ -1298,4 +1383,69 @@ final class _WatchAttempts extends IOOverrides {
     }
     return super.fsWatchIsSupported();
   }
+}
+
+/// Runs actions right before the reader lists the directory at [path], and
+/// adds entries to what it gets listed.
+final class _DirectoryHooks extends IOOverrides {
+  final String path;
+
+  /// Actions by the number of the listing they run before, starting at 1.
+  final beforeListing = <int, void Function()>{};
+
+  /// Entries that only the next listing holds, like files that are deleted
+  /// right after they were listed.
+  final listedOnce = <FileSystemEntity>[];
+
+  int _listings = 0;
+
+  _DirectoryHooks(this.path);
+
+  @override
+  Directory createDirectory(String path) {
+    final directory = super.createDirectory(path);
+    if (path != this.path) {
+      return directory;
+    }
+    return _HookedDirectory(directory, this);
+  }
+}
+
+class _HookedDirectory implements Directory {
+  final Directory _directory;
+  final _DirectoryHooks _hooks;
+
+  _HookedDirectory(this._directory, this._hooks);
+
+  @override
+  String get path => _directory.path;
+
+  @override
+  bool existsSync() => _directory.existsSync();
+
+  @override
+  List<FileSystemEntity> listSync({
+    bool recursive = false,
+    bool followLinks = true,
+  }) {
+    _hooks._listings++;
+    _hooks.beforeListing[_hooks._listings]?.call();
+    final entities = [
+      ..._directory.listSync(recursive: recursive, followLinks: followLinks),
+      ..._hooks.listedOnce,
+    ];
+    _hooks.listedOnce.clear();
+    return entities;
+  }
+
+  @override
+  Stream<FileSystemEvent> watch({
+    int events = FileSystemEvent.all,
+    bool recursive = false,
+  }) {
+    return _directory.watch(events: events, recursive: recursive);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

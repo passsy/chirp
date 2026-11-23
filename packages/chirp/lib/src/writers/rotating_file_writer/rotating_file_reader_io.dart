@@ -53,10 +53,18 @@ class RotatingFileReaderIo implements RotatingFileReader {
 
     if (!dir.existsSync()) return const [];
 
-    final files = dir.listSync().whereType<File>().map((it) => it.path);
-    final rotated = files
-        .where((it) => _isRotatedLog(it, currentPath: resolvedPath))
-        .toList()
+    final files = dir.listSync().whereType<File>().map((it) => it.path).toSet();
+    final rotated = files.where((it) {
+      if (!_isRotatedLog(it, currentPath: resolvedPath)) {
+        return false;
+      }
+      if (!_isCompressedLog(it, currentPath: resolvedPath)) {
+        return true;
+      }
+      // While a rotated file is compressed, both it and its .gz exist, and
+      // only the plain file is complete.
+      return !files.contains(it.substring(0, it.length - '.gz'.length));
+    }).toList()
       ..sort((a, b) {
         return _compareRotatedLogs(a, b, currentPath: resolvedPath);
       });
@@ -258,27 +266,33 @@ class _Tail {
     final ring = ListQueue<String>();
     _ring = ring;
     _ringSize = count;
-    var older = <_RotatedFile>[];
+    final older = _listRotated();
     try {
-      while (!_cancelled) {
-        older = _listRotated();
-        final current = await _openCurrent();
-        try {
-          // A rotation in between leaves it open whether the opened file is
-          // the current file or already one of the rotated files.
-          if (!_sameFiles(older, _listRotated())) {
-            continue;
-          }
+      final current = await _openCurrent();
+      try {
+        final known = older.map((it) => it.generation).toSet();
+        final rotatedSince = _listRotated().where((it) {
+          return !known.contains(it.generation);
+        }).toList();
+        if (rotatedSince.isEmpty) {
           if (current != null) {
             final intact = await _read(current, canPause: false);
             if (!intact) {
               _restart();
             }
           }
-          break;
-        } finally {
-          await current?.close();
+        } else {
+          // Rotated since the first listing. The file that was current then
+          // is the oldest of the new rotated files, whether the rotation
+          // happened before or after the open.
+          await _readGeneration(
+            rotatedSince.first,
+            mustContinue: false,
+            canPause: false,
+          );
         }
+      } finally {
+        await current?.close();
       }
     } finally {
       _ring = null;
@@ -292,9 +306,17 @@ class _Tail {
       if (missing <= 0 || _cancelled) {
         continue;
       }
-      final lines = await _readRotatedRecords(rotated.path);
-      chunks.add(lines);
-      missing -= lines.length;
+      try {
+        final lines = await _readRotatedRecords(rotated.path);
+        chunks.add(lines);
+        missing -= lines.length;
+      } on FormatException catch (e, stack) {
+        // A broken archive. Read when the file changes.
+        _controller.addError(e, stack);
+      }
+    }
+    if (_cancelled) {
+      return;
     }
 
     final history = [...chunks.reversed.expand((it) => it), ...ring];
@@ -400,16 +422,19 @@ class _Tail {
       final firstBytes = _firstBytes;
       final lastBytes = _lastBytes;
       _restart();
-      await _readGeneration(
-        unseen.first,
-        mustContinue: false,
-        canPause: false,
-      );
-      _offset = offset;
-      _partial = partial;
-      _decoder = decoder;
-      _firstBytes = firstBytes;
-      _lastBytes = lastBytes;
+      try {
+        await _readGeneration(
+          unseen.first,
+          mustContinue: false,
+          canPause: false,
+        );
+      } finally {
+        _offset = offset;
+        _partial = partial;
+        _decoder = decoder;
+        _firstBytes = firstBytes;
+        _lastBytes = lastBytes;
+      }
       return;
     }
     // The followed generation is deleted.
@@ -568,10 +593,12 @@ class _Tail {
     return _equalBytes(last, _lastBytes);
   }
 
+  /// Returns null when the file does not exist. Other failures, like a
+  /// file that is locked for a moment, throw and keep the read state.
   Future<_Bytes?> _openCurrent() async {
     try {
       return _FileBytes(await _file.open());
-    } on FileSystemException {
+    } on PathNotFoundException {
       return null;
     }
   }
@@ -637,8 +664,11 @@ class _Tail {
         }
         return !it.compressed;
       }
-      // Changed size or time: a new file with a reused name.
-      return seen.size != it.size || seen.modified != it.modified;
+      // Another file with a reused name. The change time tells them apart
+      // when size and modification time are equal.
+      return seen.size != it.size ||
+          seen.modified != it.modified ||
+          seen.changed != it.changed;
     }).toList();
   }
 
@@ -655,28 +685,37 @@ class _Tail {
         .where((it) => _isRotatedLog(it, currentPath: _file.path))
         .toSet();
 
-    final rotated = <_RotatedFile>[];
-    for (final path in paths) {
-      final compressed = _isCompressedLog(path, currentPath: _file.path);
-      final generation =
-          compressed ? path.substring(0, path.length - '.gz'.length) : path;
-      if (compressed && paths.contains(generation)) {
-        // While a rotated file is compressed, both it and its .gz exist.
-        continue;
-      }
+    _RotatedFile? stat(String path, {required String generation}) {
       final stat = File(path).statSync();
       if (stat.type == FileSystemEntityType.notFound) {
-        continue;
+        return null;
       }
-      rotated.add(
-        _RotatedFile(
-          path: path,
-          generation: generation,
-          compressed: compressed,
-          size: stat.size,
-          modified: stat.modified,
-        ),
+      return _RotatedFile(
+        path: path,
+        generation: generation,
+        compressed: path != generation,
+        size: stat.size,
+        modified: stat.modified,
+        changed: stat.changed,
       );
+    }
+
+    final generations = paths.map((it) {
+      if (_isCompressedLog(it, currentPath: _file.path)) {
+        return it.substring(0, it.length - '.gz'.length);
+      }
+      return it;
+    }).toSet();
+
+    final rotated = <_RotatedFile>[];
+    for (final generation in generations) {
+      // While a rotated file is compressed, both it and its .gz exist, and
+      // only the plain file is complete. It is deleted when the .gz is.
+      final file = stat(generation, generation: generation) ??
+          stat('$generation.gz', generation: generation);
+      if (file != null) {
+        rotated.add(file);
+      }
     }
     rotated.sort((a, b) {
       return _compareRotatedLogs(
@@ -686,21 +725,6 @@ class _Tail {
       );
     });
     return rotated;
-  }
-
-  bool _sameFiles(List<_RotatedFile> a, List<_RotatedFile> b) {
-    if (a.length != b.length) {
-      return false;
-    }
-    for (var i = 0; i < a.length; i++) {
-      if (a[i].path != b[i].path) {
-        return false;
-      }
-      if (a[i].size != b[i].size || a[i].modified != b[i].modified) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /// Watches the directory. It may not exist yet or be replaced later, the
@@ -740,6 +764,7 @@ class _RotatedFile {
   final bool compressed;
   final int size;
   final DateTime modified;
+  final DateTime changed;
 
   _RotatedFile({
     required this.path,
@@ -747,6 +772,7 @@ class _RotatedFile {
     required this.compressed,
     required this.size,
     required this.modified,
+    required this.changed,
   });
 }
 

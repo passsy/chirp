@@ -70,18 +70,20 @@ abstract class RotatingFileReader {
 
   /// Tails logs (optionally with an initial snapshot).
   ///
-  /// If [last] is provided, it first emits the last N records (same semantics
-  /// as [read]) and then continues streaming newly appended records.
+  /// If [last] is provided, it first emits the last N records of the files
+  /// that exist when it starts, and then continues streaming newly appended
+  /// records. Without [last], it emits all of them first.
   ///
   /// Follows the log by name, across rotations. Records written right
   /// before a rotation are read from the rotated file, unless the retention
   /// policy already deleted it.
   ///
-  /// The log has to be append-only. A file that got shorter or whose
-  /// beginning changed is read again from its start, other rewrites in place
-  /// are not noticed.
+  /// The log has to be append-only. A rewrite in place is only noticed when
+  /// the file got shorter, or when its first bytes or the bytes that were
+  /// read last changed. It is then read again from its start.
   ///
-  /// A record of the current file is emitted once its separator is written.
+  /// A record of the current file is emitted once its separator is written,
+  /// unlike [read], which also emits an unterminated last record.
   ///
   /// The [pollInterval] passed to the factory controls how often the reader
   /// checks for changes when file system events are missing or unreliable.
