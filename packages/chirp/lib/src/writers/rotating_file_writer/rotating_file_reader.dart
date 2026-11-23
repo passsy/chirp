@@ -71,9 +71,9 @@ abstract class RotatingFileReader {
   /// Tails logs (optionally with an initial snapshot).
   ///
   /// If [last] is provided, it first emits the last N records and then
-  /// continues streaming newly appended records. Without [last], it emits
-  /// all existing records first. Records that are written while the tail
-  /// starts can count as existing ones.
+  /// continues streaming newly appended records; with `last <= 0` it only
+  /// follows. Without [last], it emits all existing records first. Records
+  /// that are written while the tail starts can count as existing ones.
   ///
   /// Follows the log by name, across rotations. Records written right
   /// before a rotation are read from the rotated file, as long as it exists.
@@ -82,9 +82,9 @@ abstract class RotatingFileReader {
   ///
   /// The log has to be append-only, with rotated files named as
   /// [RotatingFileWriter] names them. Like Filebeat and Vector, the tail
-  /// knows a file by its first bytes, not by its name, so a renamed or
-  /// compressed file is read on where it stopped. A file that starts like an
-  /// older one that is gone, as far as that one was read, is taken for its
+  /// knows a file by its first 1024 bytes, not by its name, so a renamed or
+  /// compressed file is read on where it stopped. A file whose first bytes
+  /// start like those of an older file that is gone is taken for its
   /// continuation. Log records with timestamps make that practically
   /// impossible.
   ///

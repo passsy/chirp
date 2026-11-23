@@ -7,7 +7,8 @@
 - **Fix** `SimpleConsoleMessageFormatter` requests caller info again, restoring the missing source location ([#46](https://github.com/passsy/chirp/issues/46))
 
 - **Fix** `RotatingFileReader.tail` lost, repeated or split records when the file was appended to or rotated while it was read.
-  It identifies a file by its first bytes now, like Filebeat and Vector, and reads every file of the log once, in order, also when it was rotated or compressed in between.
+  It identifies a file by its first 1024 bytes now, like Filebeat and Vector, and reads every file of the log once, in order, also when it was rotated or compressed in between.
+  Two files that start with the same bytes can still be taken for one.
   Records written right before a rotation are read from the rotated file, as long as it exists ([#52](https://github.com/passsy/chirp/pull/52))
 
 - **Fix** `RotatingFileReader.tail` waits for the rest of an incomplete record or character instead of emitting it in two parts ([#52](https://github.com/passsy/chirp/pull/52))
@@ -19,10 +20,11 @@
 
 - **Fix** `RotatingFileReader.read` reads a rotated file once while it is compressed, and reads its `.gz` when it is compressed after it was listed ([#52](https://github.com/passsy/chirp/pull/52))
 
-- **Fix** `RotatingFileWriter` deletes the oldest rotated files by their names instead of their modification times, counts a file once while it is compressed, and keeps a file until its compression is done.
+- **Fix** `RotatingFileWriter` deletes the oldest rotated files by their names instead of their modification times, counts a file once while it is compressed, and deletes a file only after its compression is done.
+  A compressed file keeps the modification time of the original, for `maxAge`.
   It could delete a newer file than intended, and a file deleted during its compression came back as `.gz` ([#52](https://github.com/passsy/chirp/pull/52))
 
-- **Fix** `RotatingFileWriter` counts the suffix of rotated files within one second on from the highest one that still exists.
+- **Fix** `RotatingFileWriter` names rotated files in the order of the rotations, also when the clock goes back: the suffix within one second counts on from the highest one that still exists.
   It reused the name of a deleted or compressed file, which put the files out of order and could overwrite a compressed one ([#52](https://github.com/passsy/chirp/pull/52))
 
 - **Fix** Only files with the extension of the log file count as its rotated files.

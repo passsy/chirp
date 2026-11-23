@@ -1243,7 +1243,63 @@ void main() {
     }
   });
 
-  group('rotations within one second', () {
+  group('retention with compression', () {
+    test('keeps the newest files when a compression ends early', () async {
+      final dir = createTempDir();
+      final writer = RotatingFileWriter(
+        baseFilePathProvider: () => '${dir.path}/app.log',
+        rotationConfig: FileRotationConfig.size(
+          maxSize: 100 * 1024 * 1024,
+          maxFiles: 2,
+          compress: true,
+        ),
+      );
+
+      // The older file takes longer to compress than the newer one.
+      writer.write(testRecord(message: 'older ${'x' * 4 * 1024 * 1024}'));
+      await writer.forceRotate();
+      writer.write(testRecord(message: 'newer'));
+      await writer.forceRotate();
+      writer.write(testRecord(message: 'current'));
+      await writer.close();
+
+      final records = await writer.reader.read().toList();
+      expect(records, [contains('newer'), contains('current')]);
+    });
+  });
+
+  group('rotated file names', () {
+    test('keep the order of the rotations when the clock goes back', () async {
+      final dir = createTempDir();
+      var now = DateTime(2024, 1, 15, 10);
+
+      await withClock(Clock(() => now), () async {
+        final writer = RotatingFileWriter(
+          baseFilePathProvider: () => '${dir.path}/app.log',
+          rotationConfig: FileRotationConfig.size(maxSize: 1024 * 1024),
+        );
+        addTearDown(writer.close);
+
+        writer.write(testRecord(message: 'first', timestamp: now));
+        now = now.subtract(const Duration(hours: 1));
+        await writer.forceRotate();
+        writer.write(testRecord(message: 'second', timestamp: now));
+        await writer.forceRotate();
+        writer.write(testRecord(message: 'third', timestamp: now));
+        await writer.flush();
+
+        final expected = [
+          contains('first'),
+          contains('second'),
+          contains('third'),
+        ];
+        expect(await writer.reader.read().toList(), expected);
+        final lines = StreamIterator(writer.reader.tail());
+        addTearDown(lines.cancel);
+        expect(await _nextLines(lines, 3), expected);
+      });
+    });
+
     test('are read in their order when older files are deleted', () async {
       final dir = createTempDir();
       final time = DateTime(2024, 1, 15, 10);

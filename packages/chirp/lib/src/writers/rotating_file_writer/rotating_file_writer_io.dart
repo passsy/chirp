@@ -1009,18 +1009,35 @@ class _RotatingFileSink {
     final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
 
     // Format timestamp for filename
-    final ts = timestamp
+    var ts = timestamp
         .toIso8601String()
         .replaceAll(':', '-')
         .replaceAll('T', '_')
         .split('.')[0];
 
+    // Readers order rotated files by their names. When the clock went back,
+    // the time of the newest rotated file is used, so that the names keep
+    // the order of the rotations.
+    final rotated = getRotatedFiles().map((it) => it.path).toList();
+    if (rotated.isNotEmpty) {
+      final newest = rotated.reduce((a, b) {
+        return compareRotatedLogFiles(a, b, baseName: baseName) > 0 ? a : b;
+      });
+      final candidate = '$dir/$baseName.$ts$extension';
+      if (compareRotatedLogFiles(candidate, newest, baseName: baseName) < 0) {
+        final newestName = File(newest).uri.pathSegments.last;
+        ts = _rotationPattern
+            .firstMatch(newestName.substring(baseName.length + 1))!
+            .group(1)!;
+      }
+    }
+
     // Several rotations within one second get a counter suffix. It counts
     // on from the highest one that exists, plain or compressed, so that the
     // names keep the order of the rotations when older files are deleted.
     final prefix = '$baseName.$ts';
-    final counters = getRotatedFiles()
-        .map((it) => File(it.path).uri.pathSegments.last)
+    final counters = rotated
+        .map((it) => File(it).uri.pathSegments.last)
         .where((it) => it.startsWith(prefix))
         .map((it) {
       final match = _counterPattern.firstMatch(it.substring(prefix.length));
@@ -1068,8 +1085,7 @@ class _RotatingFileSink {
     final extension = dotIndex > 0 ? name.substring(dotIndex) : '';
 
     // While a rotated file is compressed, both it and its .gz exist. They
-    // count as one file. A file that is compressed right now is kept, the
-    // compression would write its .gz after it was deleted.
+    // count as one file.
     final byGeneration = <String, List<_FileEntry>>{};
     for (final file in getRotatedFiles()) {
       var generation = file.path;
@@ -1077,9 +1093,6 @@ class _RotatingFileSink {
         generation = generation.substring(0, generation.length - 3);
       }
       byGeneration.putIfAbsent(generation, () => []).add(file);
-    }
-    for (final path in _compressing) {
-      byGeneration.remove(path);
     }
     if (byGeneration.isEmpty) {
       return;
@@ -1101,7 +1114,7 @@ class _RotatingFileSink {
     // Apply max file count policy
     if (config.maxFileCount != null) {
       // -1 because maxFileCount includes the current file
-      final maxRotated = config.maxFileCount! - 1 - _compressing.length;
+      final maxRotated = config.maxFileCount! - 1;
       if (generations.length > maxRotated) {
         for (final generation in generations.skip(max(maxRotated, 0))) {
           filesToDelete.addAll(byGeneration[generation]!);
@@ -1119,6 +1132,12 @@ class _RotatingFileSink {
         }
       }
     }
+
+    // A file that is compressed right now is deleted when its compression
+    // is done. Deleted now, the compression would write its .gz afterwards.
+    filesToDelete.removeWhere((file) {
+      return _compressing.any((it) => file.path == it || file.path == '$it.gz');
+    });
 
     // Delete files
     for (final file in filesToDelete) {
@@ -1150,9 +1169,13 @@ void _compressFileSync(String path) {
   final file = File(path);
   if (!file.existsSync()) return;
 
+  final modified = file.lastModifiedSync();
   final bytes = file.readAsBytesSync();
   final compressed = gzip.encode(bytes);
-  File('$path.gz').writeAsBytesSync(compressed, flush: true);
+  final compressedFile = File('$path.gz');
+  compressedFile.writeAsBytesSync(compressed, flush: true);
+  // The age of the records, for the retention policy.
+  compressedFile.setLastModifiedSync(modified);
   file.deleteSync();
 }
 

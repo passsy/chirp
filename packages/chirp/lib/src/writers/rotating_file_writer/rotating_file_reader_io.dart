@@ -167,9 +167,9 @@ class RotatingFileReaderIo implements RotatingFileReader {
 /// Limits:
 /// - The log must only be appended to. A file rewritten in place is read
 ///   again from its start when its first bytes changed, otherwise not.
-/// - A generation that starts with the same bytes as an older one, as far as
-///   the older one was read, is taken for its continuation when the older
-///   one is not there anymore.
+/// - A generation whose first [_identityLength] bytes, or all of them when it
+///   is shorter, start like those of an older one is taken for its
+///   continuation when the older one is not there anymore.
 /// - A rotated file that the retention policy deletes before it was read is
 ///   gone.
 class _Tail {
@@ -402,6 +402,8 @@ class _Tail {
       _generations.retainWhere(seen.contains);
       final paths = rotated.map((it) => it.path).toSet();
       _known.removeWhere((path, _) => !paths.contains(path));
+      final states = rotated.map((it) => '${it.path} ${it.state}').toSet();
+      _reported.retainWhere(states.contains);
       return rotated;
     }
     return null;
@@ -659,14 +661,14 @@ class _Tail {
 
   /// Whether a rotated file appeared since [before] was listed.
   bool _rotatedSince(List<_RotatedFile> before) {
+    final byGeneration = {for (final it in before) it.generation: it};
     return _listRotated().any((now) {
-      return !before.any((it) {
-        if (it.generation != now.generation) {
-          return false;
-        }
-        // Compressed since, or unchanged.
-        return it.compressed != now.compressed || it.state == now.state;
-      });
+      final listed = byGeneration[now.generation];
+      if (listed == null) {
+        return true;
+      }
+      // Compressed since, or unchanged.
+      return listed.compressed == now.compressed && listed.state != now.state;
     });
   }
 
